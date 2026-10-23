@@ -1,0 +1,145 @@
+import type { HelpSection } from "./types";
+
+export const helpDe: HelpSection[] = [
+  {
+    id: "start",
+    title: "Erste Schritte",
+    intro: "Joshua+ zerlegt einen Song in Instrumentenspuren, erkennt das Tempo und erzeugt einen passenden Klick. Alles läuft auf deinem Computer.",
+    items: [
+      { term: "Arbeitsordner", text: "Wähle beim ersten Start einen Ordner. Dort speichert Joshua+ die getrennten Songs und legt den Inbox-Ordner an." },
+      { term: "Import per Drag & Drop", text: "Zieh Musikdateien (MP3, WAV, FLAC, OGG, M4A, AIFF) irgendwo auf das Fenster. Ist ein Ordner geöffnet, landet der Song darin." },
+      { term: "Import über den Inbox-Ordner", text: "Kopiere Dateien mit Finder/Explorer nach inbox (oder inbox/ordnername). Sie werden in Sekunden automatisch importiert." },
+      { term: "Songs hinzufügen", text: "Die Schaltfläche Songs hinzufügen öffnet eine Dateiauswahl." },
+      { term: "In Bearbeitung", text: "Die Seitenleiste zeigt den Fortschritt jedes Imports. Das X bricht ab. Beim ersten Song wird die Studio-Engine (136 MB) einmalig geladen." },
+    ],
+  },
+  {
+    id: "library",
+    title: "Start, Ordner und Playlist",
+    items: [
+      { term: "Start", text: "Zeigt deine Ordner, Alle Songs, Ohne Ordner und zuletzt hinzugefügte Songs." },
+      { term: "Neuer Ordner", text: "Lege Ordner wie Band, Kirche oder Üben an und wähle eine Farbe. Der Stift benennt um, der Papierkorb löscht den Ordner (die Songs bleiben in der Bibliothek)." },
+      { term: "In Ordner verschieben", text: "Nutze in der Liste die Spalte Ordner, um einen Song zu verschieben." },
+      { term: "Ordner abspielen", text: "Spielt den Ordner als Playlist vom ersten bis zum letzten Song. Jeder Song klingt mit dem darin gespeicherten Mix." },
+      { term: "Playlist sortieren", text: "Fahre im Ordner über die Nummer (#) und zieh den Griff ⋮⋮. Per Tastatur: Alt + ↑/↓. Die Reihenfolge wird gespeichert." },
+      { term: "Auto", text: "Wenn aktiv, startet der nächste Song des Ordners von selbst, auch wenn du auf einem anderen Bildschirm bist." },
+      { term: "Song umbenennen und löschen", text: "Fahre in der Liste über den Song: der Stift benennt um, der Papierkorb löscht." },
+    ],
+  },
+  {
+    id: "engines",
+    title: "Instrumententrennung",
+    items: [
+      { term: "Studio (empfohlen)", text: "Integrierte neuronale Engine, offline. Trennt in 6 Spuren: Gesang, Schlagzeug, Bass, Gitarre, Tasten und Sonstiges." },
+      { term: "Schnell", text: "Sofortvorschau in 4 Spuren (Gesang, Schlagzeug, Bass, Sonstiges), geringere Qualität." },
+      { term: "Cloud (LALAL.AI)", text: "Optional. Nutzt dein eigenes LALAL.AI-Konto und trennt auch Akustik- und E-Gitarre. Der Song wird hochgeladen und danach gelöscht. Schlüssel in den Einstellungen eintragen." },
+      { term: "Grenzen der Trennung", text: "Kein System trennt zu 100 %: etwas von einem Instrument kann in einer anderen Spur bleiben." },
+    ],
+  },
+  {
+    id: "song",
+    title: "Song-Ansicht",
+    items: [
+      { term: "▶ / ⏸", text: "Abspielen und Pause. Mit Einzähler erklingen zuerst die Klicks." },
+      { term: "⏮ / ⏭", text: "Vorheriger und nächster Song der Playlist." },
+      { term: "Zum Anfang", text: "Springt zum Songanfang (oder zum Loop-Anfang)." },
+      { term: "Loop-Taste", text: "Schaltet die Wiederholung des gewählten Abschnitts ein und aus." },
+      { term: "Anzeige", text: "Zeigt Takt, Schlag und verstrichene Zeit." },
+      { term: "Weiterspielen", text: "Du kannst zum Start oder anderswo hin wechseln: der Song läuft weiter. Klick ihn erneut oder den Mini-Player in der Seitenleiste, um ohne Neustart zurückzukehren." },
+    ],
+  },
+  {
+    id: "bars",
+    title: "Taktkarte und Loops",
+    items: [
+      { term: "Klick", text: "Springt zu diesem Takt." },
+      { term: "Doppelklick", text: "Wiederholt diesen Takt, bis du ihn ausschaltest." },
+      { term: "Ziehen", text: "Zieh über mehrere Takte, um den Abschnitt zu wiederholen." },
+      { term: "Shift + Klick", text: "Erweitert einen aktiven Loop bis zum geklickten Takt." },
+      { term: "Wiederholen 1 · 2 · 4 · 8", text: "Wiederholt so viele Takte ab dem aktuellen Takt." },
+      { term: "Aus", text: "Beendet die Wiederholung." },
+      { term: "Automatisches Scrollen", text: "Der laufende Takt bleibt sichtbar. Scrollst du selbst, pausiert das automatische Scrollen kurz." },
+    ],
+  },
+  {
+    id: "mixer",
+    title: "Mischpult",
+    items: [
+      { term: "Fader", text: "Nach oben/unten ziehen für die Lautstärke. Doppelklick setzt auf 0 dB. Pfeiltasten für Feineinstellung." },
+      { term: "Panorama-Regler", text: "Nach oben/unten ziehen, um den Klang nach links oder rechts zu schieben. Doppelklick zentriert. Shift für Feineinstellung." },
+      { term: "M (stumm)", text: "Schaltet die Spur stumm." },
+      { term: "S (solo)", text: "Spielt nur die Solo-Spuren. Mehrere sind möglich." },
+      { term: "Song-Gruppe", text: "Steuert alle Songspuren gemeinsam. Zu einer Spur einklappen lässt nur einen Kanal übrig und schafft Platz." },
+      { term: "Eingänge", text: "Eingerichtete Eingänge erscheinen hier mit Pegel und Mithör-Lautstärke." },
+      { term: "Master", text: "Gesamte Ausgangslautstärke." },
+      { term: "Speichern", text: "Alles, was du im Song einstellst, wird automatisch gespeichert und beim nächsten Öffnen wiederhergestellt." },
+    ],
+  },
+  {
+    id: "metronome",
+    title: "Metronom",
+    items: [
+      { term: "BPM", text: "Klick auf die Zahl, gib das genaue Tempo ein und drück Enter." },
+      { term: "÷2 und ×2", text: "Korrigieren ein Tempo, das halb oder doppelt so schnell erkannt wurde." },
+      { term: "◀ ▶", text: "Verschieben den Klick um 10 ms früher oder später." },
+      { term: "Eins hier", text: "Macht den Schlag an der Abspielposition zur Eins des Takts." },
+      { term: "TAP", text: "Tippe während der Wiedergabe 4-mal oder öfter im Takt. Der Klick richtet sich nach deinen Taps aus." },
+      { term: "Konstant / Variabel", text: "Konstant hält ein Tempo (normal). Variabel lässt den Klick der Band folgen." },
+      { term: "↻", text: "Erkennt das Tempo neu." },
+      { term: "Klang", text: "Wähle den Klang: klassisch, Holzblock, Piepton, Kuhglocke, Sticks oder Kick & Hi-Hat." },
+      { term: "Takt", text: "Taktart (2/4 bis 7/4)." },
+      { term: "Einzähler", text: "Wie viele Takte Klick vor der Musik (Aus, 1, 2 oder 4). Der Einzähler trifft genau den Schlag des Songs." },
+      { term: "Regler und runde Taste", text: "Der Regler stellt die Klick-Lautstärke ein; die runde Taste schaltet den Klick ein und aus." },
+    ],
+  },
+  {
+    id: "info",
+    title: "Song-Infos",
+    items: [
+      { term: "Cover", text: "Wird aus der Datei gelesen und in der Liste und oben im Song gezeigt." },
+      { term: "i-Taste", text: "Zeigt Künstler, Album/EP, Jahr, Genre, Titelnummer, Komponist und Label, wenn die Datei sie enthält." },
+      { term: "Umbenennen", text: "Klick oben auf den Songtitel, um ihn zu bearbeiten." },
+    ],
+  },
+  {
+    id: "gear",
+    title: "Instrumente & Eingänge",
+    items: [
+      { term: "Eingang hinzufügen", text: "Wähle ein Audio-Interface, ein Mikrofon oder das USB-Audio des Drum-Moduls. Mehrere Eingänge können gleichzeitig aktiv sein." },
+      { term: "Kanal", text: "Wähle den Interface-Kanal (Kanal 1, 2…) oder ein Stereopaar (1+2…)." },
+      { term: "Mithören", text: "Du hörst dein Instrument zusammen mit dem Song. Braucht dieselbe Abtastrate wie der Audioausgang." },
+      { term: "E-Drums", text: "Verbinde das Modul per USB, wähle den MIDI-Port und die Marke. Die Pads auf dem Bildschirm leuchten beim Spielen." },
+      { term: "Lernen", text: "Bleibt ein Pad dunkel, klick es an, drück Lernen und schlag die Trommel an. Die Zuordnung wird gespeichert." },
+      { term: "Aufnahme", text: "Die Aufnahme kommt noch. Die Eingänge sind schon dafür vorbereitet." },
+    ],
+  },
+  {
+    id: "settings",
+    title: "Einstellungen",
+    items: [
+      { term: "Sprache", text: "Portugiesisch, Englisch oder Deutsch." },
+      { term: "Trenn-Engine", text: "Studio, Schnell oder Cloud für die nächsten Importe." },
+      { term: "Audioausgabe", text: "Wähle Kopfhörer, Lautsprecher oder das Interface, über das du hörst." },
+      { term: "Arbeitsordner", text: "Wechsle den Ordner, in dem die Songs liegen." },
+    ],
+  },
+  {
+    id: "keys",
+    title: "Tastenkürzel",
+    items: [
+      { term: "Leertaste", text: "Abspielen / Pause." },
+      { term: "Pos1 oder Enter", text: "Zum Anfang (oder zum Loop-Anfang)." },
+      { term: "L", text: "Loop ein/aus." },
+      { term: "Alt + ↑/↓", text: "Song in der Playlist verschieben (Griff ausgewählt)." },
+      { term: "Esc", text: "Bricht Bearbeitungen ab und schließt Fenster." },
+    ],
+  },
+  {
+    id: "privacy",
+    title: "Datenschutz & Sicherheit",
+    items: [
+      { term: "Alles lokal", text: "Songs bleiben auf deinem Computer. Nichts wird hochgeladen, außer du wählst die Cloud-Engine." },
+      { term: "Geprüfte Dateien", text: "Joshua+ prüft vor dem Öffnen, ob eine Datei wirklich Audio ist, und lehnt Verknüpfungen und verdächtige Dateien ab." },
+    ],
+  },
+];

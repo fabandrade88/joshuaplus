@@ -1,0 +1,116 @@
+# Builds installers for every platform when a version tag (v*) is pushed,
+# attaches them to a GitHub (pre-)release and publishes SHA256SUMS, which the
+# install scripts verify before installing anything.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to build (e.g. v0.0.1-beta)'
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  TAG: ${{ inputs.tag || github.ref_name }}
+
+jobs:
+  create:
+    name: Create draft release
+    runs-on: ubuntu-24.04
+    outputs:
+      id: ${{ steps.release.outputs.id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          prerelease=""
+          case "$TAG" in *-*) prerelease="--prerelease" ;; esac
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --draft $prerelease --verify-tag \
+              --title "Joshua+ ${TAG#v}" --notes-file .github/RELEASE_NOTES.md
+          fi
+          echo "id=$(gh api "repos/$GITHUB_REPOSITORY/releases" --jq ".[] | select(.tag_name == \"$TAG\") | .id")" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build (${{ matrix.name }})
+    needs: create
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS Apple Silicon
+            os: macos-latest
+            target: aarch64-apple-darwin
+          - name: macOS Intel
+            os: macos-latest
+            target: x86_64-apple-darwin
+          - name: Windows x64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+          - name: Linux x64
+            os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - name: Linux system libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libssl-dev patchelf
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release-${{ matrix.target }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: app/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: app
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          projectPath: app
+          releaseId: ${{ needs.create.outputs.id }}
+          args: --target ${{ matrix.target }}
+
+  publish:
+    name: Checksums and publish
+    needs: [create, build]
+    if: ${{ !cancelled() && needs.create.result == 'success' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: SHA256SUMS
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir assets && cd assets
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern '*'
+          rm -f SHA256SUMS
+          sha256sum -- * > SHA256SUMS
+          cat SHA256SUMS
+          gh release upload "$TAG" SHA256SUMS --clobber --repo "$GITHUB_REPOSITORY"
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "$TAG" --draft=false --repo "$GITHUB_REPOSITORY"

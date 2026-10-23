@@ -1,0 +1,27 @@
+name: Feature request
+description: Suggest an idea for Joshua+
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What musical problem are you trying to solve?
+      placeholder: "When I practise drums along a song, I …"
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your idea
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives / how you do it today
+  - type: checkboxes
+    id: help
+    attributes:
+      label: Contribution
+      options:
+        - label: I'd like to help build this

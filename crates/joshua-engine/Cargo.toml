@@ -1,0 +1,19 @@
+[package]
+name = "joshua-engine"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Joshua+ real-time audio engine (device I/O on top of joshua-core)"
+
+[dependencies]
+cpal = "0.18.2"
+joshua-core = { path = "../joshua-core" }
+rtrb = "0.4.0"
+thiserror = "2.0.21"
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+assert_no_alloc = "1.1.2"

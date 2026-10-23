@@ -1,0 +1,123 @@
+# Quality gate. Every push to test-branch and every pull request into main
+# must pass all of these jobs before anything can be merged into main
+# (main is protected and requires them).
+name: CI
+
+on:
+  push:
+    branches: [test-branch]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+  RUST_BACKTRACE: 1
+
+jobs:
+  frontend:
+    name: Frontend (types, tests, build, audit)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: app/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Type check (svelte-check, warnings are errors)
+        run: pnpm check
+      - name: Unit + security static tests (vitest)
+        run: pnpm test
+      - name: Production build
+        run: pnpm build
+      - name: Dependency audit (npm advisories)
+        run: pnpm audit --prod
+
+  rust:
+    name: Rust (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Linux system libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libssl-dev patchelf
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: app/pnpm-lock.yaml
+      # The Tauri app embeds the built UI at compile time.
+      - name: Build UI
+        working-directory: app
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+      - name: Format
+        if: runner.os == 'Linux'
+        run: cargo fmt --all --check
+      - name: Clippy (warnings are errors)
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - name: Tests (unit, property, fuzz, attack, real-time safety)
+        run: cargo test --workspace --locked
+
+  performance:
+    name: Performance (release)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y libasound2-dev
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: perf
+      - name: Performance floors (×real time)
+        run: cargo test --release --locked -p joshua-core --test performance -- --ignored --nocapture --test-threads=1
+
+  security:
+    name: Security (attacks + advisories)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y libasound2-dev
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: security
+      - name: Attack suites (path traversal, symlinks, hostile media, MIDI floods)
+        run: |
+          cargo test --locked -p joshua-core --test security_attacks --test review_attacks --test fuzz_media --test properties
+          cargo test --locked -p joshua-midi --test hostile_input
+          cargo test --locked -p joshua-engine --test realtime_safety
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+      - name: RustSec advisory audit (vulnerabilities fail the build)
+        run: cargo audit
