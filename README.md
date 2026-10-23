@@ -39,7 +39,7 @@ The app speaks **English, Português (Brasil) and Deutsch**.
 curl -fsSL https://raw.githubusercontent.com/fabandrade88/joshuaplus/main/scripts/install.sh | sh
 ```
 
-### Linux (x86_64: Ubuntu 22.04+, Debian 12+, Fedora, Arch, …)
+### Linux (x86_64: Ubuntu 24.04+, Debian 13+, Fedora 40+, Arch, … — needs glibc 2.39+)
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/fabandrade88/joshuaplus/main/scripts/install.sh | sh

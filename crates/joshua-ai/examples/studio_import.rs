@@ -1,5 +1,5 @@
 //! End-to-end import with the studio engine (what the app does per song).
-//! `cargo run --release -p joshua-ai --example import -- <model-dir> <workspace> <audio>`
+//! `cargo run --release -p joshua-ai --example studio_import -- <model-dir> <workspace> <audio>`
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use std::path::PathBuf;

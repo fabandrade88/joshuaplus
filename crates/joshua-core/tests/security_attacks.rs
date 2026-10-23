@@ -8,7 +8,7 @@ use std::io::Cursor;
 use std::path::Path;
 use std::sync::atomic::AtomicBool;
 
-use joshua_core::decode::{decode_file, decode_source};
+use joshua_core::decode::decode_source;
 use joshua_core::import::{ImportOptions, import_song};
 use joshua_core::project::{PROJECT_FILE, SongProject};
 use joshua_core::security::Limits;
@@ -194,7 +194,7 @@ fn fifo_and_device_files_are_rejected_without_blocking() {
     let link = dir.path().join("zero.wav");
     std::os::unix::fs::symlink("/dev/zero", &link).unwrap();
     assert!(matches!(import(&ws, &link), Err(CoreError::Rejected(RejectReason::Symlink))));
-    assert!(decode_file(Path::new("/dev/null"), &Limits::default()).is_err());
+    assert!(joshua_core::decode::decode_file(Path::new("/dev/null"), &Limits::default()).is_err());
 }
 
 #[test]
