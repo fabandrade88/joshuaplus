@@ -364,6 +364,14 @@ if (state === "video") {
     slider.dispatchEvent(new Event("input", { bubbles: true }));
     await new Promise((r) => setTimeout(r, 1500));
     log.push(`after-edit renders=${renders.n} paused=${v.paused} t=${v.currentTime.toFixed(1)} songGain=${app.song?.project.songGainDb}`);
+    const gainOf = () => (studio as unknown as { reviewGain: GainNode | null }).reviewGain?.gain.value;
+    v.volume = 0.25;
+    await new Promise((r) => setTimeout(r, 200));
+    const atQuarter = gainOf();
+    v.muted = true;
+    await new Promise((r) => setTimeout(r, 200));
+    log.push(`player volume 0.25 -> gain ${atQuarter}; muted -> gain ${gainOf()}`);
+    v.muted = false;
     const s3 = studio as unknown as { audioFor: (c: AudioContext) => Promise<AudioBuffer> };
     await s3.audioFor(new AudioContext());
     log.push(`export-sound renders=${renders.n}`);

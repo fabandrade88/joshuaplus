@@ -302,6 +302,8 @@ class VideoStudio {
   private reviewBuffer: AudioBuffer | null = null;
   private reviewSync: number | null = null;
   private reviewSrc: AudioBufferSourceNode | null = null;
+  /** Follows the review player's volume and mute buttons. */
+  private reviewGain: GainNode | null = null;
   /** Bumped on every mix change made while reviewing: the prepared sound
    *  is then stale and gets rendered again (for preview and export). */
   private mixVersion = 0;
@@ -360,8 +362,13 @@ class VideoStudio {
   /** Wires the review `<video>` so every play — native controls or the
    *  Preview button — sounds with the real mix, in sync. Returns a cleanup. */
   attachReview(video: HTMLVideoElement): () => void {
-    video.muted = true;
+    // The camera clip has no sound track of its own: the player's volume and
+    // mute buttons drive the mix played next to it.
+    video.muted = false;
     this.reviewVideo = video;
+    const follow = () => {
+      if (this.reviewGain) this.reviewGain.gain.value = video.muted ? 0 : video.volume;
+    };
     let starting = false;
     const onPlay = async () => {
       if (starting || !this.clip) return;
@@ -387,7 +394,12 @@ class VideoStudio {
       const src = ctx.createBufferSource();
       const buffer = this.reviewBuffer!;
       src.buffer = buffer;
-      src.connect(ctx.destination);
+      if (!this.reviewGain) {
+        this.reviewGain = ctx.createGain();
+        this.reviewGain.connect(ctx.destination);
+      }
+      follow();
+      src.connect(this.reviewGain);
       src.start(ctx.currentTime, Math.min(video.currentTime, buffer.duration));
       this.reviewSrc = src;
     };
@@ -398,7 +410,9 @@ class VideoStudio {
     video.addEventListener("pause", onStop);
     video.addEventListener("seeking", onStop);
     video.addEventListener("ended", onStop);
+    video.addEventListener("volumechange", follow);
     return () => {
+      video.removeEventListener("volumechange", follow);
       video.removeEventListener("playing", onPlay);
       video.removeEventListener("pause", onStop);
       video.removeEventListener("seeking", onStop);
