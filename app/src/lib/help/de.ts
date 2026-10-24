@@ -120,7 +120,7 @@ export const helpDe: HelpSection[] = [
     items: [
       { term: "Eingang scharf schalten", text: "Drück ● auf der Spur eines Eingangs (im Mischpult). Jeder scharfe Eingang nimmt auf einen eigenen Take auf." },
       { term: "REC (Audio)", text: "Mit dem Mikrofon-Modus den roten Knopf drücken: Der Song läuft mit Einzähler, die scharfen Eingänge nehmen auf. Nochmal (■) zum Stoppen." },
-      { term: "Takes", text: "Jede Aufnahme erscheint in der Gruppe Takes, schon am Song ausgerichtet (Latenz und Takt-Unterschiede werden korrigiert). Mit Fader, Pan, M, S und × zum Löschen." },
+      { term: "Takes", text: "Jede Aufnahme erscheint in der Gruppe Takes, schon am Song ausgerichtet (Latenz und Takt-Unterschiede werden korrigiert). Mit Fader, Pan, M, S und × zum Löschen. Nimmst du auf demselben Eingang erneut auf, ersetzt das den Take (der alte ist während der Aufnahme stumm, der neue übernimmt Lautstärke, Pan und Raum)." },
       { term: "Raum", text: "Jeder Take hat einen Raum-Regler: Er schickt den Take in einen gemeinsamen Raum, damit eine trockene Aufnahme (Drum-Modul, DI) im selben Raum wie die Band klingt. Neue Takes starten bei 30 %; der Raum ist auch in exportiertem Audio und Videos." },
       { term: "Audio exportieren", text: "Exportiert den Mix aller aktiven Spuren (Song + Takes) als 24-Bit-WAV in den Ordner Exports. Ein Fenster fragt, ob das Metronom (Klick) dabei sein soll, und zeigt, wohin die Datei kommt." },
       { term: "Exporte", text: "In der Seitenleiste: alle exportierten Mixe und Videos, mit Knöpfen zum Abspielen oder Zeigen im Ordner. Aufgenommene Takes bleiben im Song (Gruppe Takes im Mixer)." },

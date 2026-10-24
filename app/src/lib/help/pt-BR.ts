@@ -120,7 +120,7 @@ export const helpPtBR: HelpSection[] = [
     items: [
       { term: "Armar uma entrada", text: "Aperte ● na faixa da entrada (no console) para armá-la. Cada entrada armada grava no seu próprio take." },
       { term: "REC (áudio)", text: "Com o modo microfone escolhido, aperte o botão vermelho: a música toca com a contagem e as entradas armadas gravam. Aperte de novo (■) para parar." },
-      { term: "Gravações", text: "Cada gravação aparece no grupo Gravações, já alinhada com a música (a latência e a diferença de clock são corrigidas). Tem fader, pan, M, S e × para apagar." },
+      { term: "Gravações", text: "Cada gravação aparece no grupo Gravações, já alinhada com a música (a latência e a diferença de clock são corrigidas). Tem fader, pan, M, S e × para apagar. Gravar de novo na mesma entrada substitui a gravação anterior (a antiga fica muda enquanto você grava, e a nova mantém o volume, o pan e a sala)." },
       { term: "Sala", text: "Cada take tem um botão Sala: ele manda o take para uma sala comum, e a gravação seca (módulo de bateria, linha direta) fica no mesmo ambiente da banda. Takes novos começam em 30%; a sala também entra no áudio e nos vídeos exportados." },
       { term: "Exportar áudio", text: "Exporta a mixagem de todas as faixas ativas (música + gravações) em WAV 24-bit na pasta Exports. Uma janela pergunta se o metrônomo (click) entra e mostra onde o arquivo vai ser salvo." },
       { term: "Exportações", text: "Na barra lateral: todas as mixagens e vídeos exportados, com botões para tocar ou mostrar na pasta. Os takes gravados ficam dentro da própria música (grupo Takes do mixer)." },
