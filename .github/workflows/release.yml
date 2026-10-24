@@ -231,25 +231,7 @@ jobs:
   # The one-line install commands from the README, against the published
   # release (checksum check included).
   install-scripts:
-    name: Install script (${{ matrix.os }})
     needs: publish
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-24.04, macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ env.TAG }}
-      - name: install.sh
-        if: runner.os != 'Windows'
-        env:
-          JOSHUA_VERSION: ${{ env.TAG }}
-        run: sh scripts/install.sh
-      - name: install.ps1
-        if: runner.os == 'Windows'
-        shell: pwsh
-        env:
-          JOSHUA_VERSION: ${{ env.TAG }}
-        run: ./scripts/install.ps1
+    uses: ./.github/workflows/install-check.yml
+    with:
+      version: ${{ inputs.tag || github.ref_name }}

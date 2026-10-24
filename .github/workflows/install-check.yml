@@ -1,0 +1,46 @@
+# Runs the one-line install commands from the README on clean Linux, macOS
+# and Windows machines against a published release (latest by default).
+# Called by the release workflow after publishing; can also be run by hand.
+name: Install check
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release tag to install (empty: the latest release)'
+        required: false
+        default: ''
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  install:
+    name: Install script (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      # The scripts people run come from main (raw.githubusercontent.com/…/main).
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+      - name: install.sh
+        if: runner.os != 'Windows'
+        env:
+          JOSHUA_VERSION: ${{ inputs.version }}
+        run: sh scripts/install.sh
+      - name: install.ps1
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          JOSHUA_VERSION: ${{ inputs.version }}
+        run: ./scripts/install.ps1

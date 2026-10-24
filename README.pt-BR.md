@@ -21,11 +21,29 @@ Gratuito e de código aberto (MIT). Roda no seu computador: sua música não sai
 
 ## Instalação
 
-| Sistema | Rode isto | Requisitos |
-|---|---|---|
-| **macOS** | `curl -fsSL https://raw.githubusercontent.com/fabandrade88/joshuaplus/main/scripts/install.sh \| sh` | Apple Silicon (M1 ou mais novo), macOS 13.4+ |
-| **Linux** | `curl -fsSL https://raw.githubusercontent.com/fabandrade88/joshuaplus/main/scripts/install.sh \| sh` | x86_64, glibc 2.39+ (Ubuntu 24.04+, Debian 13+, Fedora 40+, Arch) |
-| **Windows** | `irm https://raw.githubusercontent.com/fabandrade88/joshuaplus/main/scripts/install.ps1 \| iex` (no PowerShell) | Windows 10/11, 64 bits. Não precisa de administrador |
+### macOS
+
+Apple Silicon (M1 ou mais novo), macOS 13.4 ou mais novo. Cole no Terminal:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/fabandrade88/joshuaplus/main/scripts/install.sh | sh
+```
+
+### Windows
+
+Windows 10 ou 11, 64 bits, sem precisar de administrador. Cole no PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/fabandrade88/joshuaplus/main/scripts/install.ps1 | iex
+```
+
+### Linux
+
+x86_64 com glibc 2.39+ (Ubuntu 24.04+, Debian 13+, Fedora 40+, Arch). Cole num terminal:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/fabandrade88/joshuaplus/main/scripts/install.sh | sh
+```
 
 Os scripts baixam a versão mais nova, **conferem o SHA-256 com o `SHA256SUMS` da versão** e só então instalam: o `.deb` com apt no Debian/Ubuntu, o AppImage em `~/.local/bin` nos outros Linux, o app em Aplicativos no macOS. São curtos; leia [`install.sh`](scripts/install.sh) e [`install.ps1`](scripts/install.ps1) antes, se quiser. Use `JOSHUA_VERSION=v0.5.0` para escolher uma versão.
 

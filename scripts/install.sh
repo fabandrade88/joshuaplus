@@ -40,27 +40,34 @@ case "$os" in
   *) die "unsupported OS: $os (on Windows use install.ps1)" ;;
 esac
 
+# The release is found through github.com itself, not the REST API: the API
+# allows 60 anonymous requests per hour per address, which shared networks
+# (offices, schools, CI) run out of.
 if [ -n "$VERSION" ]; then
-  api="https://api.github.com/repos/$REPO/releases/tags/$VERSION"
+  tag="$VERSION"
 else
-  # /releases/latest skips pre-releases, so take the newest release of any kind.
-  api="https://api.github.com/repos/$REPO/releases?per_page=1"
+  say "Looking up the latest release…"
+  latest=$(curl -fsSLI -o /dev/null -w '%{url_effective}' "https://github.com/$REPO/releases/latest") ||
+    die "could not reach GitHub"
+  tag=${latest##*/tag/}
+  [ "$tag" != "$latest" ] && [ -n "$tag" ] || die "no published release found"
 fi
-
-say "Looking up release…"
-json=$(curl -fsSL -H 'Accept: application/vnd.github+json' "$api") || die "could not reach GitHub"
-urls=$(printf '%s' "$json" | grep -o '"browser_download_url": *"[^"]*"' | sed 's/.*"\(https[^"]*\)"/\1/')
-asset_url=$(printf '%s\n' "$urls" | grep -E "$pattern" | head -n 1 || true)
-sums_url=$(printf '%s\n' "$urls" | grep -E '/SHA256SUMS$' | head -n 1 || true)
-[ -n "$asset_url" ] || die "no package matching $pattern in this release"
-[ -n "$sums_url" ] || die "release has no SHA256SUMS; refusing to install unverified files"
+ver=${tag#v}
+case "$pattern" in
+  *dmg*) name="Joshua+_${ver}_aarch64.dmg" ;;
+  *deb*) name="Joshua+_${ver}_amd64.deb" ;;
+  *AppImage*) name="Joshua+_${ver}_amd64.AppImage" ;;
+esac
+base="https://github.com/$REPO/releases/download/$tag"
+asset_url="$base/$(printf '%s' "$name" | sed 's/+/%2B/g')"
+sums_url="$base/SHA256SUMS"
 
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT INT TERM
 name=$(basename "$asset_url")
 file="$tmp/pkg"
 
-say "Downloading $name"
+say "Downloading $(printf '%s' "$name" | sed 's/%2B/+/g') ($tag)"
 curl -fL --proto '=https' --tlsv1.2 --progress-bar -o "$file" "$asset_url"
 curl -fsSL --proto '=https' --tlsv1.2 -o "$tmp/SHA256SUMS" "$sums_url"
 

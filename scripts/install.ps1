@@ -15,25 +15,31 @@ function Say($msg) { Write-Host "> $msg" -ForegroundColor Yellow }
 
 if (-not [Environment]::Is64BitOperatingSystem) { throw 'Joshua+ needs 64-bit Windows.' }
 
-$headers = @{ Accept = 'application/vnd.github+json'; 'User-Agent' = 'joshua-plus-installer' }
+$headers = @{ 'User-Agent' = 'joshua-plus-installer' }
+# The release is found through github.com itself, not the REST API: the API
+# allows 60 anonymous requests per hour per address, which shared networks
+# (offices, schools, CI) run out of.
 if ($Version) {
-    $release = Invoke-RestMethod -Headers $headers "https://api.github.com/repos/$Repo/releases/tags/$Version"
+    $tag = $Version
 } else {
-    # /releases/latest skips pre-releases, so take the newest release of any kind.
-    $release = (Invoke-RestMethod -Headers $headers "https://api.github.com/repos/$Repo/releases?per_page=1")[0]
+    Say 'Looking up the latest release…'
+    $resp = Invoke-WebRequest -UseBasicParsing -Headers $headers -Uri "https://github.com/$Repo/releases/latest"
+    # Windows PowerShell 5.1 and PowerShell 7 expose the final URL differently.
+    $final = if ($resp.BaseResponse.ResponseUri) { $resp.BaseResponse.ResponseUri.AbsoluteUri } else { $resp.BaseResponse.RequestMessage.RequestUri.AbsoluteUri }
+    if ($final -notmatch '/tag/([^/?#]+)') { throw 'No published release found.' }
+    $tag = $Matches[1]
 }
-if (-not $release) { throw 'No release found.' }
-
-$asset = $release.assets | Where-Object { $_.name -match '_x64-setup\.exe$' } | Select-Object -First 1
-$sums = $release.assets | Where-Object { $_.name -eq 'SHA256SUMS' } | Select-Object -First 1
-if (-not $asset) { throw 'This release has no Windows installer.' }
-if (-not $sums) { throw 'Release has no SHA256SUMS; refusing to install unverified files.' }
+$ver = $tag.TrimStart('v')
+$assetName = "Joshua+_${ver}_x64-setup.exe"
+$base = "https://github.com/$Repo/releases/download/$tag"
+$asset = @{ name = $assetName; browser_download_url = "$base/" + $assetName.Replace('+', '%2B') }
+$sums = @{ browser_download_url = "$base/SHA256SUMS" }
 
 $tmp = Join-Path ([IO.Path]::GetTempPath()) ("joshua-" + [Guid]::NewGuid())
 New-Item -ItemType Directory -Path $tmp | Out-Null
 try {
     $exe = Join-Path $tmp 'joshua-plus-setup.exe'
-    Say "Downloading $($asset.name) ($($release.tag_name))"
+    Say "Downloading $($asset.name) ($tag)"
     Invoke-WebRequest -UseBasicParsing -Headers $headers -Uri $asset.browser_download_url -OutFile $exe
     $sumText = (Invoke-WebRequest -UseBasicParsing -Headers $headers -Uri $sums.browser_download_url).Content
     if ($sumText -is [byte[]]) { $sumText = [Text.Encoding]::UTF8.GetString($sumText) }
