@@ -216,6 +216,29 @@ if (state === "song" || state === "away" || state === "video") {
 if (state === "away") app.goHome();
 if (state === "video") {
   app.videoOpen = true;
+  if (params.get("phase") === "overlay") {
+    const { drawTitle, loadImage } = await import("../src/lib/video/studio.svelte");
+    const { FORMATS } = await import("../src/lib/video/formats");
+    const cover = await loadImage(art("#ff6b8a", "#4c1d95").replace("viewBox", 'width="600" height="600" viewBox'));
+    app.videoOpen = false;
+    const wrap = document.createElement("div");
+    wrap.style.cssText = "position:fixed;inset:0;z-index:99;background:#222;display:flex;gap:16px;padding:16px;align-items:flex-start";
+    for (const f of FORMATS.slice(0, 2)) {
+      const c = document.createElement("canvas");
+      c.width = f.width;
+      c.height = f.height;
+      const g = c.getContext("2d")!;
+      const grad = g.createLinearGradient(0, 0, f.width, f.height);
+      grad.addColorStop(0, "#3a4a5a");
+      grad.addColorStop(1, "#1a1d24");
+      g.fillStyle = grad;
+      g.fillRect(0, 0, f.width, f.height);
+      drawTitle(g, f, "Left For Good", "Bad Omens", cover);
+      c.style.height = "560px";
+      wrap.append(c);
+    }
+    document.body.append(wrap);
+  }
   if (params.get("phase") === "e2e") {
     const { studio } = await import("../src/lib/video/studio.svelte");
     const log: string[] = [];

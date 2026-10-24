@@ -197,7 +197,7 @@ export const ptBR: Messages = {
   "video.fmt.vertical": "Shorts · Reels · TikTok 9:16",
   "video.fmt.square": "Instagram 1:1",
   "video.fmt.portrait": "Instagram 4:5",
-  "video.showTitle": "Mostrar o nome da música",
+  "video.showTitle": "Mostrar capa, nome da música e artista",
   "video.export": "Exportar {n} vídeo(s)",
   "video.exporting": "Exportando em tempo real — demora o mesmo tempo do vídeo.",
   "video.again": "Descartar e gravar de novo",

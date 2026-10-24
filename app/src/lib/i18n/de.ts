@@ -197,7 +197,7 @@ export const de: Messages = {
   "video.fmt.vertical": "Shorts · Reels · TikTok 9:16",
   "video.fmt.square": "Instagram 1:1",
   "video.fmt.portrait": "Instagram 4:5",
-  "video.showTitle": "Songtitel anzeigen",
+  "video.showTitle": "Cover, Songtitel und Künstler anzeigen",
   "video.export": "{n} Video(s) exportieren",
   "video.exporting": "Export in Echtzeit — dauert so lange wie der Clip.",
   "video.again": "Verwerfen und neu aufnehmen",

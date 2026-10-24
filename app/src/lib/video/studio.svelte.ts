@@ -363,6 +363,7 @@ class VideoStudio {
       src.connect(dest);
       const title = app.song?.project.title ?? "";
       const artist = app.song?.project.metadata?.artist ?? "";
+      const cover = this.showTitle ? await loadImage(app.song?.cover ?? null) : null;
 
       const outputs = await Promise.all(
         formats.map(async (f) => {
@@ -400,7 +401,7 @@ class VideoStudio {
         for (const o of outputs) {
           const { sx, sy, sw, sh } = coverCrop(vw, vh, o.f.width, o.f.height);
           o.g.drawImage(video, sx, sy, sw, sh, 0, 0, o.f.width, o.f.height);
-          if (this.showTitle && title) drawTitle(o.g, o.f, title, artist);
+          if (this.showTitle && title) drawTitle(o.g, o.f, title, artist, cover);
         }
         this.progress = Math.min(1, video.currentTime / Math.max(clip.durationSecs, 0.1));
       };
@@ -570,27 +571,77 @@ async function ensureInDocument(video: HTMLVideoElement): Promise<void> {
   document.body.append(video);
 }
 
-/** Song title (and artist) in the lower left, over a soft shade. */
-function drawTitle(g: CanvasRenderingContext2D, f: VideoFormat, title: string, artist: string): void {
-  const unit = Math.min(f.width, f.height) / 1080;
+/** Loads the album cover (a `data:` URL from the backend); `null` if absent
+ *  or broken, so the overlay simply goes without it. */
+export function loadImage(src: string | null): Promise<HTMLImageElement | null> {
+  if (!src) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+
+/** Album cover, song title and artist in the lower left, over a soft shade. */
+export function drawTitle(
+  g: CanvasRenderingContext2D,
+  f: VideoFormat,
+  title: string,
+  artist: string,
+  cover: HTMLImageElement | null,
+): void {
+  // Vertical platforms (Shorts, Reels, TikTok) cover the bottom ~20% with
+  // their own buttons and captions: lift the overlay into the safe area
+  // and make it a little larger on the tall frame.
+  const tall = f.height > f.width * 1.2;
+  const unit = (Math.min(f.width, f.height) / 1080) * (tall ? 1.3 : 1);
   const pad = 48 * unit;
-  const shade = g.createLinearGradient(0, f.height * 0.72, 0, f.height);
+  const bottom = tall ? f.height * 0.2 : 0;
+  const shadeTop = f.height * (tall ? 0.55 : 0.7);
+  const shade = g.createLinearGradient(0, shadeTop, 0, f.height);
   shade.addColorStop(0, "rgba(0,0,0,0)");
-  shade.addColorStop(1, "rgba(0,0,0,0.55)");
+  shade.addColorStop(1, "rgba(0,0,0,0.6)");
   g.fillStyle = shade;
-  g.fillRect(0, f.height * 0.72, f.width, f.height * 0.28);
+  g.fillRect(0, shadeTop, f.width, f.height - shadeTop);
+  const base = f.height - bottom; // text baseline area ends here
+
+  // Cover: a rounded square whose bottom lines up with the artist line.
+  const size = 132 * unit;
+  let textX = pad;
+  if (cover) {
+    const x = pad;
+    const y = base - pad - size + 8 * unit;
+    const side = Math.min(cover.naturalWidth, cover.naturalHeight);
+    const sx = (cover.naturalWidth - side) / 2;
+    const sy = (cover.naturalHeight - side) / 2;
+    g.save();
+    g.shadowColor = "rgba(0,0,0,0.45)";
+    g.shadowBlur = 24 * unit;
+    g.beginPath();
+    g.roundRect(x, y, size, size, 14 * unit);
+    g.fillStyle = "#000";
+    g.fill();
+    g.shadowColor = "transparent";
+    g.clip();
+    g.drawImage(cover, sx, sy, side, side, x, y, size, size);
+    g.restore();
+    textX = pad + size + 26 * unit;
+  }
+
+  const maxW = f.width - textX - pad;
   g.textBaseline = "alphabetic";
   g.fillStyle = "#ffffff";
   g.font = `800 ${Math.round(46 * unit)}px system-ui, -apple-system, Segoe UI, sans-serif`;
-  const y = f.height - pad - (artist ? 40 * unit : 0);
-  g.fillText(title, pad, y, f.width - pad * 2);
+  const y = base - pad - (artist ? 40 * unit : 0);
+  g.fillText(title, textX, y, maxW);
   if (artist) {
     g.fillStyle = "rgba(255,255,255,0.75)";
     g.font = `600 ${Math.round(30 * unit)}px system-ui, -apple-system, Segoe UI, sans-serif`;
-    g.fillText(artist, pad, f.height - pad, f.width - pad * 2);
+    g.fillText(artist, textX, base - pad, maxW);
   }
   g.fillStyle = "#ffb000";
-  g.fillRect(pad, y - 62 * unit, 56 * unit, 6 * unit);
+  g.fillRect(textX, y - 62 * unit, 56 * unit, 6 * unit);
 }
 
 export const studio = new VideoStudio();

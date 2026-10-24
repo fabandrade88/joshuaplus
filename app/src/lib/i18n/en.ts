@@ -195,7 +195,7 @@ export const en = {
   "video.fmt.vertical": "Shorts · Reels · TikTok 9:16",
   "video.fmt.square": "Instagram 1:1",
   "video.fmt.portrait": "Instagram 4:5",
-  "video.showTitle": "Show the song title",
+  "video.showTitle": "Show album cover, title and artist",
   "video.export": "Export {n} video(s)",
   "video.exporting": "Exporting in real time — this takes as long as the clip.",
   "video.again": "Discard and record again",
