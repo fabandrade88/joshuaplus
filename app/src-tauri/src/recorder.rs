@@ -15,7 +15,7 @@ use std::time::Duration;
 use joshua_core::decode::decode_file;
 use joshua_core::mixer::MAX_TRACKS;
 use joshua_core::project::{MAX_TAKES, TakeSettings};
-use joshua_core::recording::{Marker, fit_alignment, render_take};
+use joshua_core::recording::{Marker, center_one_sided, fit_alignment, render_take};
 use joshua_core::security::random_suffix;
 use joshua_core::wav::StereoWavWriter;
 use joshua_engine::input::{InputControls, RecordRx};
@@ -241,8 +241,10 @@ pub fn stop(state: &AppState) -> ApiResult<Stopped> {
             };
             let id = format!("take-{next_id}");
             let file = format!("takes/{id}.wav");
+            // A mic or guitar on one input of a stereo pair: centre it.
+            let audio = center_one_sided(take.audio);
             let mut w = StereoWavWriter::create(&takes_dir.join(format!("{id}.wav")), out_rate)?;
-            w.write(take.audio.left(), take.audio.right())?;
+            w.write(audio.left(), audio.right())?;
             w.finish()?;
             next_id += 1;
             Ok(Some(TakeSettings {
