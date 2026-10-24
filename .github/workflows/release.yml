@@ -194,7 +194,10 @@ jobs:
           mnt=$(mktemp -d)
           hdiutil attach -nobrowse -readonly -mountpoint "$mnt" pkg/*.dmg
           app=$(find "$mnt" -maxdepth 1 -name '*.app' | head -n1)
-          cp -R "$app" "$HOME/Applications/" 2>/dev/null || { mkdir -p "$HOME/Applications"; cp -R "$app" "$HOME/Applications/"; }
+          # Create the folder first: copying onto a missing "Applications/"
+          # would create it as a copy of the app itself.
+          mkdir -p "$HOME/Applications"
+          cp -R "$app" "$HOME/Applications/"
           hdiutil detach "$mnt"
           installed="$HOME/Applications/$(basename "$app")"
           exe=$(defaults read "$installed/Contents/Info" CFBundleExecutable)
