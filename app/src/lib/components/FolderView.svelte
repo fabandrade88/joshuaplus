@@ -125,7 +125,7 @@
   .titles p {
     margin: 0;
     color: var(--text-faint);
-    font-size: 12.5px;
+    font-size: var(--fs-small);
   }
   .actions {
     display: flex;
@@ -145,14 +145,14 @@
     border: 1.5px dashed var(--line-strong);
     border-radius: var(--radius);
     color: var(--text-dim);
-    font-size: 12.5px;
+    font-size: var(--fs-small);
   }
   .drop-hint :global(svg) {
     color: var(--c, var(--accent));
   }
   code {
     font-family: var(--mono);
-    font-size: 11px;
+    font-size: var(--fs-small);
     color: var(--text-faint);
     user-select: text;
     white-space: nowrap;
@@ -169,5 +169,21 @@
   }
   .empty p {
     margin: 0;
+  }
+  @media (max-width: 1180px), (max-height: 760px) {
+    .view {
+      padding: 18px 24px 32px;
+      gap: 14px;
+    }
+    .head {
+      gap: 10px;
+    }
+    .badge {
+      width: 38px;
+      height: 38px;
+    }
+    h1 {
+      font-size: 22px;
+    }
   }
 </style>

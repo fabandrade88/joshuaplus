@@ -176,7 +176,7 @@
         <button class="off" disabled={!app.loop} onclick={() => app.clearLoop()}>{i18n.t("loop.off")}</button>
       </div>
       {#if loopLabel}<span class="status"><Icon name="loop" size={12} /> {loopLabel}</span>{/if}
-      <span class="hint">{i18n.t("barmap.hint")}</span>
+      <span class="hint" title={i18n.t("barmap.hint")}>{i18n.t("barmap.hint")}</span>
     </div>
     <div
       bind:this={grid}
@@ -232,7 +232,7 @@
     min-width: 0;
   }
   .label {
-    font-size: 10px;
+    font-size: var(--fs-label);
     font-weight: 700;
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -250,7 +250,7 @@
     height: 22px;
     padding: 0 7px;
     border-radius: 5px;
-    font-size: 11.5px;
+    font-size: var(--fs-small);
     font-weight: 700;
     color: var(--text-dim);
   }
@@ -268,14 +268,14 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    font-size: 11.5px;
+    font-size: var(--fs-small);
     font-weight: 700;
     color: var(--accent);
     white-space: nowrap;
   }
   .hint {
     margin-left: auto;
-    font-size: 11px;
+    font-size: var(--fs-small);
     color: var(--text-faint);
     white-space: nowrap;
     overflow: hidden;
@@ -317,7 +317,7 @@
   }
   .label {
     font-family: var(--mono);
-    font-size: 9.5px;
+    font-size: 11px; /* bar number in a 52 px cell */
     line-height: 1.1;
     font-weight: 700;
     color: var(--text-faint);
@@ -365,5 +365,22 @@
     height: 3px;
     background: var(--accent);
     box-shadow: 0 0 8px var(--accent);
+  }
+  /* Short windows: two rows of bars leave the console its height. */
+  @media (max-height: 760px) {
+    .map {
+      padding-top: 6px;
+      padding-bottom: 6px;
+    }
+    .toolbar {
+      margin-bottom: 5px;
+    }
+    .grid {
+      max-height: 84px;
+      scroll-snap-type: y mandatory;
+    }
+    .cell {
+      scroll-snap-align: start;
+    }
   }
 </style>

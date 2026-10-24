@@ -4,6 +4,7 @@
 
 <h1 align="center">Joshua+ <sup><code>beta</code></sup></h1>
 <p align="center"><b>Making music at home.</b> Split any song into instrument tracks, get a click that follows the song, and play along.</p>
+<p align="center"><i>"Moises led the way. Joshua takes you home"</i></p>
 
 <p align="center">
   <a href="https://github.com/fabandrade88/joshuaplus/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/fabandrade88/joshuaplus/actions/workflows/ci.yml/badge.svg?branch=test-branch"></a>
@@ -129,7 +130,14 @@ Joshua+ is getting ready for recording. Today you can already:
 - **Audio inputs.** Pick **up to 8 audio inputs at once**: several audio interfaces, a USB mic, a guitar interface… Each has a live level meter and an optional monitor so you hear yourself over the song.
 - **MIDI and e-drums.** Connect **e-drums and MIDI controllers** over USB-MIDI or a MIDI interface. There are presets for **Alesis** (Strata Prime, Strata Club, Strata Core, Strike Pro SE, Crimson II, Command, Surge, Turbo, Nitro, Debut), **Roland** V-Drums, **Yamaha** DTX, **EFNOTE**, **Simmons**, **Pearl** e/MERGE, **GEWA**, **ATV**, **Millenium** and General MIDI kits. Use **MIDI learn** to map any pad.
 
-### 5. Built-in help and About
+### 5. Record, export and film yourself
+
+- **Record every input as its own take.** Press ● on any input strip to arm it, then the red **REC** button. The song plays with its count-in and each armed input records to its own track in the **Takes** group, already lined up with the song. Device latency and the clock drift between different interfaces are corrected automatically. Takes have their own fader, pan, mute, solo and delete.
+- **Export audio.** **Export audio** renders the mix of every active track (song + takes) to a 24-bit WAV, through the same mixer you hear. The click is included only if it is on.
+- **Video studio.** Switch REC to the camera mode to film yourself with your webcam while the song plays (armed inputs record at the same time). Export clips for **YouTube 16:9**, **Shorts/Reels/TikTok 9:16** and **Instagram 1:1 / 4:5** in one pass: MP4 (H.264 + AAC) with the song and your instruments, **never the click**. Optional overlay with the album cover, song title and artist (each can be turned off). The export runs in the background with progress in the sidebar.
+- **Where things are saved.** On first launch, one click uses **Music › Joshua+**, or pick any folder. In Settings you can move the whole library to another folder or disk, and choose a separate folder for exports.
+
+### 6. Built-in help and About
 
 The **How to use** page explains every function in your language. **About** shows the version, the repository, the contributors and the open-source components.
 
@@ -299,7 +307,7 @@ The complete, generated list of all ~600 crates and packages, with versions and 
 
 ## Roadmap
 
-- Multitrack recording from the audio inputs and MIDI, alongside the song.
+- Instrument plugins (EZdrummer, Superior Drummer…) hosted inside Joshua+ ([#1](https://github.com/fabandrade88/joshuaplus/issues/1)).
 - Speed and pitch change.
 - Signed and notarised installers.
 

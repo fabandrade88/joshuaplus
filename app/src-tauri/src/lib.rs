@@ -10,9 +10,11 @@ mod error;
 mod inbox;
 mod jobs;
 mod player;
+mod recorder;
 mod settings;
 mod state;
 mod ticker;
+mod video;
 
 use tauri::Manager;
 
@@ -42,6 +44,12 @@ pub fn run() {
             backfill::start(handle.clone());
             ticker::start(handle);
             Ok(())
+        })
+        // The video studio needs the webcam; the microphone is never needed
+        // (audio comes from the mixer), and nothing else is granted.
+        .on_permission_request(|_, kind| match kind {
+            tauri::webview::PermissionKind::Camera => tauri::webview::PermissionResponse::Allow,
+            _ => tauri::webview::PermissionResponse::Deny,
         })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { .. } = event {
@@ -89,6 +97,18 @@ pub fn run() {
             devices::set_midi_port,
             devices::set_drum_brand,
             devices::drum_learn,
+            commands::start_recording,
+            commands::stop_recording,
+            commands::update_take,
+            commands::delete_take,
+            commands::set_record_offset,
+            commands::export_mix,
+            commands::reveal_export,
+            commands::set_export_dir,
+            video::render_clip_audio,
+            video::video_save_begin,
+            video::video_save_chunk,
+            video::video_save_end,
         ])
         .run(tauri::generate_context!());
     if let Err(e) = result {

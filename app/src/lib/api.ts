@@ -15,6 +15,7 @@ import type {
   FolderColor,
   JobUpdate,
   MetronomePatch,
+  RecordingResult,
   SeparatorChoice,
   SongSummary,
   SongView,
@@ -33,7 +34,8 @@ export const api = {
   appInfo: () => invoke<AppInfo>("get_app_info"),
   setLocale: (locale: string) => invoke<void>("set_locale", { locale }),
   setSeparator: (separator: SeparatorChoice) => invoke<void>("set_separator", { separator }),
-  setWorkspace: (path: string) => invoke<string>("set_workspace", { path }),
+  setWorkspace: (path: string, moveLibrary = false) => invoke<string>("set_workspace", { path, moveLibrary }),
+  setExportDir: (path: string | null) => invoke<string | null>("set_export_dir", { path }),
   listSongs: () => invoke<SongSummary[]>("list_songs"),
   renameSong: (id: string, title: string) => invoke<string>("rename_song", { id, title }),
   importFiles: (paths: string[], folder: string | null) => invoke<number[]>("import_files", { paths, folder }),
@@ -72,6 +74,19 @@ export const api = {
   setMidiPort: (portId: string | null) => invoke<DrumState>("set_midi_port", { portId }),
   setDrumBrand: (brandId: string) => invoke<DrumState>("set_drum_brand", { brandId }),
   drumLearn: (pad: DrumPad | null) => invoke<DrumState>("drum_learn", { pad }),
+  startRecording: (video = false) => invoke<void>("start_recording", { video }),
+  stopRecording: () => invoke<RecordingResult>("stop_recording"),
+  updateTake: (id: string, patch: TrackPatch) => invoke<void>("update_take", { id, patch }),
+  deleteTake: (id: string) => invoke<SongView>("delete_take", { id }),
+  setRecordOffset: (ms: number) => invoke<void>("set_record_offset", { ms }),
+  exportMix: () => invoke<string>("export_mix"),
+  revealExport: (path: string) => invoke<void>("reveal_export", { path }),
+  renderClipAudio: (startSecs: number, durationSecs: number) =>
+    invoke<ArrayBuffer>("render_clip_audio", { startSecs, durationSecs }),
+  videoSaveBegin: (tag: string, ext: string) => invoke<number>("video_save_begin", { tag, ext }),
+  videoSaveChunk: (handle: number, bytes: Uint8Array) =>
+    invoke<void>("video_save_chunk", bytes, { headers: { "x-handle": String(handle) } }),
+  videoSaveEnd: (handle: number, keep: boolean) => invoke<string | null>("video_save_end", { handle, keep }),
 };
 
 export const events = {
@@ -86,4 +101,6 @@ export const events = {
     listen<[DrumPad, number]>("drum-learned", (e) => cb(e.payload[0], e.payload[1])),
   onModelProgress: (cb: (p: number) => void): Promise<UnlistenFn> =>
     listen<number>("model-progress", (e) => cb(e.payload)),
+  onExportProgress: (cb: (p: number) => void): Promise<UnlistenFn> =>
+    listen<number>("export-progress", (e) => cb(e.payload)),
 };

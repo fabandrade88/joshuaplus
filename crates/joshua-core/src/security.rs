@@ -190,7 +190,7 @@ pub fn open_regular(path: &Path) -> Result<File> {
 }
 
 /// Unpredictable suffix for temporary file names.
-fn random_suffix() -> String {
+pub fn random_suffix() -> String {
     use std::hash::{BuildHasher, Hasher};
     let mut h = std::collections::hash_map::RandomState::new().build_hasher();
     h.write_u128(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_nanos()));

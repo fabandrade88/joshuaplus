@@ -181,7 +181,7 @@
 
 <style>
   .pedal {
-    width: 232px;
+    width: 248px;
     flex: none;
     display: flex;
     flex-direction: column;
@@ -202,7 +202,7 @@
     justify-content: space-between;
   }
   .brand {
-    font-size: 11px;
+    font-size: var(--fs-label);
     font-weight: 800;
     letter-spacing: 0.14em;
     text-transform: uppercase;
@@ -220,7 +220,7 @@
     color: var(--text);
   }
   .tag {
-    font-size: 10px;
+    font-size: var(--fs-small);
     color: var(--text-faint);
   }
   .leds {
@@ -286,7 +286,7 @@
     user-select: text;
   }
   .bpm small {
-    font-size: 10px;
+    font-size: var(--fs-label);
     color: color-mix(in srgb, var(--accent) 60%, transparent);
   }
   .mini {
@@ -296,7 +296,7 @@
     border-radius: 6px;
     background: #322a19;
     color: var(--text-dim);
-    font-size: 11.5px;
+    font-size: var(--fs-small);
     font-weight: 800;
   }
   .mini:hover,
@@ -314,7 +314,7 @@
     border-radius: 6px;
     background: #322a19;
     color: var(--text-dim);
-    font-size: 11.5px;
+    font-size: var(--fs-small);
     font-weight: 700;
   }
   .row {
@@ -329,10 +329,14 @@
     flex: 1;
   }
   .field.sig {
-    flex: 0 0 64px;
+    flex: 0 0 76px;
   }
   .field > span {
-    font-size: 10px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: var(--fs-label);
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -346,7 +350,7 @@
     background: #15120c;
     color: var(--text);
     font: inherit;
-    font-size: 12px;
+    font-size: var(--fs-small);
     min-width: 0;
   }
   .segmented {
@@ -358,23 +362,34 @@
   }
   .segmented button {
     flex: 1;
+    min-width: 0;
+    padding: 0 6px;
+    white-space: nowrap;
     height: 24px;
     border-radius: 6px;
-    font-size: 12px;
+    font-size: var(--fs-small);
     font-weight: 700;
     color: var(--text-dim);
   }
   .grow {
     flex: 1;
+    min-width: 0;
+  }
+  /* Constant / variable: size to the words ("Follow band" is longer). */
+  .grow button {
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .segmented button:disabled {
     opacity: 0.6;
   }
   .tap {
     position: relative;
-    width: 58px;
+    flex: none;
+    width: 52px;
     border-radius: 8px;
-    font-size: 12px;
+    font-size: var(--fs-small);
     font-weight: 900;
     letter-spacing: 0.08em;
     color: var(--accent);
@@ -395,7 +410,7 @@
     border-radius: 8px;
     background: var(--ok);
     color: #04140c;
-    font-size: 10px;
+    font-size: 11px; /* tap counter inside a 16 px badge */
     line-height: 16px;
   }
   .segmented button.on {
@@ -432,5 +447,21 @@
   .switch.on .lamp {
     background: #ff4d4d;
     box-shadow: 0 0 10px #ff4d4d;
+  }
+  @media (max-width: 1180px) {
+    .pedal {
+      padding: 10px 12px;
+    }
+  }
+  @media (max-height: 760px) {
+    .pedal {
+      gap: 6px;
+      padding-top: 8px;
+      padding-bottom: 8px;
+    }
+    .switch {
+      width: 44px;
+      height: 44px;
+    }
   }
 </style>

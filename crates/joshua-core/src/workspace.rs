@@ -19,13 +19,15 @@ use serde::Serialize;
 use crate::error::{CoreError, RejectReason, Result};
 use crate::folders::{self, COLORS, Folder};
 use crate::project::SongProject;
-use crate::security::{Limits, ensure_inside, is_valid_song_id};
+use crate::security::{Limits, ensure_inside, is_valid_song_id, sanitize_title, slugify};
 
 pub const INBOX_DIR: &str = "inbox";
 pub const PROCESSED_DIR: &str = "processed";
 pub const FAILED_DIR: &str = "failed";
 pub const SONGS_DIR: &str = "songs";
 pub const PRIVATE_DIR: &str = ".joshua";
+pub const EXPORTS_DIR: &str = "Exports";
+pub const TAKES_DIR: &str = "takes";
 
 /// Lightweight listing entry.
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -63,6 +65,125 @@ impl From<&SongProject> for SongSummary {
 /// `true` for a real directory (not a symlink to one).
 fn real_dir(path: &Path) -> bool {
     std::fs::symlink_metadata(path).is_ok_and(|m| m.is_dir() && !m.file_type().is_symlink())
+}
+
+/// A new, unused file path in `dir`: `<title> <tag>.<ext>`, numbered if it
+/// already exists. Names are sanitised; only export containers are allowed.
+///
+/// # Errors
+/// [`RejectReason::InvalidName`] for other extensions or a full directory.
+pub fn new_export_path_in(dir: &Path, title: &str, tag: &str, ext: &str) -> Result<PathBuf> {
+    if !matches!(ext, "wav" | "mp4" | "webm") {
+        return Err(RejectReason::InvalidName.into());
+    }
+    let base = format!("{} {}", sanitize_title(title), slugify(tag));
+    let base = base.trim().replace(['/', '\\'], "-");
+    for n in 1..10_000u32 {
+        let name = if n == 1 { format!("{base}.{ext}") } else { format!("{base} ({n}).{ext}") };
+        let path = dir.join(&name);
+        if std::fs::symlink_metadata(&path).is_err() {
+            return Ok(path);
+        }
+    }
+    Err(RejectReason::InvalidName.into())
+}
+
+/// What [`move_library`] carries over: the songs, the inbox, the exports and
+/// the folder list (temporary files are left behind).
+const LIBRARY_ITEMS: [&str; 3] = [SONGS_DIR, INBOX_DIR, EXPORTS_DIR];
+
+/// `true` if `dir` does not exist or holds nothing but OS clutter.
+fn is_empty_dir(dir: &Path) -> Result<bool> {
+    match std::fs::read_dir(dir) {
+        Ok(entries) => {
+            for e in entries {
+                let name = e?.file_name();
+                if !matches!(name.to_str(), Some(".DS_Store" | "Thumbs.db" | "desktop.ini")) {
+                    return Ok(false);
+                }
+            }
+            Ok(true)
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(true),
+        Err(e) => Err(e.into()),
+    }
+}
+
+/// Moves `from` (a file or a real directory tree) to `to`: a rename when
+/// both are on the same disk, otherwise a copy followed by deleting the
+/// original. Symlinks are never followed nor copied.
+fn move_path(from: &Path, to: &Path) -> Result<()> {
+    if std::fs::rename(from, to).is_ok() {
+        return Ok(());
+    }
+    copy_tree(from, to)?;
+    let meta = std::fs::symlink_metadata(from)?;
+    if meta.is_dir() {
+        std::fs::remove_dir_all(from)?
+    } else {
+        std::fs::remove_file(from)?
+    }
+    Ok(())
+}
+
+/// Recursive copy that skips symlinks and anything that is not a regular
+/// file or directory (FIFOs, devices).
+fn copy_tree(from: &Path, to: &Path) -> Result<()> {
+    let meta = std::fs::symlink_metadata(from)?;
+    if meta.file_type().is_symlink() {
+        return Ok(());
+    }
+    if meta.is_dir() {
+        std::fs::create_dir_all(to)?;
+        for entry in std::fs::read_dir(from)? {
+            let entry = entry?;
+            copy_tree(&entry.path(), &to.join(entry.file_name()))?;
+        }
+    } else if meta.is_file() {
+        std::fs::copy(from, to)?;
+    }
+    Ok(())
+}
+
+/// Moves the library of `from` (songs, inbox, exports, folder list) into
+/// `to` and opens it there. `to` must be empty (or not exist yet) and must
+/// not be inside the current workspace, nor contain it.
+///
+/// # Errors
+/// [`RejectReason::DestinationNotEmpty`], [`RejectReason::NestedWorkspace`];
+/// I/O errors (items already moved stay in the new place).
+pub fn move_library(from: &Workspace, to: &Path) -> Result<Workspace> {
+    if !to.is_absolute() || to.parent().is_none() {
+        return Err(RejectReason::InvalidName.into());
+    }
+    if !is_empty_dir(to)? {
+        return Err(RejectReason::DestinationNotEmpty.into());
+    }
+    std::fs::create_dir_all(to)?;
+    let dest = to.canonicalize()?;
+    let src = from.root();
+    if dest.starts_with(src) || src.starts_with(&dest) {
+        return Err(RejectReason::NestedWorkspace.into());
+    }
+    for item in LIBRARY_ITEMS {
+        let path = src.join(item);
+        if real_dir(&path) {
+            let target = dest.join(item);
+            if std::fs::symlink_metadata(&target).is_ok() {
+                std::fs::remove_dir(&target)?; // only an empty dir can be there
+            }
+            move_path(&path, &target)?;
+        }
+    }
+    let folders = src.join(PRIVATE_DIR).join(folders::FOLDERS_FILE);
+    if std::fs::symlink_metadata(&folders).is_ok_and(|m| m.is_file()) {
+        std::fs::create_dir_all(dest.join(PRIVATE_DIR))?;
+        move_path(&folders, &dest.join(PRIVATE_DIR).join(folders::FOLDERS_FILE))?;
+    }
+    // Leave nothing of Joshua+ behind except an empty temp folder, removed if possible.
+    let _ = std::fs::remove_dir_all(src.join(PRIVATE_DIR).join("tmp"));
+    let _ = std::fs::remove_dir(src.join(PRIVATE_DIR));
+    Workspace::open(&dest, from.limits)
 }
 
 /// An opened workspace with a canonical root.
@@ -125,6 +246,46 @@ impl Workspace {
     #[must_use]
     pub fn tmp_dir(&self) -> PathBuf {
         self.root.join(PRIVATE_DIR).join("tmp")
+    }
+
+    /// `<workspace>/Exports`, where mixes and videos are saved (created on
+    /// demand; refused if it is a symlink).
+    ///
+    /// # Errors
+    /// I/O errors, or [`RejectReason::OutsideWorkspace`] for a symlink.
+    pub fn exports_dir(&self) -> Result<PathBuf> {
+        let dir = self.root.join(EXPORTS_DIR);
+        std::fs::create_dir_all(&dir)?;
+        if !real_dir(&dir) {
+            return Err(RejectReason::OutsideWorkspace.into());
+        }
+        Ok(dir)
+    }
+
+    /// A new, unused file path in [`exports_dir`](Self::exports_dir):
+    /// `<slug of title> <tag>.<ext>`, numbered if it already exists.
+    ///
+    /// # Errors
+    /// See [`exports_dir`](Self::exports_dir); invalid extensions.
+    pub fn new_export_path(&self, title: &str, tag: &str, ext: &str) -> Result<PathBuf> {
+        new_export_path_in(&self.exports_dir()?, title, tag, ext)
+    }
+
+    /// `<song>/takes`, created on demand (refused if it is a symlink).
+    ///
+    /// # Errors
+    /// Invalid song id, I/O errors, or a symlinked directory.
+    pub fn takes_dir(&self, song_id: &str) -> Result<PathBuf> {
+        let song = self.song_dir(song_id)?;
+        if !real_dir(&song) {
+            return Err(RejectReason::OutsideWorkspace.into());
+        }
+        let dir = song.join(TAKES_DIR);
+        std::fs::create_dir_all(&dir)?;
+        if !real_dir(&dir) {
+            return Err(RejectReason::OutsideWorkspace.into());
+        }
+        Ok(dir)
     }
 
     /// Directory of an existing or future song. Validates the ID.
@@ -416,6 +577,56 @@ impl Workspace {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn library_moves_with_songs_folders_inbox_and_exports() {
+        let base = tempfile::tempdir().unwrap();
+        let ws = Workspace::open(&base.path().join("old"), Limits::default()).unwrap();
+        let song = ws.songs_dir().join("my-song-0123abcd");
+        std::fs::create_dir_all(song.join("stems")).unwrap();
+        std::fs::write(song.join("stems/vocals.wav"), b"x").unwrap();
+        std::fs::write(ws.inbox_dir().join("drop.mp3"), b"y").unwrap();
+        std::fs::create_dir_all(ws.exports_dir().unwrap()).unwrap();
+        std::fs::write(ws.exports_dir().unwrap().join("mix.wav"), b"z").unwrap();
+        ws.create_folder("Banda", "amber").unwrap();
+
+        let moved = move_library(&ws, &base.path().join("new")).unwrap();
+        assert!(moved.songs_dir().join("my-song-0123abcd/stems/vocals.wav").is_file());
+        assert!(moved.inbox_dir().join("drop.mp3").is_file());
+        assert!(moved.exports_dir().unwrap().join("mix.wav").is_file());
+        assert_eq!(moved.list_folders().unwrap().len(), 1);
+        assert!(!base.path().join("old/songs").exists(), "originals removed");
+    }
+
+    #[test]
+    fn library_move_refuses_nested_and_non_empty_destinations() {
+        let base = tempfile::tempdir().unwrap();
+        let ws = Workspace::open(&base.path().join("lib"), Limits::default()).unwrap();
+        assert!(matches!(
+            move_library(&ws, &base.path().join("lib/inside")),
+            Err(CoreError::Rejected(RejectReason::NestedWorkspace))
+        ));
+        assert!(matches!(move_library(&ws, base.path()), Err(CoreError::Rejected(_))));
+        let busy = base.path().join("busy");
+        std::fs::create_dir_all(&busy).unwrap();
+        std::fs::write(busy.join("something.txt"), b"keep me").unwrap();
+        assert!(matches!(move_library(&ws, &busy), Err(CoreError::Rejected(RejectReason::DestinationNotEmpty))));
+        assert!(busy.join("something.txt").is_file());
+        assert!(move_library(&ws, Path::new("relative/dir")).is_err());
+    }
+
+    #[test]
+    fn cross_disk_copy_skips_symlinks() {
+        let base = tempfile::tempdir().unwrap();
+        let src = base.path().join("src");
+        std::fs::create_dir_all(src.join("a")).unwrap();
+        std::fs::write(src.join("a/file"), b"1").unwrap();
+        #[cfg(unix)]
+        std::os::unix::fs::symlink("/etc/passwd", src.join("a/evil")).unwrap();
+        copy_tree(&src, &base.path().join("dst")).unwrap();
+        assert!(base.path().join("dst/a/file").is_file());
+        assert!(std::fs::symlink_metadata(base.path().join("dst/a/evil")).is_err());
+    }
     use crate::project::tests::sample_project;
 
     #[test]

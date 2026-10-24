@@ -4,7 +4,7 @@
   import { i18n } from "../i18n/index.svelte";
   import Icon from "./Icon.svelte";
 
-  type IconName = "drop" | "folder" | "spark" | "play" | "loop" | "volume" | "click" | "music" | "plug" | "settings" | "edit" | "help";
+  type IconName = "drop" | "folder" | "spark" | "play" | "loop" | "volume" | "click" | "music" | "plug" | "settings" | "edit" | "help" | "record";
 
   // Each section borrows a colour the app already uses (accent, stems, folders).
   const STYLE: Record<string, { color: string; icon: IconName }> = {
@@ -17,6 +17,7 @@
     metronome: { color: "var(--stem-drums)", icon: "click" },
     info: { color: "var(--stem-acoustic)", icon: "music" },
     gear: { color: "var(--ok)", icon: "plug" },
+    record: { color: "var(--danger)", icon: "record" },
     settings: { color: "var(--stem-other)", icon: "settings" },
     keys: { color: "var(--accent)", icon: "edit" },
     privacy: { color: "var(--stem-bass)", icon: "help" },
@@ -136,7 +137,7 @@
   }
   h1 {
     margin: 0;
-    font-size: 24px;
+    font-size: var(--fs-h1);
     letter-spacing: -0.03em;
   }
   .search {
@@ -250,7 +251,7 @@
     gap: 6px;
     padding: 5px 11px;
     border-radius: 999px;
-    font-size: 12px;
+    font-size: var(--fs-small);
     font-weight: 700;
     color: var(--c);
     background: color-mix(in srgb, var(--c) 14%, transparent);
@@ -356,10 +357,41 @@
     background: color-mix(in srgb, var(--accent) 12%, var(--bg-panel));
     color: var(--accent);
     font-family: var(--mono);
-    font-size: 12px;
+    font-size: var(--fs-small);
     font-weight: 700;
   }
   .empty {
     color: var(--text-faint);
+  }
+  /* The art sits top-right; keep the hero text clear of it. */
+  .hero h2,
+  .hero p {
+    padding-right: 120px;
+  }
+  @media (max-width: 1280px) {
+    .toc {
+      width: 210px;
+      padding: 20px 10px 20px 18px;
+    }
+    .content {
+      padding: 20px 20px 40px 8px;
+    }
+    .hero {
+      padding: 18px 20px;
+    }
+    .card {
+      padding: 14px 16px 14px 20px;
+    }
+    /* Term above its explanation: a side column would be too narrow. */
+    dl {
+      grid-template-columns: 1fr;
+    }
+    dt {
+      padding-bottom: 0;
+    }
+    dd {
+      padding-top: 3px;
+      border-top: 0;
+    }
   }
 </style>

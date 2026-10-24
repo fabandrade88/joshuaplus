@@ -18,6 +18,10 @@ pub enum RejectReason {
     OutsideWorkspace,
     InvalidName,
     InvalidProject,
+    /// A library can only be moved into an empty folder.
+    DestinationNotEmpty,
+    /// The new folder is inside the current library, or contains it.
+    NestedWorkspace,
 }
 
 impl RejectReason {
@@ -35,6 +39,8 @@ impl RejectReason {
             Self::OutsideWorkspace => "outside_workspace",
             Self::InvalidName => "invalid_name",
             Self::InvalidProject => "invalid_project",
+            Self::DestinationNotEmpty => "destination_not_empty",
+            Self::NestedWorkspace => "nested_workspace",
         }
     }
 }

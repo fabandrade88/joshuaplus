@@ -48,6 +48,10 @@ pub struct AppState {
     pub devices: crate::devices::Devices,
     /// Serialises song loads so engine and `current` always match.
     pub load_lock: Mutex<()>,
+    /// The take recording in progress, if any.
+    pub recording: Mutex<Option<crate::recorder::ActiveRecording>>,
+    /// Video clips being saved by the video studio.
+    pub videos: crate::video::VideoSaves,
 }
 
 /// Locks ignoring poisoning: a panicked holder never leaves our data in an
@@ -77,11 +81,26 @@ impl AppState {
             model_lock: Mutex::new(()),
             devices: crate::devices::Devices::default(),
             load_lock: Mutex::new(()),
+            recording: Mutex::new(None),
+            videos: crate::video::VideoSaves::default(),
         }
     }
 
     pub fn workspace(&self) -> ApiResult<Workspace> {
         self.workspace.read().unwrap_or_else(PoisonError::into_inner).clone().ok_or_else(ApiError::no_workspace)
+    }
+
+    /// Folder for exports: the one chosen in Settings if it still exists (a
+    /// real directory), otherwise `<workspace>/Exports`.
+    pub fn export_dir(&self) -> ApiResult<PathBuf> {
+        let custom = lock(&self.settings).export_dir.clone();
+        if let Some(dir) = custom
+            && std::fs::symlink_metadata(&dir).is_ok_and(|m| m.is_dir() && !m.file_type().is_symlink())
+            && let Ok(dir) = dir.canonicalize()
+        {
+            return Ok(dir);
+        }
+        Ok(self.workspace()?.exports_dir()?)
     }
 
     pub fn shared(&self) -> ApiResult<Arc<SharedState>> {

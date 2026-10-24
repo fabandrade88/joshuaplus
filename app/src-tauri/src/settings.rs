@@ -34,6 +34,9 @@ pub struct InputConfig {
     pub stereo: bool,
     pub monitor: bool,
     pub gain_db: f32,
+    /// Armed for recording: the next take records this input.
+    #[serde(default)]
+    pub armed: bool,
 }
 
 /// MIDI e-drum setup.
@@ -66,6 +69,11 @@ pub struct Settings {
     pub cloud_key: Option<String>,
     pub inputs: Vec<InputConfig>,
     pub drums: DrumSettings,
+    /// Manual fine-tuning of take alignment, in milliseconds (positive moves
+    /// takes earlier), on top of the measured device latency.
+    pub record_offset_ms: f32,
+    /// Where exports go; `None` = `<workspace>/Exports`.
+    pub export_dir: Option<PathBuf>,
 }
 
 impl Default for Settings {
@@ -78,6 +86,8 @@ impl Default for Settings {
             cloud_key: None,
             inputs: Vec::new(),
             drums: DrumSettings::default(),
+            record_offset_ms: 0.0,
+            export_dir: None,
         }
     }
 }

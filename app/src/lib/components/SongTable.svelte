@@ -205,7 +205,7 @@
   }
   th {
     text-align: left;
-    font-size: 11px;
+    font-size: var(--fs-label);
     font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -270,7 +270,7 @@
   }
   .num {
     font-family: var(--mono);
-    font-size: 12px;
+    font-size: var(--fs-small);
     color: var(--text-faint);
   }
   tr.current .num {
@@ -284,7 +284,7 @@
     text-align: right;
     width: 72px;
     font-family: var(--mono);
-    font-size: 12px;
+    font-size: var(--fs-small);
   }
   .actions {
     width: 72px;
@@ -309,7 +309,7 @@
     min-width: 0;
   }
   .artist {
-    font-size: 11.5px;
+    font-size: var(--fs-small);
     font-weight: 500;
     color: var(--text-faint);
     white-space: nowrap;
@@ -377,7 +377,7 @@
     text-overflow: ellipsis;
   }
   .engine {
-    font-size: 11px;
+    font-size: var(--fs-small);
     font-weight: 700;
     padding: 3px 8px;
     border-radius: 999px;
@@ -413,7 +413,8 @@
     color: var(--text-dim);
     font: inherit;
     cursor: pointer;
-    max-width: 150px;
+    min-width: 0;
+    max-width: 200px;
   }
   select:hover {
     color: var(--text);

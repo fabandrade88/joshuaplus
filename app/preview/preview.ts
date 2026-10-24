@@ -47,6 +47,9 @@ const project: SongProject = {
     solo: false,
   })),
   metronome: { gainDb: -6, muted: false, countIn: true, countInBars: 1, sound: "woodblock" },
+  takes: [
+    { id: "take-1", name: "SPD-SX PRO", file: "takes/take-1.wav", offsetSecs: 12.5, createdUnix: 0, gainDb: -2, pan: 0, muted: false, solo: false },
+  ],
   masterGainDb: 0,
   metadata: { artist: "The Session Band", album: "Live at Home EP", year: "2026", genre: "Funk", track: "3/5" },
   hasCover: true,
@@ -82,9 +85,44 @@ const songs: SongSummary[] = [
 ];
 
 mockWindows("main");
+const savedBytes: Record<number, number> = {};
+let nextHandle = 1;
+function sineWav(secs: number): ArrayBuffer {
+  const rate = 48000;
+  const n = Math.round(secs * rate);
+  const buf = new ArrayBuffer(44 + n * 4);
+  const v = new DataView(buf);
+  const w = (o: number, t: string) => [...t].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+  w(0, "RIFF"); v.setUint32(4, 36 + n * 4, true); w(8, "WAVE"); w(12, "fmt ");
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 2, true); v.setUint32(24, rate, true);
+  v.setUint32(28, rate * 4, true); v.setUint16(32, 4, true); v.setUint16(34, 16, true); w(36, "data"); v.setUint32(40, n * 4, true);
+  for (let i = 0; i < n; i++) {
+    const x = Math.round(Math.sin((2 * Math.PI * 440 * i) / rate) * 8000);
+    v.setInt16(44 + i * 4, x, true);
+    v.setInt16(46 + i * 4, x, true);
+  }
+  return buf;
+}
+(window as unknown as { savedBytes: Record<number, number> }).savedBytes = savedBytes;
+
 mockIPC(
-  (cmd) => {
+  (cmd, args) => {
     switch (cmd) {
+      case "render_clip_audio":
+        return sineWav((args as { durationSecs: number }).durationSecs);
+      case "video_save_begin":
+        savedBytes[nextHandle] = 0;
+        return nextHandle++;
+      case "video_save_chunk": {
+        const bytes = args as unknown as Uint8Array;
+        const h = Number(Object.keys(savedBytes).pop());
+        savedBytes[h] = (savedBytes[h] ?? 0) + (bytes?.byteLength ?? 0);
+        return null;
+      }
+      case "video_save_end": {
+        const { handle, keep } = args as { handle: number; keep: boolean };
+        return keep ? `/Exports/clip-${handle}.${"mp4"} (${savedBytes[handle]} bytes)` : null;
+      }
       case "get_app_info":
         return {
           version: "0.0.1",
@@ -98,6 +136,10 @@ mockIPC(
           audio: { device: "MacBook Pro Speakers", sampleRate: 48000, channels: 2 },
           audioError: null,
           outputDevice: null,
+          exportDir: "/Users/musician/Music/Joshua+/Exports",
+          exportDirCustom: false,
+          suggestedWorkspace: "/Users/musician/Music/Joshua+",
+          musicDir: "/Users/musician/Music",
         };
       case "list_songs":
         return songs;
@@ -112,8 +154,8 @@ mockIPC(
         ];
       case "get_inputs":
         return [
-          { index: 0, deviceId: "coreaudio:ag06", name: "Yamaha AG06MK2", channels: 2, sampleRate: 48000, firstChannel: 0, stereo: false, monitor: true, gainDb: -3, monitorOk: false, directMonitor: true, error: null },
-          { index: 1, deviceId: "coreaudio:spd", name: "SPD-SX PRO", channels: 8, sampleRate: 48000, firstChannel: 0, stereo: true, monitor: true, gainDb: 0, monitorOk: true, directMonitor: false, error: null },
+          { index: 0, deviceId: "coreaudio:ag06", name: "Yamaha AG06MK2", channels: 2, sampleRate: 48000, firstChannel: 0, stereo: false, monitor: true, gainDb: -3, monitorOk: false, directMonitor: true, armed: false, canRecord: true, error: null },
+          { index: 1, deviceId: "coreaudio:spd", name: "SPD-SX PRO", channels: 8, sampleRate: 48000, firstChannel: 0, stereo: true, monitor: true, gainDb: 0, monitorOk: true, directMonitor: false, armed: true, canRecord: true, error: null },
         ];
       case "get_drums":
         return {
@@ -147,8 +189,11 @@ if (state !== "welcome") {
   await emit("job-update", { id: 2, fileName: "Asa Branca.flac", status: "queued", stage: null, progress: 0, error: null, songId: null, folder: null });
 }
 if (state === "folder") app.openFolder("igreja");
-if (state === "settings") app.settingsOpen = true;
-if (state === "song" || state === "away") {
+if (state === "settings") {
+  app.settingsOpen = true;
+  if (params.get("pending") === "1") app.pendingWorkspace = "/Volumes/SSD Externo/Joshua+";
+}
+if (state === "song" || state === "away" || state === "video") {
   app.browsing = "banda";
   await app.openSong(project.id);
   app.songCollapsed = params.get("collapsed") === "1";
@@ -161,7 +206,7 @@ if (state === "song" || state === "away") {
         positionSecs: 71.6,
         playing: true,
         countingIn: false,
-        meters: [0.62, 0.81, 0.55, 0, 0.4, 0.18, 0.33],
+        meters: [0.62, 0.81, 0.55, 0, 0.4, 0.18, 0.33, 0.7],
         master: [0.72, 0.69],
         songMeter: 0.8,
         ended: false,
@@ -176,6 +221,163 @@ if (state === "song" || state === "away") {
 }
 
 if (state === "away") app.goHome();
+if (state === "video") {
+  app.videoOpen = true;
+  if (params.get("phase") === "overlay") {
+    const { drawTitle, loadImage } = await import("../src/lib/video/studio.svelte");
+    const { FORMATS } = await import("../src/lib/video/formats");
+    const cover = await loadImage(art("#ff6b8a", "#4c1d95").replace("viewBox", 'width="600" height="600" viewBox'));
+    app.videoOpen = false;
+    const wrap = document.createElement("div");
+    wrap.style.cssText = "position:fixed;inset:0;z-index:99;background:#222;display:flex;gap:16px;padding:16px;align-items:flex-start";
+    for (const f of FORMATS.slice(0, 2)) {
+      const c = document.createElement("canvas");
+      c.width = f.width;
+      c.height = f.height;
+      const g = c.getContext("2d")!;
+      const grad = g.createLinearGradient(0, 0, f.width, f.height);
+      grad.addColorStop(0, "#3a4a5a");
+      grad.addColorStop(1, "#1a1d24");
+      g.fillStyle = grad;
+      g.fillRect(0, 0, f.width, f.height);
+      // ?combo=all|cover|text|artist|title|none picks the overlay parts.
+      const combo = params.get("combo") ?? "all";
+      const on = (p: string) => combo === "all" || combo === p || (combo === "text" && (p === "title" || p === "artist"));
+      drawTitle(g, f, on("title") ? "Left For Good" : "", on("artist") ? "Bad Omens" : "", on("cover") ? cover : null);
+      c.style.height = "560px";
+      wrap.append(c);
+    }
+    document.body.append(wrap);
+  }
+  if (params.get("phase") === "e2e") {
+    const { studio } = await import("../src/lib/video/studio.svelte");
+    const log: string[] = [];
+    const show = () => (document.title = "E2E " + log.join(" | "));
+    const ow = console.warn;
+    console.warn = (...a: unknown[]) => {
+      log.push(a.map(String).join(" "));
+      show();
+      ow(...a);
+    };
+    window.addEventListener("unhandledrejection", (e) => (log.push("UNHANDLED " + String(e.reason)), show()));
+    log.push("start");
+    show();
+    // A moving test picture instead of the camera (headless has no camera).
+    const cv = document.createElement("canvas");
+    cv.width = 1280;
+    cv.height = 720;
+    const g = cv.getContext("2d")!;
+    let f = 0;
+    const anim = setInterval(() => {
+      g.fillStyle = `hsl(${(f * 7) % 360} 70% 40%)`;
+      g.fillRect(0, 0, 1280, 720);
+      g.fillStyle = "#fff";
+      g.fillRect((f * 20) % 1280, 300, 120, 120);
+      f++;
+    }, 33);
+    const stream = cv.captureStream(30);
+    log.push(`container=${studio.container?.mime}`);
+    show();
+    const rec = new MediaRecorder(stream, { mimeType: studio.container!.mime.replace(/,mp4a\.40\.2|,opus/, "") });
+    const chunks: Blob[] = [];
+    rec.ondataavailable = (e) => chunks.push(e.data);
+    rec.start(500);
+    await new Promise((r) => setTimeout(r, 3000));
+    await new Promise<void>((r) => ((rec.onstop = () => r()), rec.stop()));
+    clearInterval(anim);
+    const blob = new Blob(chunks, { type: rec.mimeType });
+    studio.clip = { blob, durationSecs: 3, songAtStart: 10 };
+    studio.clipUrl = URL.createObjectURL(blob);
+    studio.phase = "review";
+    log.push(`clip ${blob.size} bytes ${rec.mimeType}`);
+    void studio.export();
+    app.videoOpen = false;
+    for (let i = 0; i < 60 && (studio.phase === "exporting" || studio.saved.length === 0); i++) {
+      await new Promise((r) => setTimeout(r, 500));
+      if (studio.phase !== "exporting") break;
+    }
+    log.push(`phase=${studio.phase} saved=${JSON.stringify(studio.saved)} err=${studio.exportError}`);
+    document.title = log.join(" | ");
+  }
+  if (params.get("phase") === "exportflow") {
+    const { studio } = await import("../src/lib/video/studio.svelte");
+    const blob = new Blob([new Uint8Array(1000)], { type: "video/mp4" });
+    studio.clip = { blob, durationSecs: 5, songAtStart: 10 };
+    studio.clipUrl = URL.createObjectURL(blob);
+    studio.phase = "review";
+    await new Promise((r) => setTimeout(r, 800));
+    const calls: string[] = [];
+    const s2 = studio as unknown as Record<string, (...a: unknown[]) => unknown>;
+    for (const name of ["discardClip", "close", "dismissExport", "cancel"]) {
+      const orig = s2[name]!.bind(studio);
+      s2[name] = (...a: unknown[]) => {
+        calls.push(`${name}@${studio.phase}`);
+        return orig(...a);
+      };
+    }
+    (window as unknown as { calls: string[] }).calls = calls;
+    const proto = Object.getPrototypeOf(studio) as object;
+    const desc = Object.getOwnPropertyDescriptor(proto, "phase");
+    if (desc?.set && desc.get) {
+      Object.defineProperty(proto, "phase", {
+        get: desc.get,
+        set(v: unknown) {
+          const where = (new Error().stack ?? "").split("\n").slice(2, 4).map((l) => l.trim().replace(/https?:\/\/[^/]+/, "")).join(" < ");
+          calls.push(`SET phase=${String(v)} from ${where}`);
+          desc.set!.call(this, v);
+        },
+        configurable: true,
+      });
+    } else calls.push("no phase accessor");
+    const log: string[] = [`before phase=${studio.phase} container=${!!studio.container} formats=${studio.selectedFormats.length}`];
+    const ow = console.warn;
+    console.warn = (...a: unknown[]) => {
+      calls.push("WARN " + a.map(String).join(" "));
+      ow(...a);
+    };
+    void studio.export().then(
+      () => calls.push(`export-resolved@${studio.phase} err=${studio.exportError}`),
+      (e: unknown) => calls.push(`export-threw ${String(e)}`),
+    );
+    log.push(`after-export phase=${studio.phase}`);
+    app.videoOpen = false; // same as the Export button
+    log.push(`after-close phase=${studio.phase} clip=${studio.clip ? "yes" : "NULL"}`);
+    for (const t of [0, 50, 200, 600]) {
+      await new Promise((r) => setTimeout(r, t));
+      log.push(`${t}ms phase=${studio.phase} clip=${studio.clip ? "yes" : "NULL"} card=${!!document.querySelector(".thumb")} inThumb=${!!document.querySelector(".thumb video")}`);
+    }
+    log.push(`calls=${calls.join(",")} err=${studio.exportError}`);
+    document.title = log.join(" | ");
+  }
+  if (params.get("phase") === "review") {
+    // Review screen with a dummy clip (layout checks only).
+    const { studio } = await import("../src/lib/video/studio.svelte");
+    const blob = new Blob([new Uint8Array(1000)], { type: "video/mp4" });
+    studio.clip = { blob, durationSecs: 5, songAtStart: 10 };
+    studio.clipUrl = URL.createObjectURL(blob);
+    studio.phase = "review";
+  }
+  if (params.get("phase") === "exporting" || params.get("phase") === "exported") {
+    // Sidebar export cards (audio mixdown + video clips), studio closed.
+    const { studio } = await import("../src/lib/video/studio.svelte");
+    app.videoOpen = false;
+    await new Promise((r) => setTimeout(r, 300)); // let the studio close first
+    app.exportProgress = 0.37;
+    studio.exportFormats = ["youtube", "vertical"];
+    if (params.get("phase") === "exporting") {
+      studio.phase = "exporting";
+      studio.exportStage = "encoding";
+      studio.progress = 0.42;
+    } else {
+      studio.saved = ["/Users/musician/Music/Joshua+/exports/a.mp4", "/Users/musician/Music/Joshua+/exports/b.mp4"];
+    }
+  }
+  if (params.get("phase") === "recording") {
+    const { studio } = await import("../src/lib/video/studio.svelte");
+    studio.phase = "recording";
+    studio.elapsed = 42;
+  }
+}
 
 if (state === "gear") {
   app.openGear();
@@ -190,3 +392,9 @@ if (state === "gear") {
 if (state === "help") app.view = { kind: "help" };
 
 if (state === "about") app.view = { kind: "about" };
+
+// Any state: show a toast with a long message (layout checks).
+if (params.get("toast") === "1") {
+  const { i18n } = await import("../src/lib/i18n/index.svelte");
+  setTimeout(() => app.notify(i18n.t("gear.monitorUnavailable", { out: 48000 }) + " " + i18n.t("error.unknown")), 300);
+}

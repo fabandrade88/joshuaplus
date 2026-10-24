@@ -5,6 +5,7 @@
   import type { MessageKey } from "../i18n/en";
   import { engineOf } from "../stems";
   import { barBeatAt } from "../timeline";
+  import { studio } from "../video/studio.svelte";
   import Icon from "./Icon.svelte";
 
   const project = $derived(app.song?.project);
@@ -77,7 +78,7 @@
       {#if cover}<img class="cover" src={cover} alt="" />{/if}
       <div class="info-text">
       <button class="back" onclick={() => app.backFromSong()}>
-        <Icon name="back" size={14} />{listName || folder?.name || i18n.t("song.back")}
+        <Icon name="back" size={14} /><span class="crumb">{listName || folder?.name || i18n.t("song.back")}</span>
         {#if index >= 0}<span class="pos tabular">· {i18n.t("playlist.position", { i: index + 1, n: total })}</span>{/if}
       </button>
       <div class="title-row">
@@ -126,6 +127,18 @@
         </div>
       </div>
       <div class="chips">
+        <button
+          class="chip export"
+          title={i18n.t("export.hint")}
+          disabled={app.exportProgress !== null || app.recording}
+          onclick={() => app.exportMix()}
+        >
+          <Icon name="export" size={12} />
+          {app.exportProgress !== null ? `${Math.round(app.exportProgress * 100)}%` : i18n.t("export.audio")}
+        </button>
+        {#if app.lastExport}
+          <button class="chip link" title={app.lastExport} onclick={() => app.revealExport()}>{i18n.t("export.show")}</button>
+        {/if}
         <span class="chip tabular">{formatBpm(project.analysis.bpm)} BPM · {project.analysis.beatsPerBar}/4</span>
         <span class="chip">
           <Icon name={engine === "cloud" ? "cloud" : engine === "studio" ? "spark" : "music"} size={12} />
@@ -178,9 +191,46 @@
       <button class="round small" title={i18n.t("playlist.nextBtn")} aria-label={i18n.t("playlist.nextBtn")} onclick={() => app.playNext(app.transport.playing)} disabled={!app.nextSong}>
         <Icon name="next" size={16} />
       </button>
+      <span class="sep"></span>
+      <div class="rec-group">
+        <button
+          class="rec"
+          class:on={app.recording}
+          class:busy={app.savingTakes}
+          aria-pressed={app.recording}
+          title={app.recording ? i18n.t("record.stop") : app.recordMode === "video" ? i18n.t("record.openVideo") : i18n.t("record.start")}
+          aria-label={app.recording ? i18n.t("record.stop") : i18n.t("record.start")}
+          disabled={!app.canPlay || app.savingTakes}
+          onclick={() => {
+            if (app.videoOpen && studio.phase === "recording") void studio.stop(); // stop the camera too
+            else if (app.recordMode === "video" && !app.recording) app.videoOpen = true;
+            else void app.toggleRecording();
+          }}
+        >
+          <Icon name={app.recording ? "stop" : app.recordMode === "video" ? "video" : "record"} size={18} fill={app.recordMode === "audio" || app.recording} />
+        </button>
+        <div class="mode" role="radiogroup" aria-label={i18n.t("record.mode")}>
+          <button
+            role="radio"
+            aria-checked={app.recordMode === "audio"}
+            class:on={app.recordMode === "audio"}
+            title={i18n.t("record.audio")}
+            disabled={app.recording}
+            onclick={() => (app.recordMode = "audio")}><Icon name="mic" size={13} /></button
+          >
+          <button
+            role="radio"
+            aria-checked={app.recordMode === "video"}
+            class:on={app.recordMode === "video"}
+            title={i18n.t("record.video")}
+            disabled={app.recording}
+            onclick={() => (app.recordMode = "video")}><Icon name="video" size={13} /></button
+          >
+        </div>
+      </div>
     </div>
 
-    <div class="counter" class:counting={app.transport.countingIn}>
+    <div class="counter" class:counting={app.transport.countingIn} class:recording={app.recording}>
       <div class="cols">
         <div>
           <span class="k">{i18n.t("song.bar")}</span>
@@ -204,6 +254,7 @@
   .deck {
     display: grid;
     grid-template-columns: minmax(200px, 1fr) auto minmax(260px, 340px);
+    grid-template-areas: "info transport counter";
     align-items: center;
     gap: 28px;
     padding: 16px 24px;
@@ -211,6 +262,7 @@
     background: var(--bg-raised);
   }
   .info {
+    grid-area: info;
     min-width: 0;
     display: flex;
     gap: 14px;
@@ -255,7 +307,7 @@
     background: var(--bg);
     color: var(--text);
     font: inherit;
-    font-size: 18px;
+    font-size: var(--fs-title);
     font-weight: 800;
     user-select: text;
   }
@@ -269,7 +321,7 @@
     border-radius: 50%;
     border: 1px solid var(--line-strong);
     color: var(--text-faint);
-    font-size: 11px;
+    font-size: var(--fs-small);
     font-weight: 800;
     font-family: Georgia, serif;
     font-style: italic;
@@ -303,7 +355,7 @@
     grid-template-columns: auto 1fr;
     gap: 4px 12px;
     margin: 0;
-    font-size: 12px;
+    font-size: var(--fs-small);
   }
   dt {
     color: var(--text-faint);
@@ -316,21 +368,29 @@
   }
   .none {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--fs-small);
     color: var(--text-faint);
   }
   .back {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    font-size: 12px;
+    max-width: 100%;
+    white-space: nowrap;
+    font-size: var(--fs-small);
     font-weight: 600;
     color: var(--text-faint);
   }
   .back:hover {
     color: var(--text);
   }
+  .crumb {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
   .pos {
+    flex: none;
     color: var(--text-faint);
     font-weight: 500;
   }
@@ -348,7 +408,7 @@
     height: 22px;
     padding: 0 8px;
     border-radius: 999px;
-    font-size: 11px;
+    font-size: var(--fs-small);
     font-weight: 700;
     color: var(--text-faint);
     border: 1px solid var(--line-strong);
@@ -358,7 +418,7 @@
     border-color: color-mix(in srgb, var(--accent) 50%, transparent);
   }
   .next {
-    font-size: 12px;
+    font-size: var(--fs-small);
     color: var(--text-dim);
     white-space: nowrap;
     overflow: hidden;
@@ -380,9 +440,14 @@
   }
   .chips {
     display: flex;
-    gap: 6px;
+    flex-wrap: wrap;
+    gap: 4px 6px;
+  }
+  .chip {
+    white-space: nowrap;
   }
   .transport {
+    grid-area: transport;
     display: flex;
     align-items: center;
     gap: 14px;
@@ -421,11 +486,84 @@
   .play:active {
     transform: scale(0.96);
   }
+  .sep {
+    width: 1px;
+    height: 30px;
+    background: var(--line);
+  }
+  .rec-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .rec {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 14%, var(--bg-active));
+    border: 2px solid color-mix(in srgb, var(--danger) 55%, transparent);
+  }
+  .rec:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--danger) 24%, var(--bg-active));
+  }
+  .rec.on {
+    color: #fff;
+    background: var(--danger);
+    animation: rec-pulse 1.2s ease-in-out infinite;
+  }
+  .rec.busy {
+    animation: none;
+    opacity: 0.6;
+  }
+  @keyframes rec-pulse {
+    50% {
+      box-shadow: 0 0 0 8px color-mix(in srgb, var(--danger) 20%, transparent);
+    }
+  }
+  .mode {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .mode button {
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 20px;
+    border-radius: 6px;
+    color: var(--text-faint);
+    background: var(--bg-active);
+  }
+  .mode button.on {
+    color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 16%, var(--bg-active));
+  }
+  .chip.export,
+  .chip.link {
+    cursor: pointer;
+    font-weight: 700;
+  }
+  .chip.export {
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+  }
+  .chip.export:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--accent) 22%, transparent);
+  }
+  .chip.link {
+    color: var(--text-dim);
+    text-decoration: underline;
+  }
   button:disabled {
     opacity: 0.4;
     cursor: not-allowed;
   }
   .counter {
+    grid-area: counter;
+    min-width: 0;
     padding: 10px 14px 8px;
     border-radius: 12px;
     background: #0b0c10;
@@ -441,7 +579,7 @@
     flex-direction: column;
   }
   .k {
-    font-size: 9.5px;
+    font-size: var(--fs-label);
     font-weight: 700;
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -455,12 +593,20 @@
     color: var(--accent);
   }
   .v.small {
-    font-size: 18px;
+    font-size: var(--fs-title);
     padding-top: 7px;
     color: var(--text-dim);
   }
   .counting .v {
     animation: blink 0.4s steps(2) infinite;
+  }
+  .counter.recording {
+    box-shadow:
+      inset 0 2px 8px rgb(0 0 0 / 70%),
+      0 0 0 2px color-mix(in srgb, var(--danger) 70%, transparent);
+  }
+  .counter.recording .bar div {
+    background: var(--danger);
   }
   @keyframes blink {
     50% {
@@ -477,5 +623,87 @@
   .bar div {
     height: 100%;
     background: var(--accent);
+  }
+  /* Medium windows: a tighter transport so the title keeps its room. */
+  @media (max-width: 1520px) {
+    .deck {
+      grid-template-columns: minmax(180px, 1fr) auto minmax(200px, 260px);
+      gap: 18px;
+      padding: 12px 18px;
+    }
+    .cover {
+      width: 68px;
+      height: 68px;
+    }
+    .transport {
+      gap: 9px;
+      padding: 6px 10px;
+    }
+    .round {
+      width: 34px;
+      height: 34px;
+    }
+    .round.small {
+      width: 28px;
+      height: 28px;
+    }
+    .play {
+      width: 50px;
+      height: 50px;
+    }
+    .rec {
+      width: 38px;
+      height: 38px;
+    }
+    .rec-group {
+      gap: 6px;
+    }
+    .v {
+      font-size: var(--fs-h1);
+    }
+    .v.small {
+      font-size: 16px;
+      padding-top: 5px;
+    }
+  }
+  /* Narrow windows (down to the 960 px minimum): the transport moves under the
+     counter, so the song info keeps a readable width. */
+  @media (max-width: 1180px) {
+    .deck {
+      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-areas:
+        "info counter"
+        "info transport";
+      row-gap: 8px;
+      column-gap: 16px;
+      padding: 10px 16px;
+    }
+    .transport {
+      justify-self: stretch;
+      justify-content: space-between;
+    }
+    .counter {
+      padding: 6px 12px 6px;
+    }
+    .bar {
+      margin-top: 5px;
+    }
+  }
+  @media (max-height: 760px) {
+    .deck {
+      padding-top: 8px;
+      padding-bottom: 8px;
+    }
+    .cover {
+      width: 60px;
+      height: 60px;
+    }
+    h1 {
+      font-size: var(--fs-title);
+      margin: 0 0 4px;
+    }
+    .up-next {
+      margin-top: 4px;
+    }
   }
 </style>

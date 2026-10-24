@@ -1,4 +1,7 @@
 <script lang="ts">
+  import ExportsCard from "./ExportsCard.svelte";
+  import FolderGlyph from "./FolderGlyph.svelte";
+  import { glyphsFor } from "../folderGlyph";
   import { app, type FolderKey } from "../app.svelte";
   import { i18n } from "../i18n/index.svelte";
   import type { MessageKey } from "../i18n/en";
@@ -6,6 +9,7 @@
   import Logo from "./Logo.svelte";
   import MiniPlayer from "./MiniPlayer.svelte";
 
+  const glyphs = $derived(glyphsFor(app.folders));
   const unfiledCount = $derived(app.songsIn(null).length);
   const dropTarget = $derived(app.folderById(app.dropFolder)?.name ?? null);
 
@@ -39,7 +43,7 @@
       {#each app.folders as folder (folder.id)}
         <li>
           <button class="nav-item" class:active={isActive(folder.id)} onclick={() => app.openFolder(folder.id)}>
-            <span class="dot" style={`--c:var(--folder-${folder.color})`}></span>
+            <FolderGlyph id={folder.id} glyph={glyphs.get(folder.id)} color={`var(--folder-${folder.color})`} />
             <span class="name" title={folder.name}>{folder.name}</span>
             <span class="count tabular">{app.songsIn(folder.id).length}</span>
           </button>
@@ -48,7 +52,7 @@
       {#if unfiledCount > 0}
         <li>
           <button class="nav-item muted" class:active={isActive(null)} onclick={() => app.openFolder(null)}>
-            <span class="dot hollow"></span>
+            <FolderGlyph id={null} color={null} />
             <span class="name">{i18n.t("home.unfiled")}</span>
             <span class="count tabular">{unfiledCount}</span>
           </button>
@@ -69,6 +73,7 @@
     </div>
   </section>
 
+  <ExportsCard />
   {#if app.jobs.length > 0}
     <section class="block">
       <h2 class="section-title">{i18n.t("jobs.title")}</h2>
@@ -137,6 +142,10 @@
     background: var(--bg-raised);
     border-right: 1px solid var(--line);
     min-height: 0;
+    /* On short windows with export cards and a queue the column scrolls,
+       and the footer navigation stays pinned at the bottom. */
+    overflow-y: auto;
+    overflow-x: hidden;
   }
   .brand {
     padding: 20px 20px 14px;
@@ -180,21 +189,9 @@
     flex: 1;
   }
   .count {
-    font-size: 11.5px;
+    font-size: var(--fs-small);
     color: var(--text-faint);
     font-weight: 600;
-  }
-  .dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 3px;
-    background: var(--c);
-    flex: none;
-    margin: 0 3px;
-  }
-  .dot.hollow {
-    background: none;
-    border: 1.5px solid var(--text-faint);
   }
   .block {
     padding: 14px 10px 4px;
@@ -236,7 +233,7 @@
     color: var(--text);
   }
   .drop-sub {
-    font-size: 11px;
+    font-size: var(--fs-small);
     color: var(--text-faint);
   }
   .target {
@@ -269,7 +266,7 @@
     text-overflow: ellipsis;
   }
   .job-stage {
-    font-size: 11.5px;
+    font-size: var(--fs-small);
     color: var(--text-dim);
     margin-top: 2px;
   }
@@ -300,8 +297,13 @@
     height: 24px;
   }
   .foot {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    margin-top: auto;
     border-top: 1px solid var(--line);
     padding: 8px 10px;
+    background: var(--bg-raised);
   }
   .live-dot {
     width: 7px;
@@ -309,5 +311,34 @@
     border-radius: 50%;
     background: var(--ok);
     box-shadow: 0 0 6px var(--ok);
+  }
+  /* Short windows: never let the processing queue squeeze the folder list to
+     nothing; the queue scrolls instead. */
+  .folders {
+    min-height: 150px;
+  }
+  .brand,
+  .nav,
+  .drop {
+    flex-shrink: 0;
+  }
+  .block:not(.folders) {
+    flex-shrink: 1;
+  }
+  @media (max-height: 760px) {
+    .brand {
+      padding: 14px 16px 10px;
+    }
+    .drop {
+      margin: 4px 12px;
+      padding: 8px 10px;
+    }
+    .block {
+      padding-top: 8px;
+    }
+    .foot .nav-item {
+      padding-top: 6px;
+      padding-bottom: 6px;
+    }
   }
 </style>

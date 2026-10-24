@@ -17,15 +17,36 @@
         <span style={`--c:var(--stem-${stem});--d:${i * 90}ms`}></span>
       {/each}
     </div>
-    <button class="btn primary big" onclick={() => app.chooseWorkspace()}>
-      <Icon name="folder" />
-      {i18n.t("welcome.choose")}
-    </button>
+    {#if app.info?.suggestedWorkspace}
+      <button class="btn primary big" onclick={() => app.useSuggestedWorkspace()}>
+        <Icon name="music" />
+        {i18n.t("workspace.useSuggested")}
+      </button>
+      <code class="suggested" title={app.info.suggestedWorkspace}>{app.info.suggestedWorkspace}</code>
+      <button class="btn" onclick={() => app.chooseWorkspace()}>
+        <Icon name="folder" />
+        {i18n.t("workspace.chooseOther")}
+      </button>
+    {:else}
+      <button class="btn primary big" onclick={() => app.chooseWorkspace()}>
+        <Icon name="folder" />
+        {i18n.t("welcome.choose")}
+      </button>
+    {/if}
     <p class="hint">{i18n.t("welcome.hint")}</p>
   </div>
 </div>
 
 <style>
+  .suggested {
+    max-width: 100%;
+    margin-top: -4px;
+    font-size: 12.5px;
+    color: var(--text-dim);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   .welcome {
     flex: 1;
     display: grid;

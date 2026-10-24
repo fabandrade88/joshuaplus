@@ -61,6 +61,9 @@ pub struct InputView {
     pub gain_db: f32,
     pub monitor_ok: bool,
     pub direct_monitor: bool,
+    pub armed: bool,
+    /// The input can record (stream running with a song clock).
+    pub can_record: bool,
     pub error: Option<String>,
 }
 
@@ -84,6 +87,7 @@ pub struct InputPatch {
     pub stereo: Option<bool>,
     pub monitor: Option<bool>,
     pub gain_db: Option<f32>,
+    pub armed: Option<bool>,
 }
 
 fn rlock<T>(l: &RwLock<T>) -> std::sync::RwLockReadGuard<'_, T> {
@@ -125,6 +129,7 @@ pub fn restart_inputs(state: &AppState) {
     }
     let out_rate = engine.as_ref().map(|e| e.info().sample_rate);
     let out_dev = engine.as_ref().map(|e| (e.info().device_id.clone(), e.info().device_name.clone()));
+    let clock = engine.as_ref().map(|e| Arc::clone(e.shared()));
     for (slot, config) in configs.into_iter().enumerate().take(MAX_INPUTS) {
         let dev = available.iter().find(|d| d.id == config.device_id);
         let rates_match = dev.is_some_and(|d| Some(d.sample_rate) == out_rate);
@@ -139,7 +144,7 @@ pub fn restart_inputs(state: &AppState) {
         let attached = ring.is_some();
         let (stream, error) = match dev {
             None => (None, Some("device not connected".to_owned())),
-            Some(_) => match InputStream::start(&config.device_id, ring) {
+            Some(_) => match InputStream::start(&config.device_id, ring, clock.clone()) {
                 Ok(s) => (Some(s), None),
                 Err(e) => (None, Some(e.to_string())),
             },
@@ -168,6 +173,8 @@ fn input_views(state: &AppState) -> Vec<InputView> {
             gain_db: i.config.gain_db,
             monitor_ok: i.monitor_ok,
             direct_monitor: i.direct_monitor,
+            armed: i.config.armed,
+            can_record: i.stream.as_ref().is_some_and(|s| s.recorder.is_some()),
             error: i.error.clone(),
         })
         .collect()
@@ -221,6 +228,7 @@ pub async fn add_audio_input(app: AppHandle, device_id: String) -> ApiResult<Vec
                 stereo: dev.channels >= 2,
                 monitor: false,
                 gain_db: 0.0,
+                armed: false,
             });
         }
         state.save_settings()?;
@@ -272,6 +280,9 @@ pub fn update_audio_input(state: State<'_, AppState>, index: usize, patch: Input
         }
         if let Some(g) = patch.gain_db {
             c.gain_db = g.clamp(-60.0, 12.0);
+        }
+        if let Some(a) = patch.armed {
+            c.armed = a;
         }
         let config = c.clone();
         apply_live_params(&state, index, live);

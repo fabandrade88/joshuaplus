@@ -8,6 +8,7 @@
   import HelpView from "./lib/components/HelpView.svelte";
   import Home from "./lib/components/Home.svelte";
   import SettingsDialog from "./lib/components/SettingsDialog.svelte";
+  import VideoStudio from "./lib/components/VideoStudio.svelte";
   import Sidebar from "./lib/components/Sidebar.svelte";
   import BarMap from "./lib/components/BarMap.svelte";
   import Console from "./lib/components/Console.svelte";
@@ -83,6 +84,7 @@
 </div>
 
 <SettingsDialog />
+{#if app.videoOpen}<VideoStudio />{/if}
 
 <style>
   .shell {
@@ -98,6 +100,9 @@
     min-width: 0;
     display: flex;
     flex-direction: column;
+    /* The song view needs ~600 px; on shorter windows scroll rather than clip. */
+    overflow-y: auto;
+    overflow-x: hidden;
     background: var(--bg);
   }
   .toast {

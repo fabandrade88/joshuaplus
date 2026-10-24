@@ -21,6 +21,7 @@ joshua-engine = { path = "../../crates/joshua-engine" }
 joshua-ai = { path = "../../crates/joshua-ai" }
 joshua-midi = { path = "../../crates/joshua-midi" }
 rtrb = "0.4"
+hound = "3.5"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 log = "0.4"

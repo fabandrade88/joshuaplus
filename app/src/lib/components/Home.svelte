@@ -210,14 +210,14 @@
     min-width: 0;
   }
   .card-name {
-    font-size: 14px;
+    font-size: var(--fs-body);
     font-weight: 800;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
   .meta {
-    font-size: 11.5px;
+    font-size: var(--fs-small);
     color: var(--text-faint);
   }
   .quick-play {
@@ -260,5 +260,11 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
+  }
+  @media (max-width: 1180px), (max-height: 760px) {
+    .home {
+      padding: 20px 24px 32px;
+      gap: 18px;
+    }
   }
 </style>

@@ -135,8 +135,36 @@
       <span class="section-title">{i18n.t("settings.workspace")}</span>
       <div class="row">
         <code title={info.workspace ?? ""}>{info.workspace ?? "—"}</code>
-        <button class="btn" onclick={() => app.chooseWorkspace()}>{i18n.t("settings.change")}</button>
+        <button class="btn" disabled={app.movingLibrary} onclick={() => app.chooseWorkspace()}>{i18n.t("settings.change")}</button>
       </div>
+      {#if app.pendingWorkspace}
+        <div class="choice" role="group" aria-label={i18n.t("workspace.choiceTitle")}>
+          <p>{i18n.t("workspace.choiceTitle")}</p>
+          <code class="target" title={app.pendingWorkspace}>{app.pendingWorkspace}</code>
+          {#if app.movingLibrary}
+            <p class="note">{i18n.t("workspace.moving")}</p>
+          {:else}
+            <div class="choice-buttons">
+              <button class="btn primary" onclick={() => app.applyWorkspace(app.pendingWorkspace!, true)}>{i18n.t("workspace.move")}</button>
+              <button class="btn" onclick={() => app.applyWorkspace(app.pendingWorkspace!, false)}>{i18n.t("workspace.empty")}</button>
+              <button class="btn" onclick={() => (app.pendingWorkspace = null)}>{i18n.t("common.cancel")}</button>
+            </div>
+            <p class="note">{i18n.t("workspace.choiceHint")}</p>
+          {/if}
+        </div>
+      {/if}
+    </div>
+
+    <div class="field">
+      <span class="section-title">{i18n.t("exportDir.title")}</span>
+      <div class="row">
+        <code title={info.exportDir ?? ""}>{info.exportDir ?? "—"}</code>
+        <button class="btn" onclick={() => app.chooseExportDir()}>{i18n.t("settings.change")}</button>
+        {#if info.exportDirCustom}
+          <button class="btn" onclick={() => app.resetExportDir()}>{i18n.t("exportDir.reset")}</button>
+        {/if}
+      </div>
+      <span class="note">{info.exportDirCustom ? i18n.t("exportDir.customHint") : i18n.t("exportDir.defaultHint")}</span>
     </div>
 
     <footer class="tabular">{i18n.t("settings.version", { v: info.version })} · MIT</footer>
@@ -144,6 +172,31 @@
 </dialog>
 
 <style>
+  .choice {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+    padding: 12px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--accent) 8%, var(--bg-raised));
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  }
+  .choice p {
+    margin: 0;
+    line-height: 1.45;
+  }
+  .choice .target {
+    display: block;
+    position: static;
+    align-self: stretch;
+    overflow-wrap: anywhere;
+  }
+  .choice-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
   dialog {
     width: min(560px, calc(100vw - 32px));
     max-height: calc(100vh - 48px);
@@ -170,7 +223,7 @@
   }
   h2 {
     margin: 0;
-    font-size: 18px;
+    font-size: var(--fs-title);
   }
   .field {
     display: flex;
@@ -222,7 +275,7 @@
     padding: 10px 12px;
     border-radius: var(--radius);
     background: var(--bg);
-    font-size: 12.5px;
+    font-size: var(--fs-small);
     color: var(--text-dim);
   }
   .bar {
@@ -249,7 +302,7 @@
   }
   .note {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--fs-small);
     color: var(--text-faint);
     line-height: 1.5;
   }
@@ -263,7 +316,7 @@
   .small {
     height: 30px;
     padding: 0 12px;
-    font-size: 12.5px;
+    font-size: var(--fs-small);
   }
   .btn:disabled {
     opacity: 0.5;
@@ -273,7 +326,7 @@
     align-self: flex-start;
     color: var(--accent);
     font-weight: 600;
-    font-size: 12.5px;
+    font-size: var(--fs-small);
   }
   .link:hover {
     text-decoration: underline;
@@ -286,7 +339,7 @@
     background: var(--bg);
     border: 1px solid var(--line);
     font-family: var(--mono);
-    font-size: 11.5px;
+    font-size: var(--fs-small);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -294,7 +347,7 @@
   }
   footer {
     margin-top: 20px;
-    font-size: 11.5px;
+    font-size: var(--fs-small);
     color: var(--text-faint);
   }
 </style>

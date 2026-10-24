@@ -123,7 +123,7 @@
     text-overflow: ellipsis;
   }
   .sub {
-    font-size: 11px;
+    font-size: var(--fs-small);
     color: var(--text-faint);
   }
   .toggle {

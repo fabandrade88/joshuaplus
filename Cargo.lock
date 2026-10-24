@@ -2335,6 +2335,7 @@ dependencies = [
 name = "joshua-app"
 version = "0.0.1"
 dependencies = [
+ "hound",
  "joshua-ai",
  "joshua-core",
  "joshua-engine",

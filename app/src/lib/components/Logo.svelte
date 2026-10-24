@@ -34,7 +34,7 @@
     flex: none;
   }
   .word {
-    font-size: 19px;
+    font-size: var(--fs-title);
     font-weight: 800;
     letter-spacing: -0.02em;
   }
@@ -46,7 +46,7 @@
     padding: 1px 6px;
     border-radius: 5px;
     vertical-align: 3px;
-    font-size: 9.5px;
+    font-size: var(--fs-label);
     font-style: normal;
     font-weight: 800;
     letter-spacing: 0.08em;
@@ -55,7 +55,7 @@
     background: var(--accent);
   }
   .tag {
-    font-size: 11.5px;
+    font-size: var(--fs-small);
     color: var(--text-faint);
     margin-top: -2px;
   }

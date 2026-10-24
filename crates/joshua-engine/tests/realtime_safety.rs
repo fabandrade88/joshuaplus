@@ -79,3 +79,26 @@ fn audio_callback_never_allocates() {
     assert_no_alloc(|| processor.process_f32(&mut out_f32, 2));
     assert!(out_f32.iter().all(|s| s.is_finite() && s.abs() <= 1.0));
 }
+
+#[test]
+fn recording_input_callback_never_allocates() {
+    use joshua_engine::input::{InputControls, InputTap};
+    use std::sync::Arc;
+    let controls = Arc::new(InputControls::default());
+    controls.set_routing(0, true);
+    let (mon_tx, _mon_rx) = rtrb::RingBuffer::new(48_000);
+    let clock = Arc::new(joshua_core::mixer::SharedState::default());
+    let (mut tap, mut rx) = InputTap::new(Arc::clone(&controls), Some(mon_tx)).with_recorder(clock);
+    controls.set_recording(true);
+    let f32_buf = vec![0.25f32; 512 * 2];
+    let i16_buf = vec![1_000i16; 333 * 8];
+    for _ in 0..200 {
+        assert_no_alloc(|| {
+            tap.process(&f32_buf, 2);
+            tap.process(&i16_buf, 8);
+        });
+        // The writer drains between callbacks.
+        while rx.samples.pop().is_ok() {}
+        while rx.markers.pop().is_ok() {}
+    }
+}

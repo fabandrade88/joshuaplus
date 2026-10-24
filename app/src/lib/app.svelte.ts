@@ -17,6 +17,7 @@ import type {
   FolderColor,
   JobUpdate,
   MetronomePatch,
+  RecordMode,
   SeparatorChoice,
   SongSummary,
   SongView,
@@ -97,6 +98,16 @@ class AppStore {
   lastNote = $state<{ note: number; velocity: number; pad: DrumPad | null; at: number } | null>(null);
   /** Names of the audio input devices present, to spot MIDI-only kits. */
   audioDeviceNames = $state<string[]>([]);
+  // Recording and export.
+  recordMode = $state<RecordMode>("audio");
+  /** Waiting for the backend to align and save takes. */
+  savingTakes = $state(false);
+  /** Export progress 0..1, or null when idle. */
+  exportProgress = $state<number | null>(null);
+  /** Last exported file (for "show in folder"). */
+  lastExport = $state<string | null>(null);
+  /** The video studio overlay is open. */
+  videoOpen = $state(false);
   toast = $state<string | null>(null);
   private toastTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -157,6 +168,7 @@ class AppStore {
       events.onTransport((t) => this.onTransport(t)),
       events.onLibraryChanged(() => void this.refreshLibrary()),
       events.onModelProgress((p) => (this.modelProgress = p)),
+      events.onExportProgress((p) => (this.exportProgress = p)),
       events.onInputLevels((l) => {
         this.inputLevels = l.map((v, i) => Math.max(v, (this.inputLevels[i] ?? 0) * METER_DECAY));
       }),
@@ -363,16 +375,53 @@ class AppStore {
     if (this.song) await this.openSong(this.song.project.id, false, this.view.kind === "song", true);
   }
 
+  /** New library folder picked in Settings, waiting for "move" or "empty". */
+  pendingWorkspace = $state<string | null>(null);
+  movingLibrary = $state(false);
+
+  /** Folder picker that opens in the Music folder. */
+  private async pickFolder(start: string | null | undefined): Promise<string | null> {
+    const dir = await open({ directory: true, multiple: false, recursive: false, defaultPath: start ?? undefined });
+    return typeof dir === "string" ? dir : null;
+  }
+
+  /** Welcome screen: use the recommended `<Music>/Joshua+` folder. */
+  async useSuggestedWorkspace(): Promise<void> {
+    const dir = this.info?.suggestedWorkspace;
+    if (dir) await this.applyWorkspace(dir, false);
+  }
+
+  /** Picks a library folder. With songs in the current library, Settings
+   *  then asks whether to move them there or start an empty library. */
   async chooseWorkspace(): Promise<void> {
-    const dir = await open({ directory: true, multiple: false, recursive: false });
-    if (typeof dir !== "string") return;
-    const ok = await this.guard(() => api.setWorkspace(dir));
+    const dir = await this.pickFolder(this.info?.musicDir);
+    if (!dir || dir === this.info?.workspace) return;
+    if (this.hasWorkspace && this.songs.length > 0) this.pendingWorkspace = dir;
+    else await this.applyWorkspace(dir, false);
+  }
+
+  async applyWorkspace(dir: string, move: boolean): Promise<void> {
+    this.movingLibrary = move;
+    const ok = await this.guard(() => api.setWorkspace(dir, move));
+    this.movingLibrary = false;
+    this.pendingWorkspace = null;
     if (ok === undefined) return;
     this.song = null;
     this.transport = idleTransport();
     this.goHome();
     await this.refreshInfo();
     await this.refreshLibrary();
+    if (move) this.notify(i18n.t("workspace.moved"));
+  }
+
+  async chooseExportDir(): Promise<void> {
+    const dir = await this.pickFolder(this.info?.exportDir ?? this.info?.musicDir);
+    if (!dir) return;
+    if ((await this.guard(() => api.setExportDir(dir))) !== undefined) await this.refreshInfo();
+  }
+
+  async resetExportDir(): Promise<void> {
+    if ((await this.guard(() => api.setExportDir(null))) !== undefined) await this.refreshInfo();
   }
 
   // ── Import jobs ──────────────────────────────────────────────────────────
@@ -457,7 +506,7 @@ class AppStore {
     if (show) this.view = { kind: "song" };
     this.loop = null;
     this.loopEnabled = false;
-    this.meters = view.project.tracks.map(() => 0);
+    this.meters = [...view.project.tracks, ...(view.project.takes ?? [])].map(() => 0);
     this.transport = idleTransport();
     if (!view.audioReady) this.notify(i18n.t("song.noAudio"));
     else if (autoplay) await this.guard(() => api.play());
@@ -529,6 +578,90 @@ class AppStore {
     if (!track) return;
     Object.assign(track, patch);
     await this.guard(() => api.updateTrack(index, patch));
+  }
+
+  // ── Recording ────────────────────────────────────────────────────────────
+  get recording(): boolean {
+    return !!this.transport.recording;
+  }
+
+  get armedCount(): number {
+    return this.inputs.filter((i) => i.armed && i.canRecord).length;
+  }
+
+  /** Index of a take's meter (takes follow the stems). */
+  takeMeter(j: number): number {
+    return this.meters[(this.song?.project.tracks.length ?? 0) + j] ?? 0;
+  }
+
+  async toggleArm(index: number): Promise<void> {
+    const input = this.inputs[index];
+    if (input) await this.updateInput(index, { armed: !input.armed });
+  }
+
+  /** Starts recording every armed input; the song plays with its count-in.
+   *  The video studio passes `video` (filming works without armed inputs).
+   *  Returns whether recording started. */
+  async startRecording(video = false): Promise<boolean> {
+    if (!this.canPlay || this.recording) return false;
+    if (!video && this.armedCount === 0) {
+      this.notify(i18n.t("record.armFirst"));
+      return false;
+    }
+    // A take is one straight pass through the song.
+    if (this.loopEnabled) await this.clearLoop();
+    if (this.transport.playing || this.transport.countingIn) await this.guard(() => api.pause());
+    const ok = (await this.guard(() => api.startRecording(video))) !== undefined;
+    if (ok) this.transport.recording = true;
+    return ok;
+  }
+
+  async stopRecording(): Promise<void> {
+    if (!this.recording || this.savingTakes) return;
+    this.transport.recording = false;
+    this.savingTakes = true;
+    const result = await this.guard(() => api.stopRecording());
+    this.savingTakes = false;
+    if (!result) return;
+    this.applySongView(result.song);
+    if (result.overflowed) this.notify(i18n.t("record.overflow"));
+    else this.notify(result.added > 0 ? i18n.t("record.saved", { n: result.added }) : i18n.t("record.nothing"));
+  }
+
+  async toggleRecording(): Promise<void> {
+    await (this.recording ? this.stopRecording() : this.startRecording());
+  }
+
+  async updateTake(id: string, patch: TrackPatch): Promise<void> {
+    const take = this.song?.project.takes?.find((t) => t.id === id);
+    if (!take) return;
+    Object.assign(take, patch);
+    await this.guard(() => api.updateTake(id, patch));
+  }
+
+  async deleteTake(id: string): Promise<void> {
+    const view = await this.guard(() => api.deleteTake(id));
+    if (view) this.applySongView(view);
+  }
+
+  /** Installs a reloaded view of the open song (same song, new tracks). */
+  private applySongView(view: SongView): void {
+    this.song = view;
+    this.meters = [...view.project.tracks, ...(view.project.takes ?? [])].map(() => 0);
+  }
+
+  async exportMix(): Promise<void> {
+    if (!this.song || this.exportProgress !== null) return;
+    this.exportProgress = 0;
+    const path = await this.guard(() => api.exportMix());
+    this.exportProgress = null;
+    if (!path) return;
+    this.lastExport = path;
+    this.notify(i18n.t("export.done"));
+  }
+
+  async revealExport(path = this.lastExport): Promise<void> {
+    if (path) await this.guard(() => api.revealExport(path));
   }
 
   async updateMetronome(patch: MetronomePatch): Promise<void> {
