@@ -82,6 +82,8 @@ export interface ComposeJob {
   onProgress: (p: number) => void;
   /** Called with the first format's canvas, to show it while encoding. */
   onCanvas?: (canvas: HTMLCanvasElement) => void;
+  /** Diagnostics (the camera's frame size). */
+  log?: (message: string) => void;
   cancelled: () => boolean;
 }
 
@@ -109,6 +111,12 @@ export async function composeOffline(job: ComposeJob): Promise<number> {
       const sink = new VideoSampleSink(track);
       // Before the camera's first frame there is nothing to show: hold it.
       const first = await sink.getSample(await track.getFirstTimestamp());
+      if (first) {
+        job.log?.(
+          `camera frames ${first.displayWidth}x${first.displayHeight} (coded ${first.codedWidth}x${first.codedHeight}, rotation ${first.rotation})`,
+        );
+      }
+      const stage = new Stage();
       let audioUntil = 0;
       let i = 0;
       try {
@@ -116,7 +124,8 @@ export async function composeOffline(job: ComposeJob): Promise<number> {
           if (job.cancelled()) throw new ComposeCancelled();
           const sample = found ?? first;
           if (sample) {
-            for (const o of outputs) drawFrame(o.g, o.f, sample, job.overlay);
+            const picture = stage.show(sample);
+            for (const o of outputs) drawFrame(o.g, o.f, picture, job.overlay);
           }
           if (found) found.close();
           const t = i / COMPOSE_FPS;
@@ -252,14 +261,33 @@ function* timestamps(frames: number): Generator<number> {
   for (let i = 0; i < frames; i++) yield i / COMPOSE_FPS;
 }
 
+/** The camera frame, whole, on a canvas of its own. WebKit ignores the
+ *  source rectangle when it draws a camera frame (a decoded `VideoFrame`)
+ *  and squeezes the whole picture into every format; cropping from a canvas
+ *  is reliable everywhere. */
+class Stage {
+  private readonly canvas = document.createElement("canvas");
+  private readonly g = this.canvas.getContext("2d", { alpha: false })!;
+
+  show(sample: VideoSample): HTMLCanvasElement {
+    const { displayWidth: w, displayHeight: h } = sample;
+    if (this.canvas.width !== w || this.canvas.height !== h) {
+      this.canvas.width = w;
+      this.canvas.height = h;
+    }
+    sample.draw(this.g, 0, 0, w, h);
+    return this.canvas;
+  }
+}
+
 function drawFrame(
   g: CanvasRenderingContext2D,
   f: VideoFormat,
-  sample: VideoSample,
+  picture: HTMLCanvasElement,
   overlay: (g: CanvasRenderingContext2D, f: VideoFormat) => void,
 ): void {
-  const { sx, sy, sw, sh } = coverCrop(sample.displayWidth, sample.displayHeight, f.width, f.height);
-  sample.draw(g, sx, sy, sw, sh, 0, 0, f.width, f.height);
+  const { sx, sy, sw, sh } = coverCrop(picture.width, picture.height, f.width, f.height);
+  g.drawImage(picture, sx, sy, sw, sh, 0, 0, f.width, f.height);
   overlay(g, f);
 }
 

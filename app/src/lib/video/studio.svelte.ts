@@ -607,6 +607,7 @@ class VideoStudio {
         return { write: (data, position) => api.videoSaveChunk(handle, data, position) };
       },
       onProgress: (p) => (this.progress = p),
+      log: step,
       onCanvas: (canvas) => {
         canvas.className = "compose-video";
         this.composeVideo = canvas;
