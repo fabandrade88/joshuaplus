@@ -15,6 +15,8 @@
   let frameW = $state(0);
   let frameH = $state(0);
 
+  const OVERLAY_PARTS = ["cover", "title", "artist"] as const;
+
   const LABELS: Record<FormatId, MessageKey> = {
     youtube: "video.fmt.youtube",
     vertical: "video.fmt.vertical",
@@ -74,10 +76,20 @@
       </label>
     {/each}
   </div>
-  <label class="check">
-    <input type="checkbox" bind:checked={studio.showTitle} disabled={studio.phase === "exporting"} />
-    {i18n.t("video.showTitle")}
-  </label>
+  <h3 id="overlay-heading">{i18n.t("video.overlay")}</h3>
+  <div class="overlay-opts" role="group" aria-labelledby="overlay-heading">
+    {#each OVERLAY_PARTS as part (part)}
+      <label class="opt" class:on={studio.overlay[part]}>
+        <input
+          type="checkbox"
+          checked={studio.overlay[part]}
+          disabled={studio.phase === "exporting"}
+          onchange={(e) => studio.setOverlay(part, e.currentTarget.checked)}
+        />
+        {i18n.t(`video.overlay.${part}`)}
+      </label>
+    {/each}
+  </div>
 {/snippet}
 
 <svelte:window onkeydown={(e) => e.key === "Escape" && !busy && studio.phase !== "recording" && void close()} />
@@ -123,6 +135,21 @@
                   <span>{i18n.t(LABELS[g.id])}</span>
                 </div>
               {/each}
+              {#if studio.phase === "idle" && (studio.overlay.cover || studio.overlay.title || studio.overlay.artist)}
+                <!-- A faint sketch of what the export burns in. -->
+                <div class="overlay-mock" aria-hidden="true">
+                  {#if studio.overlay.cover}
+                    {#if app.song?.cover}<img src={app.song.cover} alt="" />{:else}<span class="mock-cover"></span>{/if}
+                  {/if}
+                  {#if studio.overlay.title || studio.overlay.artist}
+                    <span class="mock-text">
+                      <i></i>
+                      {#if studio.overlay.title}<b>{app.song?.project.title ?? ""}</b>{/if}
+                      {#if studio.overlay.artist}<small>{app.song?.project.metadata?.artist ?? ""}</small>{/if}
+                    </span>
+                  {/if}
+                </div>
+              {/if}
               {#if studio.phase === "recording"}
                 <div class="rec-badge"><i></i>REC {formatTime(studio.elapsed)}</div>
               {/if}
@@ -244,11 +271,11 @@
   }
   h2 {
     margin: 0;
-    font-size: 19px;
+    font-size: var(--fs-title);
   }
   header p {
     margin: 2px 0 0;
-    font-size: 12.5px;
+    font-size: var(--fs-small);
     color: var(--text-dim);
   }
   .badge {
@@ -292,7 +319,7 @@
     position: absolute;
     top: 6px;
     left: 6px;
-    font-size: 10.5px;
+    font-size: var(--fs-small);
     font-weight: 700;
     padding: 2px 6px;
     border-radius: 999px;
@@ -308,7 +335,7 @@
     padding: 5px 10px;
     border-radius: 999px;
     font-family: var(--mono);
-    font-size: 12px;
+    font-size: var(--fs-small);
     font-weight: 800;
     color: #fff;
     background: var(--danger);
@@ -327,7 +354,7 @@
   }
   .sound-state {
     margin: 6px 0 0;
-    font-size: 12px;
+    font-size: var(--fs-small);
     color: var(--text-dim);
   }
   .sound-state.err {
@@ -336,7 +363,7 @@
   .cam-error,
   .error {
     color: var(--accent);
-    font-size: 13px;
+    font-size: var(--fs-body);
   }
   .cam-error {
     position: absolute;
@@ -352,7 +379,7 @@
   }
   h3 {
     margin: 4px 0 0;
-    font-size: 11px;
+    font-size: var(--fs-label);
     font-weight: 800;
     letter-spacing: 0.12em;
     text-transform: uppercase;
@@ -361,7 +388,7 @@
   .hint,
   .note {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--fs-small);
     line-height: 1.45;
     color: var(--text-dim);
   }
@@ -375,13 +402,20 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    font-size: 12.5px;
+    font-size: var(--fs-small);
     color: var(--text-dim);
+  }
+  .facts {
+    line-height: 1.45;
   }
   .facts li {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 8px;
+  }
+  .facts li :global(svg) {
+    flex: none;
+    margin-top: 2px;
   }
   .rec {
     display: inline-flex;
@@ -390,7 +424,7 @@
     gap: 8px;
     height: 48px;
     border-radius: 999px;
-    font-size: 14px;
+    font-size: var(--fs-body);
     font-weight: 800;
     color: #fff;
     background: var(--danger);
@@ -408,28 +442,34 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
-    font-size: 11px;
+    font-size: var(--fs-label);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.1em;
     color: var(--text-faint);
   }
   .formats {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
   }
+  /* One row per format: long names ("Shorts · Reels · TikTok 9:16") get the
+     full width instead of wrapping in a half-width card. */
   .fmt {
     display: grid;
-    grid-template-columns: auto 1fr;
-    grid-template-rows: auto auto;
+    grid-template-columns: 28px minmax(0, 1fr) auto;
     column-gap: 8px;
     align-items: center;
-    padding: 8px;
-    border-radius: 10px;
+    min-height: 34px;
+    padding: 5px 10px 5px 8px;
+    border-radius: 8px;
     cursor: pointer;
     background: var(--bg-active);
     border: 1px solid transparent;
+  }
+  .fmt:has(input:focus-visible) {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
   }
   .fmt.on {
     border-color: color-mix(in srgb, var(--accent) 60%, transparent);
@@ -441,9 +481,9 @@
     pointer-events: none;
   }
   .shape {
-    grid-row: span 2;
-    width: 22px;
-    max-height: 30px;
+    justify-self: center;
+    height: 16px;
+    max-width: 28px;
     border-radius: 3px;
     border: 2px solid var(--text-faint);
   }
@@ -451,18 +491,93 @@
     border-color: var(--accent);
   }
   .fmt-name {
-    font-size: 12px;
+    min-width: 0;
+    font-size: var(--fs-small);
     font-weight: 700;
+    line-height: 1.3;
   }
   .fmt-size {
-    font-size: 10.5px;
+    font-size: var(--fs-small);
     color: var(--text-faint);
+    white-space: nowrap;
   }
-  .check {
+  .overlay-opts {
     display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .opt {
+    display: inline-flex;
     align-items: center;
+    gap: 6px;
+    min-height: 28px;
+    padding: 0 10px 0 8px;
+    border-radius: 999px;
+    font-size: var(--fs-small);
+    font-weight: 600;
+    color: var(--text-dim);
+    background: var(--bg-active);
+    border: 1px solid var(--line-strong);
+    cursor: pointer;
+  }
+  .opt.on {
+    color: var(--accent);
+    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+    background: color-mix(in srgb, var(--accent) 12%, var(--bg-active));
+  }
+  .opt input {
+    margin: 0;
+    accent-color: var(--accent);
+  }
+  .opt:has(input:disabled) {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .overlay-mock {
+    position: absolute;
+    left: 4%;
+    bottom: 6%;
+    max-width: 60%;
+    display: flex;
+    align-items: flex-end;
     gap: 8px;
-    font-size: 12.5px;
+    opacity: 0.6;
+    pointer-events: none;
+  }
+  .overlay-mock img,
+  .mock-cover {
+    width: 44px;
+    height: 44px;
+    flex: none;
+    border-radius: 6px;
+    object-fit: cover;
+    background: rgb(255 255 255 / 25%);
+  }
+  .mock-text {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    color: #fff;
+    text-shadow: 0 1px 4px rgb(0 0 0 / 70%);
+  }
+  .mock-text i {
+    width: 18px;
+    height: 3px;
+    margin-bottom: 4px;
+    background: var(--accent);
+  }
+  .mock-text b,
+  .mock-text small {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .mock-text b {
+    font-size: var(--fs-emph);
+  }
+  .mock-text small {
+    font-size: var(--fs-small);
+    opacity: 0.8;
   }
   .sync {
     display: flex;
@@ -476,7 +591,7 @@
   .sync span {
     width: 64px;
     text-align: right;
-    font-size: 12px;
+    font-size: var(--fs-small);
   }
   .btn {
     display: inline-flex;
@@ -502,7 +617,7 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
-    font-size: 12px;
+    font-size: var(--fs-small);
   }
   .saved li {
     display: flex;
@@ -518,7 +633,7 @@
     color: var(--accent);
     text-decoration: underline;
     background: none;
-    font-size: 12px;
+    font-size: var(--fs-small);
   }
   /* Compact floating window while filming. */
   .backdrop.mini {
@@ -539,7 +654,7 @@
   .mini header .icon-btn,
   .mini :global(h3),
   .mini .formats,
-  .mini .check,
+  .mini .overlay-opts,
   .mini .facts,
   .mini .hint,
   .mini .field,
@@ -547,7 +662,7 @@
     display: none;
   }
   .mini h2 {
-    font-size: 13px;
+    font-size: var(--fs-body);
   }
   .mini .badge {
     width: 28px;
@@ -563,12 +678,12 @@
   }
   .mini .rec {
     height: 38px;
-    font-size: 13px;
+    font-size: var(--fs-body);
   }
   .mini .rec-badge {
     top: 8px;
     right: 8px;
-    font-size: 11px;
+    font-size: var(--fs-small);
   }
   /* Keep the 16:9 preview short enough that the controls beside it stay on
      screen on small windows (960×600 minimum). */

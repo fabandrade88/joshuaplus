@@ -126,23 +126,23 @@
   }
   h1 {
     margin: 0;
-    font-size: 18px;
+    font-size: var(--fs-title);
     letter-spacing: -0.02em;
     color: var(--accent);
   }
   .hero p {
     margin: 2px 0 0;
-    font-size: 12px;
+    font-size: var(--fs-small);
     color: var(--text-dim);
   }
   .version {
     font-family: var(--mono);
-    font-size: 11.5px;
+    font-size: var(--fs-small);
     color: var(--text-faint);
   }
   .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 10px;
   }
   .card {
@@ -181,7 +181,7 @@
   }
   h2 {
     margin: 0;
-    font-size: 11px;
+    font-size: var(--fs-label);
     font-weight: 800;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -189,17 +189,17 @@
   }
   .card p {
     margin: 0;
-    font-size: 12.5px;
+    font-size: var(--fs-body);
     color: var(--text-dim);
   }
   .card .big {
-    font-size: 15px;
+    font-size: var(--fs-emph);
     font-weight: 800;
     color: var(--text);
   }
   code {
     font-family: var(--mono);
-    font-size: 11.5px;
+    font-size: var(--fs-small);
     color: var(--text);
     overflow-wrap: anywhere;
     user-select: text;
@@ -212,7 +212,7 @@
   .small {
     height: 26px;
     padding: 0 10px;
-    font-size: 12px;
+    font-size: var(--fs-body);
   }
   .ghost {
     background: transparent;
@@ -233,14 +233,14 @@
   }
   .who {
     min-width: 0;
-    font-size: 12.5px;
+    font-size: var(--fs-body);
   }
   .people strong {
     display: block;
   }
   .people small {
     display: block;
-    font-size: 11px;
+    font-size: var(--fs-small);
     color: var(--text-faint);
   }
   .avatar {
@@ -250,14 +250,14 @@
     width: 28px;
     height: 28px;
     border-radius: 50%;
-    font-size: 11px;
+    font-size: var(--fs-label);
     font-weight: 800;
     color: var(--accent-ink);
     background: var(--c);
   }
   .link {
     align-self: flex-start;
-    font-size: 12px;
+    font-size: var(--fs-small);
     font-weight: 700;
     text-align: left;
     color: var(--c);
@@ -278,7 +278,7 @@
     align-items: baseline;
     padding: 4px 0;
     border-bottom: 1px solid var(--line);
-    font-size: 12px;
+    font-size: var(--fs-small);
   }
   dt,
   dd {
@@ -293,10 +293,15 @@
   }
   .lic {
     font-family: var(--mono);
-    font-size: 10.5px;
+    font-size: var(--fs-small);
     color: var(--text-faint);
     text-align: right;
     white-space: nowrap;
+  }
+  @media (max-width: 1180px) {
+    .grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
   }
   @media (max-width: 1100px) {
     .about {

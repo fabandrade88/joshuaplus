@@ -80,7 +80,7 @@
     position: absolute;
     right: 0;
     translate: 0 50%;
-    font-size: 8.5px;
+    font-size: 11px; /* fader scale, beside a 76 px strip */
     font-family: var(--mono);
     color: var(--text-faint);
   }

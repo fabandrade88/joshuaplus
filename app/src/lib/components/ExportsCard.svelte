@@ -104,21 +104,26 @@
   }
   .name {
     flex: 1;
-    font-size: 12.5px;
+    min-width: 0;
+    font-size: var(--fs-body);
     font-weight: 700;
+    line-height: 1.3;
     color: var(--text);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    overflow-wrap: break-word;
   }
   .pct {
-    font-size: 11.5px;
+    font-size: var(--fs-small);
   }
   .thumb {
     border-radius: 8px;
     overflow: hidden;
     background: #000;
     aspect-ratio: 16 / 9;
+  }
+  @media (max-height: 760px) {
+    .thumb {
+      width: 60%;
+    }
   }
   .thumb :global(video) {
     display: block;
@@ -127,7 +132,7 @@
     object-fit: cover;
   }
   .stage {
-    font-size: 11.5px;
+    font-size: var(--fs-small);
     color: var(--text-dim);
   }
   .stage.ok {
@@ -153,7 +158,7 @@
   }
   .link {
     padding: 0;
-    font-size: 12px;
+    font-size: var(--fs-small);
     color: var(--accent);
     text-decoration: underline;
     background: none;

@@ -137,7 +137,7 @@
   }
   h1 {
     margin: 0;
-    font-size: 24px;
+    font-size: var(--fs-h1);
     letter-spacing: -0.03em;
   }
   .search {
@@ -251,7 +251,7 @@
     gap: 6px;
     padding: 5px 11px;
     border-radius: 999px;
-    font-size: 12px;
+    font-size: var(--fs-small);
     font-weight: 700;
     color: var(--c);
     background: color-mix(in srgb, var(--c) 14%, transparent);
@@ -357,7 +357,7 @@
     background: color-mix(in srgb, var(--accent) 12%, var(--bg-panel));
     color: var(--accent);
     font-family: var(--mono);
-    font-size: 12px;
+    font-size: var(--fs-small);
     font-weight: 700;
   }
   .empty {

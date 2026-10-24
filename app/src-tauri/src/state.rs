@@ -90,6 +90,19 @@ impl AppState {
         self.workspace.read().unwrap_or_else(PoisonError::into_inner).clone().ok_or_else(ApiError::no_workspace)
     }
 
+    /// Folder for exports: the one chosen in Settings if it still exists (a
+    /// real directory), otherwise `<workspace>/Exports`.
+    pub fn export_dir(&self) -> ApiResult<PathBuf> {
+        let custom = lock(&self.settings).export_dir.clone();
+        if let Some(dir) = custom
+            && std::fs::symlink_metadata(&dir).is_ok_and(|m| m.is_dir() && !m.file_type().is_symlink())
+            && let Ok(dir) = dir.canonicalize()
+        {
+            return Ok(dir);
+        }
+        Ok(self.workspace()?.exports_dir()?)
+    }
+
     pub fn shared(&self) -> ApiResult<Arc<SharedState>> {
         self.shared.read().unwrap_or_else(PoisonError::into_inner).clone().ok_or_else(ApiError::no_audio)
     }

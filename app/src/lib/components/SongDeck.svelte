@@ -307,7 +307,7 @@
     background: var(--bg);
     color: var(--text);
     font: inherit;
-    font-size: 18px;
+    font-size: var(--fs-title);
     font-weight: 800;
     user-select: text;
   }
@@ -321,7 +321,7 @@
     border-radius: 50%;
     border: 1px solid var(--line-strong);
     color: var(--text-faint);
-    font-size: 11px;
+    font-size: var(--fs-small);
     font-weight: 800;
     font-family: Georgia, serif;
     font-style: italic;
@@ -355,7 +355,7 @@
     grid-template-columns: auto 1fr;
     gap: 4px 12px;
     margin: 0;
-    font-size: 12px;
+    font-size: var(--fs-small);
   }
   dt {
     color: var(--text-faint);
@@ -368,7 +368,7 @@
   }
   .none {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--fs-small);
     color: var(--text-faint);
   }
   .back {
@@ -377,7 +377,7 @@
     gap: 4px;
     max-width: 100%;
     white-space: nowrap;
-    font-size: 12px;
+    font-size: var(--fs-small);
     font-weight: 600;
     color: var(--text-faint);
   }
@@ -408,7 +408,7 @@
     height: 22px;
     padding: 0 8px;
     border-radius: 999px;
-    font-size: 11px;
+    font-size: var(--fs-small);
     font-weight: 700;
     color: var(--text-faint);
     border: 1px solid var(--line-strong);
@@ -418,7 +418,7 @@
     border-color: color-mix(in srgb, var(--accent) 50%, transparent);
   }
   .next {
-    font-size: 12px;
+    font-size: var(--fs-small);
     color: var(--text-dim);
     white-space: nowrap;
     overflow: hidden;
@@ -579,7 +579,7 @@
     flex-direction: column;
   }
   .k {
-    font-size: 9.5px;
+    font-size: var(--fs-label);
     font-weight: 700;
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -593,7 +593,7 @@
     color: var(--accent);
   }
   .v.small {
-    font-size: 18px;
+    font-size: var(--fs-title);
     padding-top: 7px;
     color: var(--text-dim);
   }
@@ -659,7 +659,7 @@
       gap: 6px;
     }
     .v {
-      font-size: 24px;
+      font-size: var(--fs-h1);
     }
     .v.small {
       font-size: 16px;
@@ -699,7 +699,7 @@
       height: 60px;
     }
     h1 {
-      font-size: 19px;
+      font-size: var(--fs-title);
       margin: 0 0 4px;
     }
     .up-next {

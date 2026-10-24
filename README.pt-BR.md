@@ -105,7 +105,14 @@ Capa e metadados (artista, álbum, ano…) vêm do arquivo. Só a capa aparece; 
 
   Use o **MIDI learn** para mapear qualquer pad.
 
-### 5. Ajuda e Sobre
+### 5. Gravar, exportar e filmar
+
+- **Grave cada entrada em uma faixa própria.** Aperte ● na faixa da entrada para armá-la e depois o botão vermelho **REC**. A música toca com a contagem e cada entrada armada grava no seu take, no grupo **Gravações**, já alinhado com a música (a latência dos equipamentos e a diferença de clock entre interfaces são corrigidas). Cada take tem fader, pan, mute, solo e apagar.
+- **Exportar áudio.** Gera a mixagem de todas as faixas ativas (música + gravações) em WAV 24-bit, pelo mesmo mixer que você ouve. O click só entra se estiver ligado.
+- **Estúdio de vídeo.** No modo câmera do REC, grave você com a webcam enquanto a música toca (as entradas armadas gravam junto). Exporte para **YouTube 16:9**, **Shorts/Reels/TikTok 9:16** e **Instagram 1:1 / 4:5** de uma vez: MP4 (H.264 + AAC) com a música e seus instrumentos, **nunca o click**. Sobreposição opcional com capa do álbum, nome da música e artista (cada um pode ser desligado). A exportação roda em segundo plano, com progresso na barra lateral.
+- **Onde tudo fica salvo.** Na primeira abertura, um clique usa **Música › Joshua+**, ou escolha qualquer pasta. Nas Configurações dá para mover a biblioteca inteira para outra pasta ou disco e escolher uma pasta separada para as exportações.
+
+### 6. Ajuda e Sobre
 
 | Como usar | Sobre |
 |---|---|

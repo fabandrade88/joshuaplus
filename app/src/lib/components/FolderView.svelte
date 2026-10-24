@@ -125,7 +125,7 @@
   .titles p {
     margin: 0;
     color: var(--text-faint);
-    font-size: 12.5px;
+    font-size: var(--fs-small);
   }
   .actions {
     display: flex;
@@ -145,14 +145,14 @@
     border: 1.5px dashed var(--line-strong);
     border-radius: var(--radius);
     color: var(--text-dim);
-    font-size: 12.5px;
+    font-size: var(--fs-small);
   }
   .drop-hint :global(svg) {
     color: var(--c, var(--accent));
   }
   code {
     font-family: var(--mono);
-    font-size: 11px;
+    font-size: var(--fs-small);
     color: var(--text-faint);
     user-select: text;
     white-space: nowrap;

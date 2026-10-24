@@ -210,14 +210,14 @@
     min-width: 0;
   }
   .card-name {
-    font-size: 14px;
+    font-size: var(--fs-body);
     font-weight: 800;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
   .meta {
-    font-size: 11.5px;
+    font-size: var(--fs-small);
     color: var(--text-faint);
   }
   .quick-play {

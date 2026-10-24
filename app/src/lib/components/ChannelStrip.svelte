@@ -135,7 +135,7 @@
   }
   .name {
     max-width: 100%;
-    font-size: 11.5px;
+    font-size: var(--fs-small);
     font-weight: 700;
     white-space: nowrap;
     overflow: hidden;
@@ -150,11 +150,11 @@
   }
   .readout {
     font-family: var(--mono);
-    font-size: 9.5px;
+    font-size: 11px; /* dense strip readout */
     color: var(--text-faint);
   }
   .db {
-    font-size: 10.5px;
+    font-size: 11px; /* dense strip readout */
     color: var(--text-dim);
   }
   .fader-zone {
@@ -171,7 +171,7 @@
     width: 30px;
     height: 24px;
     border-radius: 6px;
-    font-size: 11px;
+    font-size: var(--fs-label);
     font-weight: 800;
     color: var(--text-dim);
     background: #222838;
@@ -203,7 +203,7 @@
     width: 18px;
     height: 18px;
     border-radius: 50%;
-    font-size: 13px;
+    font-size: var(--fs-body);
     line-height: 1;
     color: var(--text-faint);
     background: transparent;

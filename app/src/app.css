@@ -13,7 +13,7 @@
 
   --text: #e9ecf3;
   --text-dim: #9aa3b5;
-  --text-faint: #646d80;
+  --text-faint: #8089a0; /* ≥ 4.6:1 on every background */
 
   --accent: #ffb020;
   --accent-strong: #ffc552;
@@ -45,6 +45,15 @@
   --font: "Inter", "SF Pro Text", -apple-system, "Segoe UI", system-ui, Roboto, "Helvetica Neue", Arial, sans-serif;
   --mono: "JetBrains Mono", "SF Mono", ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
 
+  /* Type scale. Nothing below --fs-label, and --fs-label only for short
+     UPPERCASE labels, tags and chips (bold, letter-spaced). */
+  --fs-label: 11.5px;
+  --fs-small: 12.5px; /* secondary text, hints, captions, meta, table cells */
+  --fs-body: 14px; /* default UI text, buttons, inputs, list items */
+  --fs-emph: 15px;
+  --fs-title: 18px;
+  --fs-h1: 24px;
+
   --sidebar-w: 300px;
   --lane-header-w: 248px;
   --lane-h: 84px;
@@ -73,7 +82,7 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font);
-  font-size: 13px;
+  font-size: var(--fs-body);
   line-height: 1.4;
   -webkit-font-smoothing: antialiased;
   user-select: none;
@@ -162,14 +171,14 @@ select:focus-visible {
   border-radius: 999px;
   background: var(--bg-active);
   color: var(--text-dim);
-  font-size: 12px;
+  font-size: var(--fs-small);
   font-weight: 600;
   white-space: nowrap;
 }
 
 .section-title {
   margin: 0;
-  font-size: 11px;
+  font-size: var(--fs-label);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;

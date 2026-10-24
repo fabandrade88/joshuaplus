@@ -38,6 +38,25 @@ interface Clip {
   songAtStart: number;
 }
 
+/** Parts of the overlay burned into exported clips. */
+export type Overlay = { cover: boolean; title: boolean; artist: boolean };
+
+const OVERLAY_KEY = "joshua.videoOverlay";
+
+function readOverlay(): Overlay {
+  const all: Overlay = { cover: true, title: true, artist: true };
+  try {
+    const v: unknown = JSON.parse(localStorage.getItem(OVERLAY_KEY) ?? "null");
+    if (v && typeof v === "object") {
+      const o = v as Partial<Record<keyof Overlay, unknown>>;
+      return { cover: o.cover !== false, title: o.title !== false, artist: o.artist !== false };
+    }
+  } catch {
+    // Unreadable or blocked storage: everything on.
+  }
+  return all;
+}
+
 class VideoStudio {
   phase = $state<StudioPhase>("idle");
   cameras = $state<Camera[]>([]);
@@ -45,7 +64,8 @@ class VideoStudio {
   stream = $state<MediaStream | null>(null);
   cameraError = $state<string | null>(null);
   formats = $state<Record<FormatId, boolean>>({ youtube: true, vertical: true, square: false, portrait: false });
-  showTitle = $state(true);
+  /** What the export burns into the picture; each part can be turned off. */
+  overlay = $state<Overlay>(readOverlay());
   /** Picture vs. sound adjustment in ms (negative = sound earlier). */
   syncMs = $state(DEFAULT_SYNC_MS);
   elapsed = $state(0);
@@ -63,6 +83,17 @@ class VideoStudio {
     typeof MediaRecorder === "undefined" ? null : pickContainer((m) => MediaRecorder.isTypeSupported(m));
 
   private recorder: MediaRecorder | null = null;
+
+  /** Turns one overlay part on or off and remembers the choice. */
+  setOverlay(part: keyof Overlay, on: boolean): void {
+    this.overlay[part] = on;
+    try {
+      localStorage.setItem(OVERLAY_KEY, JSON.stringify(this.overlay));
+    } catch {
+      // Storage unavailable: the choice lasts for this session only.
+    }
+  }
+
   private chunks: Blob[] = [];
   private t0 = 0;
   private samples: SyncSample[] = [];
@@ -361,9 +392,11 @@ class VideoStudio {
       const src = ctx.createBufferSource();
       src.buffer = buffer;
       src.connect(dest);
-      const title = app.song?.project.title ?? "";
-      const artist = app.song?.project.metadata?.artist ?? "";
-      const cover = this.showTitle ? await loadImage(app.song?.cover ?? null) : null;
+      const ov = { ...this.overlay };
+      const title = ov.title ? (app.song?.project.title ?? "") : "";
+      const artist = ov.artist ? (app.song?.project.metadata?.artist ?? "") : "";
+      const cover = ov.cover ? await loadImage(app.song?.cover ?? null) : null;
+      const withOverlay = !!(title || artist || cover);
 
       const outputs = await Promise.all(
         formats.map(async (f) => {
@@ -401,7 +434,7 @@ class VideoStudio {
         for (const o of outputs) {
           const { sx, sy, sw, sh } = coverCrop(vw, vh, o.f.width, o.f.height);
           o.g.drawImage(video, sx, sy, sw, sh, 0, 0, o.f.width, o.f.height);
-          if (this.showTitle && title) drawTitle(o.g, o.f, title, artist, cover);
+          if (withOverlay) drawTitle(o.g, o.f, title, artist, cover);
         }
         this.progress = Math.min(1, video.currentTime / Math.max(clip.durationSecs, 0.1));
       };
@@ -583,7 +616,9 @@ export function loadImage(src: string | null): Promise<HTMLImageElement | null> 
   });
 }
 
-/** Album cover, song title and artist in the lower left, over a soft shade. */
+/** Album cover, song title and artist in the lower left, over a soft shade.
+ *  Any part may be missing (empty text / null cover); with nothing to show it
+ *  draws nothing at all. */
 export function drawTitle(
   g: CanvasRenderingContext2D,
   f: VideoFormat,
@@ -591,6 +626,7 @@ export function drawTitle(
   artist: string,
   cover: HTMLImageElement | null,
 ): void {
+  if (!title && !artist && !cover) return;
   // Vertical platforms (Shorts, Reels, TikTok) cover the bottom ~20% with
   // their own buttons and captions: lift the overlay into the safe area
   // and make it a little larger on the tall frame.
@@ -606,7 +642,7 @@ export function drawTitle(
   g.fillRect(0, shadeTop, f.width, f.height - shadeTop);
   const base = f.height - bottom; // text baseline area ends here
 
-  // Cover: a rounded square whose bottom lines up with the artist line.
+  // Cover: a rounded square whose bottom lines up with the last text line.
   const size = 132 * unit;
   let textX = pad;
   if (cover) {
@@ -628,20 +664,27 @@ export function drawTitle(
     g.restore();
     textX = pad + size + 26 * unit;
   }
+  if (!title && !artist) return;
 
   const maxW = f.width - textX - pad;
+  const font = "system-ui, -apple-system, Segoe UI, sans-serif";
   g.textBaseline = "alphabetic";
-  g.fillStyle = "#ffffff";
-  g.font = `800 ${Math.round(46 * unit)}px system-ui, -apple-system, Segoe UI, sans-serif`;
-  const y = base - pad - (artist ? 40 * unit : 0);
-  g.fillText(title, textX, y, maxW);
+  // The last line sits on the baseline; the title goes above the artist.
+  let top = base - pad;
   if (artist) {
     g.fillStyle = "rgba(255,255,255,0.75)";
-    g.font = `600 ${Math.round(30 * unit)}px system-ui, -apple-system, Segoe UI, sans-serif`;
-    g.fillText(artist, textX, base - pad, maxW);
+    g.font = `600 ${Math.round(30 * unit)}px ${font}`;
+    g.fillText(artist, textX, top, maxW);
   }
+  if (title) {
+    if (artist) top -= 40 * unit;
+    g.fillStyle = "#ffffff";
+    g.font = `800 ${Math.round(46 * unit)}px ${font}`;
+    g.fillText(title, textX, top, maxW);
+  }
+  // Accent bar above the first line of text.
   g.fillStyle = "#ffb000";
-  g.fillRect(textX, y - 62 * unit, 56 * unit, 6 * unit);
+  g.fillRect(textX, top - (title ? 62 : 48) * unit, 56 * unit, 6 * unit);
 }
 
 export const studio = new VideoStudio();

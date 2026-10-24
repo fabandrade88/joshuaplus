@@ -22,6 +22,10 @@ export interface AppInfo {
   audio: { device: string; sampleRate: number; channels: number } | null;
   audioError: string | null;
   outputDevice: string | null;
+  exportDir: string | null;
+  exportDirCustom: boolean;
+  suggestedWorkspace: string | null;
+  musicDir: string | null;
 }
 
 export interface SongSummary {

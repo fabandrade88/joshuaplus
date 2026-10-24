@@ -68,7 +68,7 @@
     background: var(--bg);
     color: var(--text);
     font: inherit;
-    font-size: 14px;
+    font-size: var(--fs-body);
     user-select: text;
   }
   .colors {

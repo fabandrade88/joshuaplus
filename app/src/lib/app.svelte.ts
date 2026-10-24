@@ -375,16 +375,53 @@ class AppStore {
     if (this.song) await this.openSong(this.song.project.id, false, this.view.kind === "song", true);
   }
 
+  /** New library folder picked in Settings, waiting for "move" or "empty". */
+  pendingWorkspace = $state<string | null>(null);
+  movingLibrary = $state(false);
+
+  /** Folder picker that opens in the Music folder. */
+  private async pickFolder(start: string | null | undefined): Promise<string | null> {
+    const dir = await open({ directory: true, multiple: false, recursive: false, defaultPath: start ?? undefined });
+    return typeof dir === "string" ? dir : null;
+  }
+
+  /** Welcome screen: use the recommended `<Music>/Joshua+` folder. */
+  async useSuggestedWorkspace(): Promise<void> {
+    const dir = this.info?.suggestedWorkspace;
+    if (dir) await this.applyWorkspace(dir, false);
+  }
+
+  /** Picks a library folder. With songs in the current library, Settings
+   *  then asks whether to move them there or start an empty library. */
   async chooseWorkspace(): Promise<void> {
-    const dir = await open({ directory: true, multiple: false, recursive: false });
-    if (typeof dir !== "string") return;
-    const ok = await this.guard(() => api.setWorkspace(dir));
+    const dir = await this.pickFolder(this.info?.musicDir);
+    if (!dir || dir === this.info?.workspace) return;
+    if (this.hasWorkspace && this.songs.length > 0) this.pendingWorkspace = dir;
+    else await this.applyWorkspace(dir, false);
+  }
+
+  async applyWorkspace(dir: string, move: boolean): Promise<void> {
+    this.movingLibrary = move;
+    const ok = await this.guard(() => api.setWorkspace(dir, move));
+    this.movingLibrary = false;
+    this.pendingWorkspace = null;
     if (ok === undefined) return;
     this.song = null;
     this.transport = idleTransport();
     this.goHome();
     await this.refreshInfo();
     await this.refreshLibrary();
+    if (move) this.notify(i18n.t("workspace.moved"));
+  }
+
+  async chooseExportDir(): Promise<void> {
+    const dir = await this.pickFolder(this.info?.exportDir ?? this.info?.musicDir);
+    if (!dir) return;
+    if ((await this.guard(() => api.setExportDir(dir))) !== undefined) await this.refreshInfo();
+  }
+
+  async resetExportDir(): Promise<void> {
+    if ((await this.guard(() => api.setExportDir(null))) !== undefined) await this.refreshInfo();
   }
 
   // ── Import jobs ──────────────────────────────────────────────────────────

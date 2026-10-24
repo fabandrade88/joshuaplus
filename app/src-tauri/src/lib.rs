@@ -104,6 +104,7 @@ pub fn run() {
             commands::set_record_offset,
             commands::export_mix,
             commands::reveal_export,
+            commands::set_export_dir,
             video::render_clip_audio,
             video::video_save_begin,
             video::video_save_chunk,

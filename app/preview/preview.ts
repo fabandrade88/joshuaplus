@@ -136,6 +136,10 @@ mockIPC(
           audio: { device: "MacBook Pro Speakers", sampleRate: 48000, channels: 2 },
           audioError: null,
           outputDevice: null,
+          exportDir: "/Users/musician/Music/Joshua+/Exports",
+          exportDirCustom: false,
+          suggestedWorkspace: "/Users/musician/Music/Joshua+",
+          musicDir: "/Users/musician/Music",
         };
       case "list_songs":
         return songs;
@@ -185,7 +189,10 @@ if (state !== "welcome") {
   await emit("job-update", { id: 2, fileName: "Asa Branca.flac", status: "queued", stage: null, progress: 0, error: null, songId: null, folder: null });
 }
 if (state === "folder") app.openFolder("igreja");
-if (state === "settings") app.settingsOpen = true;
+if (state === "settings") {
+  app.settingsOpen = true;
+  if (params.get("pending") === "1") app.pendingWorkspace = "/Volumes/SSD Externo/Joshua+";
+}
 if (state === "song" || state === "away" || state === "video") {
   app.browsing = "banda";
   await app.openSong(project.id);
@@ -233,7 +240,10 @@ if (state === "video") {
       grad.addColorStop(1, "#1a1d24");
       g.fillStyle = grad;
       g.fillRect(0, 0, f.width, f.height);
-      drawTitle(g, f, "Left For Good", "Bad Omens", cover);
+      // ?combo=all|cover|text|artist|title|none picks the overlay parts.
+      const combo = params.get("combo") ?? "all";
+      const on = (p: string) => combo === "all" || combo === p || (combo === "text" && (p === "title" || p === "artist"));
+      drawTitle(g, f, on("title") ? "Left For Good" : "", on("artist") ? "Bad Omens" : "", on("cover") ? cover : null);
       c.style.height = "560px";
       wrap.append(c);
     }
@@ -339,6 +349,29 @@ if (state === "video") {
     log.push(`calls=${calls.join(",")} err=${studio.exportError}`);
     document.title = log.join(" | ");
   }
+  if (params.get("phase") === "review") {
+    // Review screen with a dummy clip (layout checks only).
+    const { studio } = await import("../src/lib/video/studio.svelte");
+    const blob = new Blob([new Uint8Array(1000)], { type: "video/mp4" });
+    studio.clip = { blob, durationSecs: 5, songAtStart: 10 };
+    studio.clipUrl = URL.createObjectURL(blob);
+    studio.phase = "review";
+  }
+  if (params.get("phase") === "exporting" || params.get("phase") === "exported") {
+    // Sidebar export cards (audio mixdown + video clips), studio closed.
+    const { studio } = await import("../src/lib/video/studio.svelte");
+    app.videoOpen = false;
+    await new Promise((r) => setTimeout(r, 300)); // let the studio close first
+    app.exportProgress = 0.37;
+    studio.exportFormats = ["youtube", "vertical"];
+    if (params.get("phase") === "exporting") {
+      studio.phase = "exporting";
+      studio.exportStage = "encoding";
+      studio.progress = 0.42;
+    } else {
+      studio.saved = ["/Users/musician/Music/Joshua+/exports/a.mp4", "/Users/musician/Music/Joshua+/exports/b.mp4"];
+    }
+  }
   if (params.get("phase") === "recording") {
     const { studio } = await import("../src/lib/video/studio.svelte");
     studio.phase = "recording";
@@ -359,3 +392,9 @@ if (state === "gear") {
 if (state === "help") app.view = { kind: "help" };
 
 if (state === "about") app.view = { kind: "about" };
+
+// Any state: show a toast with a long message (layout checks).
+if (params.get("toast") === "1") {
+  const { i18n } = await import("../src/lib/i18n/index.svelte");
+  setTimeout(() => app.notify(i18n.t("gear.monitorUnavailable", { out: 48000 }) + " " + i18n.t("error.unknown")), 300);
+}

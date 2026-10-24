@@ -126,9 +126,8 @@ fn to_i16(x: f32) -> i16 {
 #[tauri::command]
 pub fn video_save_begin(state: State<'_, AppState>, tag: String, ext: String) -> ApiResult<u32> {
     check_clip_name(&tag, &ext)?;
-    let ws = state.workspace()?;
     let title = lock(&state.current).as_ref().map(|s| s.project.title.clone()).ok_or_else(ApiError::no_song)?;
-    let path = ws.new_export_path(&title, &tag, &ext)?;
+    let path = joshua_core::workspace::new_export_path_in(&state.export_dir()?, &title, &tag, &ext)?;
     let part = PathBuf::from(format!("{}.part", path.display()));
     let _ = std::fs::remove_file(&part);
     let file = joshua_core::security::create_exclusive(&part, false)?;

@@ -72,6 +72,8 @@ pub struct Settings {
     /// Manual fine-tuning of take alignment, in milliseconds (positive moves
     /// takes earlier), on top of the measured device latency.
     pub record_offset_ms: f32,
+    /// Where exports go; `None` = `<workspace>/Exports`.
+    pub export_dir: Option<PathBuf>,
 }
 
 impl Default for Settings {
@@ -85,6 +87,7 @@ impl Default for Settings {
             inputs: Vec::new(),
             drums: DrumSettings::default(),
             record_offset_ms: 0.0,
+            export_dir: None,
         }
     }
 }

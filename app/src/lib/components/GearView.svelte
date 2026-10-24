@@ -302,14 +302,14 @@
   }
   .head h1 {
     margin: 0;
-    font-size: 18px;
+    font-size: var(--fs-title);
     letter-spacing: -0.02em;
     color: var(--accent);
   }
   .head p {
     margin: 2px 0 0;
     color: var(--text-dim);
-    font-size: 12px;
+    font-size: var(--fs-small);
   }
   .summary {
     display: flex;
@@ -324,7 +324,7 @@
     max-width: 260px;
     padding: 3px 9px;
     border-radius: 999px;
-    font-size: 11.5px;
+    font-size: var(--fs-small);
     font-weight: 700;
     color: var(--c);
     background: color-mix(in srgb, var(--c) 14%, transparent);
@@ -343,8 +343,8 @@
   .hint {
     margin: 0;
     color: var(--text-faint);
-    font-size: 11.5px;
-    line-height: 1.4;
+    font-size: var(--fs-small);
+    line-height: 1.45;
   }
   .panel {
     position: relative;
@@ -375,7 +375,7 @@
   }
   .panel-head h2 {
     margin: 0;
-    font-size: 14px;
+    font-size: var(--fs-emph);
   }
   .badge {
     flex: none;
@@ -389,7 +389,7 @@
   }
   h3 {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--fs-body);
     white-space: nowrap;
     color: color-mix(in srgb, var(--c) 65%, var(--text));
   }
@@ -402,7 +402,7 @@
     background: var(--bg);
     color: var(--text);
     font: inherit;
-    font-size: 12.5px;
+    font-size: var(--fs-body);
   }
   select:focus {
     border-color: var(--c, var(--accent));
@@ -419,7 +419,7 @@
     border-radius: var(--radius-s);
     border: 1.5px dashed var(--line-strong);
     color: var(--text-faint);
-    font-size: 12.5px;
+    font-size: var(--fs-body);
     text-align: center;
   }
   .inputs {
@@ -464,7 +464,7 @@
   .name {
     min-width: 0;
     color: var(--text);
-    font-size: 12.5px;
+    font-size: var(--fs-body);
     font-weight: 700;
     white-space: nowrap;
     overflow: hidden;
@@ -472,7 +472,7 @@
   }
   .meta {
     margin-left: auto;
-    font-size: 10px;
+    font-size: var(--fs-small);
     font-family: var(--mono);
     color: var(--text-faint);
     white-space: nowrap;
@@ -502,7 +502,7 @@
     height: 24px;
     padding: 0 9px;
     border-radius: 999px;
-    font-size: 11.5px;
+    font-size: var(--fs-small);
     font-weight: 600;
     color: var(--text-dim);
     background: var(--bg-active);
@@ -527,15 +527,15 @@
     cursor: not-allowed;
   }
   .note-text {
-    font-size: 10.5px;
-    line-height: 1.35;
+    font-size: var(--fs-small);
+    line-height: 1.45;
     color: var(--text-faint);
   }
   .tag {
     align-self: flex-start;
     padding: 2px 8px;
     border-radius: 6px;
-    font-size: 11px;
+    font-size: var(--fs-small);
     white-space: nowrap;
     color: var(--text-dim);
     background: var(--bg-active);
@@ -557,8 +557,8 @@
     margin: 0;
     padding: 6px 10px;
     border-radius: var(--radius-s);
-    font-size: 11.5px;
-    line-height: 1.4;
+    font-size: var(--fs-small);
+    line-height: 1.45;
     color: var(--ok);
     background: color-mix(in srgb, var(--ok) 10%, transparent);
   }
@@ -572,7 +572,7 @@
   }
   .note {
     flex: none;
-    font-size: 10.5px;
+    font-size: var(--fs-small);
     color: var(--text-faint);
     margin: 0;
     font-family: var(--mono);
@@ -592,7 +592,7 @@
     min-width: 160px;
   }
   .field span {
-    font-size: 10px;
+    font-size: var(--fs-label);
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -609,7 +609,7 @@
   }
   .models {
     min-width: 0;
-    font-size: 11px;
+    font-size: var(--fs-small);
     color: var(--text-faint);
     white-space: nowrap;
     overflow: hidden;
@@ -645,9 +645,9 @@
   .pad {
     position: relative;
     min-width: 0;
-    height: 36px;
-    padding: 0 6px;
-    border-radius: 7px;
+    min-height: 44px;
+    padding: 3px 6px;
+    border-radius: 8px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -682,14 +682,20 @@
   }
   .pad-name {
     max-width: 100%;
-    font-size: 11px;
+    font-size: var(--fs-small);
     font-weight: 700;
-    white-space: nowrap;
+    text-align: center;
+    /* Long names (e.g. "Hi-Hat geschlossen") take a second line. */
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
     overflow: hidden;
-    text-overflow: ellipsis;
+    hyphens: auto;
+    overflow-wrap: anywhere;
   }
   .pad-notes {
-    font-size: 9.5px;
+    font-size: 11.5px; /* note numbers under the pad name */
     font-family: var(--mono);
     color: var(--text-faint);
   }
@@ -703,7 +709,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 11.5px;
+    font-size: var(--fs-small);
     color: var(--text-dim);
     margin-right: auto;
     white-space: nowrap;
@@ -721,7 +727,7 @@
     background: var(--stem-drums);
   }
   .learning-msg {
-    font-size: 12px;
+    font-size: var(--fs-body);
     color: var(--accent);
     font-weight: 700;
   }
@@ -729,7 +735,7 @@
     flex: none;
     height: 28px;
     padding: 0 12px;
-    font-size: 12px;
+    font-size: var(--fs-body);
   }
   .btn:disabled {
     opacity: 0.45;

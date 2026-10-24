@@ -47,6 +47,12 @@ pub struct AppInfo {
     pub audio: Option<AudioInfo>,
     pub audio_error: Option<String>,
     pub output_device: Option<String>,
+    /// Effective export folder, and whether the user chose it.
+    pub export_dir: Option<String>,
+    pub export_dir_custom: bool,
+    /// Recommended library location (`<Music>/Joshua+`) and the Music folder.
+    pub suggested_workspace: Option<String>,
+    pub music_dir: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -113,9 +119,10 @@ fn checked_secs(secs: f64) -> ApiResult<f64> {
 }
 
 #[tauri::command]
-pub fn get_app_info(state: State<'_, AppState>) -> AppInfo {
+pub fn get_app_info(app: AppHandle, state: State<'_, AppState>) -> AppInfo {
     let settings = lock(&state.settings).clone();
     let ws = state.workspace().ok();
+    let music = app.path().audio_dir().ok();
     let audio = lock(&state.engine).as_ref().map(|e| {
         let i = e.info();
         AudioInfo { device: i.device_name.clone(), sample_rate: i.sample_rate, channels: i.channels }
@@ -132,6 +139,10 @@ pub fn get_app_info(state: State<'_, AppState>) -> AppInfo {
         audio,
         audio_error: lock(&state.engine_error).clone(),
         output_device: settings.output_device,
+        export_dir: state.export_dir().ok().map(|d| d.display().to_string()),
+        export_dir_custom: settings.export_dir.is_some(),
+        suggested_workspace: music.as_ref().map(|m| m.join("Joshua+").display().to_string()),
+        music_dir: music.map(|m| m.display().to_string()),
     }
 }
 
@@ -150,24 +161,62 @@ pub fn set_separator(state: State<'_, AppState>, separator: SeparatorChoice) -> 
     state.save_settings()
 }
 
+/// Switches the library folder. With `move_library`, the songs, folders,
+/// inbox and exports of the current library are moved there first (the
+/// destination must be empty); otherwise the folder is opened as it is (an
+/// existing Joshua+ library, or a new empty one).
 #[tauri::command]
-pub fn set_workspace(app: AppHandle, state: State<'_, AppState>, path: String) -> ApiResult<String> {
-    let path = PathBuf::from(path);
-    if !path.is_absolute() || path.parent().is_none() {
-        return Err(ApiError::invalid("choose a folder other than the filesystem root"));
-    }
-    let ws = Workspace::open(&path, joshua_core::security::Limits::default())?;
-    let root = ws.root().display().to_string();
-    flush_dirty(&state);
-    *lock(&state.current) = None;
-    if let Ok(shared) = state.shared() {
-        shared.pause();
-    }
-    *state.workspace.write().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(ws.clone());
-    lock(&state.settings).workspace = Some(ws.root().to_path_buf());
+pub async fn set_workspace(app: AppHandle, path: String, move_library: Option<bool>) -> ApiResult<String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<AppState>();
+        let path = PathBuf::from(path);
+        if !path.is_absolute() || path.parent().is_none() {
+            return Err(ApiError::invalid("choose a folder other than the filesystem root"));
+        }
+        if crate::recorder::is_recording(&state) {
+            return Err(ApiError::new("recording", "stop the recording first"));
+        }
+        let _loading = lock(&state.load_lock);
+        flush_dirty(&state);
+        // Nothing may keep using the old files while they move.
+        *lock(&state.current) = None;
+        if let Some(engine) = lock(&state.engine).as_mut() {
+            engine.shared().pause();
+            let _ = engine.load(None);
+        }
+        let ws = match (move_library.unwrap_or(false), state.workspace().ok()) {
+            (true, Some(old)) => joshua_core::workspace::move_library(&old, &path)?,
+            _ => Workspace::open(&path, joshua_core::security::Limits::default())?,
+        };
+        let root = ws.root().display().to_string();
+        *state.workspace.write().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(ws.clone());
+        lock(&state.settings).workspace = Some(ws.root().to_path_buf());
+        state.save_settings()?;
+        crate::backfill::start(app.clone());
+        Ok(root)
+    })
+    .await
+    .map_err(|_| ApiError::new("internal", "workspace change crashed"))?
+}
+
+/// Sets (or, with `None`, resets) the export folder. It must be an existing
+/// real folder; files are only ever created inside it, never overwritten.
+#[tauri::command]
+pub fn set_export_dir(state: State<'_, AppState>, path: Option<String>) -> ApiResult<Option<String>> {
+    let dir = match path {
+        None => None,
+        Some(p) => {
+            let p = PathBuf::from(p);
+            let real = std::fs::symlink_metadata(&p).is_ok_and(|m| m.is_dir() && !m.file_type().is_symlink());
+            if !p.is_absolute() || p.parent().is_none() || !real {
+                return Err(ApiError::invalid("choose an existing folder"));
+            }
+            Some(p.canonicalize().map_err(|e| ApiError::new("io", e.kind().to_string()))?)
+        }
+    };
+    lock(&state.settings).export_dir = dir;
     state.save_settings()?;
-    crate::backfill::start(app);
-    Ok(root)
+    Ok(state.export_dir().ok().map(|d| d.display().to_string()))
 }
 
 #[tauri::command]
@@ -752,7 +801,7 @@ pub async fn export_mix(app: AppHandle) -> ApiResult<String> {
         let (ws, project, rate) = flush_and_project(&state)?;
         let (session, _) = build_session(&ws, &project, rate)?;
         let end = session.length;
-        let path = ws.new_export_path(&project.title, "mix", "wav")?;
+        let path = joshua_core::workspace::new_export_path_in(&state.export_dir()?, &project.title, "mix", "wav")?;
         let mut writer = joshua_core::wav::StereoWavWriter::create(&path, rate)?;
         // ~50 updates per export, not one per rendered block.
         let last = std::cell::Cell::new(-1.0f32);
@@ -779,11 +828,10 @@ pub async fn export_mix(app: AppHandle) -> ApiResult<String> {
 }
 
 /// Shows an exported file in Finder / Explorer. Only files inside the
-/// workspace's Exports folder are accepted.
+/// current export folder are accepted.
 #[tauri::command]
 pub fn reveal_export(state: State<'_, AppState>, path: String) -> ApiResult<()> {
-    let ws = state.workspace()?;
-    let dir = ws.exports_dir()?;
+    let dir = state.export_dir()?;
     let path = PathBuf::from(path);
     let canon = path.canonicalize().map_err(|_| ApiError::new("not_found", "file not found"))?;
     joshua_core::security::ensure_inside(&dir, &canon)?;

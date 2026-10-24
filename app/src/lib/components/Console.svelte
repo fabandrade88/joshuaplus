@@ -22,9 +22,13 @@
       <div class="group" class:collapsed={app.songCollapsed}>
         <header>
           <span class="group-name">{i18n.t("console.song")}</span>
-          <button class="toggle" onclick={() => app.toggleSongCollapsed()}>
+          <button
+            class="toggle"
+            title={app.songCollapsed ? i18n.t("console.expand") : i18n.t("console.collapse")}
+            onclick={() => app.toggleSongCollapsed()}
+          >
             <Icon name={app.songCollapsed ? "plus" : "back"} size={13} />
-            {app.songCollapsed ? i18n.t("console.expand") : i18n.t("console.collapse")}
+            <span class="toggle-text">{app.songCollapsed ? i18n.t("console.expand") : i18n.t("console.collapse")}</span>
           </button>
         </header>
         <div class="strips">
@@ -62,7 +66,7 @@
         <div class="group">
           <header>
             <span class="group-name">{i18n.t("gear.inputs")}</span>
-            <button class="toggle" onclick={() => app.openGear()}><Icon name="plug" size={13} /></button>
+            <button class="toggle" title={i18n.t("gear.title")} aria-label={i18n.t("gear.title")} onclick={() => app.openGear()}><Icon name="plug" size={13} /></button>
           </header>
           <div class="strips">
             {#each app.inputs as input (input.index)}
@@ -191,6 +195,7 @@
     border: 1px solid var(--line);
   }
   header {
+    min-width: 0;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -201,7 +206,7 @@
     color: var(--danger);
   }
   .group-name {
-    font-size: 11px;
+    font-size: var(--fs-label);
     font-weight: 800;
     letter-spacing: 0.12em;
     text-transform: uppercase;
@@ -211,10 +216,18 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    font-size: 11.5px;
+    font-size: var(--fs-small);
     font-weight: 600;
     color: var(--text-faint);
     white-space: nowrap;
+  }
+  .toggle {
+    min-width: 0;
+  }
+  .toggle-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .toggle:hover {
     color: var(--text);
