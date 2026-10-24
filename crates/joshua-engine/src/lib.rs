@@ -18,7 +18,7 @@
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc;
 use std::thread::JoinHandle;
 use std::time::Duration;
@@ -286,6 +286,7 @@ pub struct Engine {
     info: StreamInfo,
     stop: Arc<AtomicBool>,
     device_error: Arc<AtomicBool>,
+    timing: Arc<OutputTiming>,
     thread: Option<JoinHandle<()>>,
 }
 
@@ -303,13 +304,15 @@ impl Engine {
     pub fn start(device_id: Option<&str>) -> Result<Self, EngineError> {
         let stop = Arc::new(AtomicBool::new(false));
         let device_error = Arc::new(AtomicBool::new(false));
+        let timing = Arc::new(OutputTiming::default());
+        let timing_t = Arc::clone(&timing);
         let (ready_tx, ready_rx) = mpsc::channel::<Result<(StreamInfo, Controller), EngineError>>();
         let device_id = device_id.map(str::to_owned);
         let (stop_t, err_t) = (Arc::clone(&stop), Arc::clone(&device_error));
 
         let thread = std::thread::Builder::new()
             .name("joshua-audio".into())
-            .spawn(move || match open_stream(device_id.as_deref(), &err_t) {
+            .spawn(move || match open_stream(device_id.as_deref(), &err_t, &timing_t) {
                 Ok((stream, info, controller)) => {
                     if ready_tx.send(Ok((info, controller))).is_err() {
                         return;
@@ -326,7 +329,7 @@ impl Engine {
             .map_err(|e| EngineError::Device(e.to_string()))?;
 
         let (info, controller) = ready_rx.recv().map_err(|_| EngineError::ThreadDied)??;
-        Ok(Self { controller, info, stop, device_error, thread: Some(thread) })
+        Ok(Self { controller, info, stop, device_error, timing, thread: Some(thread) })
     }
 
     #[must_use]
@@ -337,6 +340,16 @@ impl Engine {
     #[must_use]
     pub fn shared(&self) -> &Arc<SharedState> {
         self.controller.shared()
+    }
+
+    /// Frames between rendering a frame and hearing it: the device-reported
+    /// output latency plus half a block (the playhead is published at the
+    /// end of each rendered block).
+    #[must_use]
+    pub fn output_latency_frames(&self) -> f64 {
+        let us = self.timing.latency_us.load(Ordering::Relaxed) as f64;
+        let block = self.timing.block_frames.load(Ordering::Relaxed) as f64;
+        us * f64::from(self.info.sample_rate) / 1e6 + block / 2.0
     }
 
     /// `true` once the device reported a fatal error (e.g. unplugged).
@@ -389,9 +402,17 @@ impl Drop for Engine {
     }
 }
 
+/// Output timing measured in the audio callback.
+#[derive(Debug, Default)]
+struct OutputTiming {
+    latency_us: AtomicU64,
+    block_frames: AtomicU64,
+}
+
 fn open_stream(
     device_id: Option<&str>,
     device_error: &Arc<AtomicBool>,
+    timing: &Arc<OutputTiming>,
 ) -> Result<(cpal::Stream, StreamInfo, Controller), EngineError> {
     let host = cpal::default_host();
     let device = match device_id {
@@ -412,13 +433,13 @@ fn open_stream(
     let (controller, processor) = channel(channels);
 
     let stream = match format {
-        SampleFormat::F32 => build::<f32>(&device, config, processor, device_error)?,
-        SampleFormat::F64 => build::<f64>(&device, config, processor, device_error)?,
-        SampleFormat::I16 => build::<i16>(&device, config, processor, device_error)?,
-        SampleFormat::I32 => build::<i32>(&device, config, processor, device_error)?,
-        SampleFormat::U16 => build::<u16>(&device, config, processor, device_error)?,
-        SampleFormat::I8 => build::<i8>(&device, config, processor, device_error)?,
-        SampleFormat::U8 => build::<u8>(&device, config, processor, device_error)?,
+        SampleFormat::F32 => build::<f32>(&device, config, processor, device_error, timing)?,
+        SampleFormat::F64 => build::<f64>(&device, config, processor, device_error, timing)?,
+        SampleFormat::I16 => build::<i16>(&device, config, processor, device_error, timing)?,
+        SampleFormat::I32 => build::<i32>(&device, config, processor, device_error, timing)?,
+        SampleFormat::U16 => build::<u16>(&device, config, processor, device_error, timing)?,
+        SampleFormat::I8 => build::<i8>(&device, config, processor, device_error, timing)?,
+        SampleFormat::U8 => build::<u8>(&device, config, processor, device_error, timing)?,
         other => return Err(EngineError::UnsupportedFormat(other.to_string())),
     };
     stream.play().map_err(|e| EngineError::Device(e.to_string()))?;
@@ -430,13 +451,22 @@ fn build<T: SizedSample + FromSample<f32> + 'static>(
     config: StreamConfig,
     mut processor: Processor,
     device_error: &Arc<AtomicBool>,
+    timing: &Arc<OutputTiming>,
 ) -> Result<cpal::Stream, EngineError> {
     let channels = usize::from(config.channels);
     let err_flag = Arc::clone(device_error);
+    let timing = Arc::clone(timing);
     device
         .build_output_stream(
             config,
-            move |data: &mut [T], _| processor.process(data, channels),
+            move |data: &mut [T], info: &cpal::OutputCallbackInfo| {
+                let ts = info.timestamp();
+                if let Some(lat) = ts.playback.checked_duration_since(ts.callback) {
+                    timing.latency_us.store(u64::try_from(lat.as_micros()).unwrap_or(0), Ordering::Relaxed);
+                }
+                timing.block_frames.store((data.len() / channels.max(1)) as u64, Ordering::Relaxed);
+                processor.process(data, channels);
+            },
             move |_err| err_flag.store(true, Ordering::Relaxed),
             None,
         )

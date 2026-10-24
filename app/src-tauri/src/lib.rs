@@ -10,6 +10,7 @@ mod error;
 mod inbox;
 mod jobs;
 mod player;
+mod recorder;
 mod settings;
 mod state;
 mod ticker;
@@ -89,6 +90,13 @@ pub fn run() {
             devices::set_midi_port,
             devices::set_drum_brand,
             devices::drum_learn,
+            commands::start_recording,
+            commands::stop_recording,
+            commands::update_take,
+            commands::delete_take,
+            commands::set_record_offset,
+            commands::export_mix,
+            commands::reveal_export,
         ])
         .run(tauri::generate_context!());
     if let Err(e) = result {

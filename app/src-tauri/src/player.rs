@@ -45,10 +45,47 @@ pub fn build_session(ws: &Workspace, project: &SongProject, target_rate: u32) ->
         tracks.push(buffer);
         peaks.push(p);
     }
+    let takes = load_takes(&song_dir, project, &limits, target_rate)?;
     let click = ClickTrack::from_analysis(&project.analysis, target_rate);
-    Ok((Session::new(target_rate, tracks, click), peaks))
+    Ok((Session::with_takes(target_rate, tracks, takes, click), peaks))
 }
 
+/// Decodes the song's takes, resampled to `target_rate` and padded with
+/// silence up to their offset, so they line up with the stems. A missing or
+/// broken take becomes silence (keeping channel indices stable) instead of
+/// failing the whole song.
+fn load_takes(
+    song_dir: &std::path::Path,
+    project: &SongProject,
+    limits: &joshua_core::security::Limits,
+    target_rate: u32,
+) -> Result<Vec<StereoBuffer>> {
+    let song_len = (project.duration_secs * f64::from(target_rate)) as usize;
+    let mut out = Vec::with_capacity(project.takes.len());
+    for take in &project.takes {
+        let decoded = resolve_within(song_dir, &take.file)
+            .and_then(|p| decode_file(&p, limits))
+            .and_then(|b| resample(b, target_rate));
+        let buffer = match decoded {
+            Ok(b) => b,
+            Err(e) => {
+                log::warn!("take {} unavailable: {e}", take.id);
+                out.push(StereoBuffer::silent(target_rate, 1)?);
+                continue;
+            }
+        };
+        let offset = ((take.offset_secs * f64::from(target_rate)) as usize).min(song_len);
+        let (_, l, r) = buffer.into_parts();
+        let keep = song_len.saturating_sub(offset).min(l.len());
+        let pad = |src: &[f32]| {
+            let mut v = vec![0.0f32; offset];
+            v.extend_from_slice(&src[..keep]);
+            v
+        };
+        out.push(StereoBuffer::new(target_rate, pad(&l), pad(&r))?);
+    }
+    Ok(out)
+}
 /// Pushes the project's mixer settings into the real-time controls.
 pub fn apply_mix(shared: &SharedState, project: &SongProject) {
     for (i, ch) in shared.channels.iter().enumerate().take(MAX_TRACKS) {
@@ -65,6 +102,15 @@ pub fn apply_mix(shared: &SharedState, project: &SongProject) {
                 ch.set_mute(false);
                 ch.set_solo(false);
             }
+        }
+    }
+    let stems = project.tracks.len().min(MAX_TRACKS);
+    for (j, t) in project.takes.iter().enumerate() {
+        if let Some(ch) = shared.channels.get(stems + j).filter(|_| stems + j < MAX_TRACKS) {
+            ch.set_gain_db(t.gain_db);
+            ch.set_pan(t.pan);
+            ch.set_mute(t.muted);
+            ch.set_solo(t.solo);
         }
     }
     let click = &shared.channels[METRONOME];

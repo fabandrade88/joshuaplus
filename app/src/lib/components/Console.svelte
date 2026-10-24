@@ -11,7 +11,8 @@
   import Icon from "./Icon.svelte";
 
   const project = $derived(app.song?.project);
-  const anySolo = $derived(project?.tracks.some((t) => t.solo) ?? false);
+  const takes = $derived(project?.takes ?? []);
+  const anySolo = $derived((project?.tracks.some((t) => t.solo) ?? false) || takes.some((t) => t.solo));
   const masterLevel = $derived(Math.max(app.masterMeter[0], app.masterMeter[1]));
 </script>
 
@@ -74,6 +75,9 @@
                 note={i18n.t("gear.directMonitor")}
                 noteTitle={i18n.t("gear.directMonitorHint")}
                 onnote={() => app.openGear()}
+                armed={input.canRecord ? input.armed : undefined}
+                armTitle={i18n.t("record.arm")}
+                onarm={() => app.toggleArm(input.index)}
               />
             {:else}
             <ChannelStrip
@@ -83,6 +87,8 @@
               gainDb={input.gainDb}
               muted={!input.monitor || !input.monitorOk}
               level={app.inputLevels[input.index] ?? 0}
+              armed={input.canRecord ? input.armed : undefined}
+              onarm={() => app.toggleArm(input.index)}
               onchange={(p) => {
                 if (p.gainDb !== undefined) void app.updateInput(input.index, { gainDb: p.gainDb });
                 if (p.muted !== undefined && input.monitorOk) void app.updateInput(input.index, { monitor: !p.muted });
@@ -91,6 +97,33 @@
             {/if}
           {/each}
           {#if app.drums?.connected}<MidiStrip />{/if}
+        </div>
+      </div>
+    {/if}
+
+    {#if takes.length > 0}
+      <div class="group takes">
+        <header>
+          <span class="group-name">{i18n.t("record.takes")}</span>
+        </header>
+        <div class="strips">
+          {#each takes as take, j (take.id)}
+            <ChannelStrip
+              kind="take"
+              name={take.name}
+              color="var(--danger)"
+              gainDb={take.gainDb}
+              muted={take.muted}
+              solo={take.solo}
+              pan={take.pan}
+              silenced={anySolo && !take.solo}
+              level={app.takeMeter(j)}
+              ondelete={() => {
+                if (window.confirm(i18n.t("record.confirmDelete", { name: take.name }))) void app.deleteTake(take.id);
+              }}
+              onchange={(patch) => app.updateTake(take.id, patch)}
+            />
+          {/each}
         </div>
       </div>
     {/if}
@@ -140,6 +173,9 @@
     justify-content: space-between;
     gap: 12px;
     padding: 0 4px;
+  }
+  .takes .group-name {
+    color: var(--danger);
   }
   .group-name {
     font-size: 11px;

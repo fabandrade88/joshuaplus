@@ -10,8 +10,8 @@ use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU32, AtomicU64, AtomicUsize
 use crate::audio::{StereoBuffer, db_to_gain};
 use crate::metronome::{ClickTrack, CountIn, MAX_COUNT_IN_CLICKS, mix_sound};
 
-/// Maximum number of stem tracks in a session.
-pub const MAX_TRACKS: usize = 12;
+/// Maximum number of tracks (stems + recorded takes) in a session.
+pub const MAX_TRACKS: usize = 16;
 /// Index of the metronome inside [`SharedState::channels`].
 pub const METRONOME: usize = MAX_TRACKS;
 const NO_SEEK: i64 = i64::MIN;
@@ -115,10 +115,11 @@ impl ChannelControl {
 /// State shared between UI/control threads and the audio thread.
 #[derive(Debug)]
 pub struct SharedState {
-    /// `0..MAX_TRACKS` are stems, [`METRONOME`] is the click.
+    /// `0..MAX_TRACKS` are tracks (stems first, then recorded takes),
+    /// [`METRONOME`] is the click.
     pub channels: [ChannelControl; MAX_TRACKS + 1],
-    /// Group bus of all song stems (the collapsed "Song" strip). Recording
-    /// tracks added later get their own channels outside this bus.
+    /// Group bus of all song stems (the collapsed "Song" strip). Recorded
+    /// takes have their own channels outside this bus.
     pub song_bus: ChannelControl,
     pub master_gain: AtomicF32,
     pub master_meter: [AtomicF32; 2],
@@ -259,18 +260,37 @@ impl SharedState {
 #[derive(Debug)]
 pub struct Session {
     pub sample_rate: u32,
+    /// Stems first (`..stems`), then recorded takes.
     pub tracks: Vec<StereoBuffer>,
+    /// How many of `tracks` are song stems (routed through the song bus).
+    pub stems: usize,
     pub click: Box<ClickTrack>,
     pub length: i64,
 }
 
 impl Session {
-    /// Truncates to [`MAX_TRACKS`] and computes the length.
+    /// A session of song stems only. Truncates to [`MAX_TRACKS`].
     #[must_use]
-    pub fn new(sample_rate: u32, mut tracks: Vec<StereoBuffer>, click: ClickTrack) -> Self {
-        tracks.truncate(MAX_TRACKS);
-        let length = tracks.iter().map(StereoBuffer::frames).max().unwrap_or(0);
-        Self { sample_rate, tracks, click: Box::new(click), length: i64::try_from(length).unwrap_or(i64::MAX) }
+    pub fn new(sample_rate: u32, tracks: Vec<StereoBuffer>, click: ClickTrack) -> Self {
+        Self::with_takes(sample_rate, tracks, Vec::new(), click)
+    }
+
+    /// Stems plus recorded takes (takes are never longer than the song: they
+    /// are truncated to the longest stem). Truncates to [`MAX_TRACKS`].
+    #[must_use]
+    pub fn with_takes(sample_rate: u32, mut stems: Vec<StereoBuffer>, takes: Vec<StereoBuffer>, click: ClickTrack) -> Self {
+        stems.truncate(MAX_TRACKS);
+        let length = stems.iter().map(StereoBuffer::frames).max().unwrap_or(0);
+        let n_stems = stems.len();
+        let room = MAX_TRACKS - n_stems;
+        stems.extend(takes.into_iter().take(room));
+        Self {
+            sample_rate,
+            tracks: stems,
+            stems: n_stems,
+            click: Box::new(click),
+            length: i64::try_from(length).unwrap_or(i64::MAX),
+        }
     }
 }
 
@@ -335,7 +355,8 @@ impl Mixer {
         for (i, t) in targets.iter_mut().enumerate().take(session.tracks.len()) {
             let ch = &shared.channels[i];
             let [l, r] = ch.target(any_solo && !ch.is_solo());
-            *t = [l * bus_l, r * bus_r];
+            // Stems go through the song bus; recorded takes do not.
+            *t = if i < session.stems { [l * bus_l, r * bus_r] } else { [l, r] };
         }
         targets[METRONOME] = shared.channels[METRONOME].target(false);
         let start_gains = self.gains;
@@ -455,7 +476,9 @@ fn render_segment(
             write_frame(out, channels, offset + f, l, r);
         }
         shared.channels[i].meter.fetch_max(peak);
-        shared.song_bus.meter.fetch_max(peak);
+        if i < session.stems {
+            shared.song_bus.meter.fetch_max(peak);
+        }
     }
     // Click: render into a small stack buffer chunk by chunk (no allocation).
     let gains = ramp.end[METRONOME];
@@ -623,6 +646,32 @@ mod tests {
         assert!((settled(&mut mixer, &shared)[0] - 0.3).abs() < 1e-3);
         shared.song_bus.set_mute(true);
         assert!(settled(&mut mixer, &shared).iter().all(|s| s.abs() < 1e-6));
+    }
+
+    #[test]
+    fn takes_bypass_the_song_bus_but_follow_solo_and_never_outlast_the_song() {
+        let shared = SharedState::default();
+        let mut mixer = Mixer::new();
+        let stem = StereoBuffer::new(SR, vec![0.2; 1_000], vec![0.2; 1_000]).unwrap();
+        // A take longer than the song is cut at the song's end.
+        let take = StereoBuffer::new(SR, vec![0.4; 5_000], vec![0.4; 5_000]).unwrap();
+        let s = Session::with_takes(SR, vec![stem], vec![take], no_click());
+        assert_eq!((s.stems, s.tracks.len(), s.length), (1, 2, 1_000));
+        mixer.swap_session(Some(Box::new(s)));
+        shared.play();
+        shared.song_bus.set_mute(true);
+        assert!((settled(&mut mixer, &shared)[0] - 0.4).abs() < 1e-6, "take still heard with the song muted");
+        assert!(shared.song_bus.meter.take() == 0.0, "takes do not drive the song meter");
+        shared.song_bus.set_mute(false);
+        shared.channels[0].set_solo(true);
+        assert!((settled(&mut mixer, &shared)[0] - 0.2).abs() < 1e-6, "solo on a stem silences the take");
+    }
+
+    #[test]
+    fn with_takes_never_exceeds_max_tracks() {
+        let buf = || StereoBuffer::new(SR, vec![0.0; 10], vec![0.0; 10]).unwrap();
+        let s = Session::with_takes(SR, (0..10).map(|_| buf()).collect(), (0..10).map(|_| buf()).collect(), no_click());
+        assert_eq!((s.stems, s.tracks.len()), (10, MAX_TRACKS));
     }
 
     #[test]

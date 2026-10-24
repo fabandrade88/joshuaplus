@@ -70,6 +70,19 @@ export interface TrackSettings {
   solo: boolean;
 }
 
+/** A recorded take (one input), aligned to the song. */
+export interface TakeSettings {
+  id: string;
+  name: string;
+  file: string;
+  offsetSecs: number;
+  createdUnix: number;
+  gainDb: number;
+  pan: number;
+  muted: boolean;
+  solo: boolean;
+}
+
 export interface BeatAnalysis {
   bpm: number;
   beats: number[];
@@ -98,6 +111,7 @@ export interface SongProject {
   hasCover?: boolean;
   titleEdited?: boolean;
   folder?: string | null;
+  takes?: TakeSettings[];
 }
 
 export interface SongView {
@@ -127,7 +141,17 @@ export interface TransportTick {
   songMeter: number;
   ended: boolean;
   deviceError: boolean;
+  /** Takes are being recorded. */
+  recording?: boolean;
 }
+
+export interface RecordingResult {
+  song: SongView;
+  added: number;
+  overflowed: boolean;
+}
+
+export type RecordMode = "audio" | "video";
 
 export interface DeviceView {
   id: string;
@@ -186,6 +210,9 @@ export interface InputView {
   monitorOk: boolean;
   /** Same interface as the output: it monitors itself; the app won't play it again. */
   directMonitor: boolean;
+  /** Armed: the next take records this input. */
+  armed: boolean;
+  canRecord: boolean;
   error: string | null;
 }
 
@@ -194,6 +221,7 @@ export interface InputPatch {
   stereo?: boolean;
   monitor?: boolean;
   gainDb?: number;
+  armed?: boolean;
 }
 
 export type DrumPad =

@@ -19,13 +19,15 @@ use serde::Serialize;
 use crate::error::{CoreError, RejectReason, Result};
 use crate::folders::{self, COLORS, Folder};
 use crate::project::SongProject;
-use crate::security::{Limits, ensure_inside, is_valid_song_id};
+use crate::security::{Limits, ensure_inside, is_valid_song_id, sanitize_title, slugify};
 
 pub const INBOX_DIR: &str = "inbox";
 pub const PROCESSED_DIR: &str = "processed";
 pub const FAILED_DIR: &str = "failed";
 pub const SONGS_DIR: &str = "songs";
 pub const PRIVATE_DIR: &str = ".joshua";
+pub const EXPORTS_DIR: &str = "Exports";
+pub const TAKES_DIR: &str = "takes";
 
 /// Lightweight listing entry.
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -125,6 +127,59 @@ impl Workspace {
     #[must_use]
     pub fn tmp_dir(&self) -> PathBuf {
         self.root.join(PRIVATE_DIR).join("tmp")
+    }
+
+    /// `<workspace>/Exports`, where mixes and videos are saved (created on
+    /// demand; refused if it is a symlink).
+    ///
+    /// # Errors
+    /// I/O errors, or [`RejectReason::OutsideWorkspace`] for a symlink.
+    pub fn exports_dir(&self) -> Result<PathBuf> {
+        let dir = self.root.join(EXPORTS_DIR);
+        std::fs::create_dir_all(&dir)?;
+        if !real_dir(&dir) {
+            return Err(RejectReason::OutsideWorkspace.into());
+        }
+        Ok(dir)
+    }
+
+    /// A new, unused file path in [`exports_dir`](Self::exports_dir):
+    /// `<slug of title> <tag>.<ext>`, numbered if it already exists.
+    ///
+    /// # Errors
+    /// See [`exports_dir`](Self::exports_dir); invalid extensions.
+    pub fn new_export_path(&self, title: &str, tag: &str, ext: &str) -> Result<PathBuf> {
+        if !matches!(ext, "wav" | "mp4" | "webm") {
+            return Err(RejectReason::InvalidName.into());
+        }
+        let dir = self.exports_dir()?;
+        let base = format!("{} {}", sanitize_title(title), slugify(tag));
+        let base = base.trim().replace(['/', '\\'], "-");
+        for n in 1..10_000u32 {
+            let name = if n == 1 { format!("{base}.{ext}") } else { format!("{base} ({n}).{ext}") };
+            let path = dir.join(&name);
+            if std::fs::symlink_metadata(&path).is_err() {
+                return Ok(path);
+            }
+        }
+        Err(RejectReason::InvalidName.into())
+    }
+
+    /// `<song>/takes`, created on demand (refused if it is a symlink).
+    ///
+    /// # Errors
+    /// Invalid song id, I/O errors, or a symlinked directory.
+    pub fn takes_dir(&self, song_id: &str) -> Result<PathBuf> {
+        let song = self.song_dir(song_id)?;
+        if !real_dir(&song) {
+            return Err(RejectReason::OutsideWorkspace.into());
+        }
+        let dir = song.join(TAKES_DIR);
+        std::fs::create_dir_all(&dir)?;
+        if !real_dir(&dir) {
+            return Err(RejectReason::OutsideWorkspace.into());
+        }
+        Ok(dir)
     }
 
     /// Directory of an existing or future song. Validates the ID.

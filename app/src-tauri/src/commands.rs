@@ -9,7 +9,7 @@ use joshua_ai::HTDEMUCS_6S;
 use joshua_ai::cloud::LalalSeparator;
 use joshua_core::folders::Folder;
 use joshua_core::metronome::{ClickSound, ClickTrack, plan_count_in};
-use joshua_core::mixer::METRONOME;
+use joshua_core::mixer::{MAX_TRACKS, METRONOME};
 use joshua_core::project::SongProject;
 use joshua_core::tempo::{BeatAnalysis, TempoEdit, TempoMode};
 use joshua_core::workspace::{SongSummary, Workspace};
@@ -346,6 +346,9 @@ pub async fn load_song(app: AppHandle, id: String) -> ApiResult<SongView> {
 
 fn load_song_blocking(app: &AppHandle, id: &str) -> ApiResult<SongView> {
     let state = app.state::<AppState>();
+    if crate::recorder::is_recording(&state) {
+        return Err(ApiError::new("recording", "stop the recording first"));
+    }
     // One load at a time: two overlapping loads could leave the engine
     // playing one song while `current` (and the UI) refer to the other.
     let _loading = lock(&state.load_lock);
@@ -382,8 +385,13 @@ fn with_song<T>(state: &AppState, f: impl FnOnce(&mut LoadedSong) -> ApiResult<T
 
 #[tauri::command]
 pub fn play(state: State<'_, AppState>) -> ApiResult<()> {
+    start_playback(&state)
+}
+
+/// Starts playback (with the count-in, if enabled). Shared with recording.
+pub(crate) fn start_playback(state: &AppState) -> ApiResult<()> {
     let shared = state.shared()?;
-    with_song(&state, |song| {
+    with_song(state, |song| {
         if shared.is_playing() {
             return Ok(());
         }
@@ -613,4 +621,160 @@ pub async fn set_output_device(app: AppHandle, id: Option<String>) -> ApiResult<
     })
     .await
     .map_err(|_| ApiError::new("internal", "device switch crashed"))?
+}
+
+// ── Recording, takes and export ─────────────────────────────────────────────
+
+/// Result of a finished recording.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RecordingResult {
+    pub song: SongView,
+    /// Takes added to the song.
+    pub added: usize,
+    /// Audio was lost because the disk could not keep up.
+    pub overflowed: bool,
+}
+
+/// Starts recording every armed input and plays the song (with count-in).
+#[tauri::command]
+pub fn start_recording(state: State<'_, AppState>) -> ApiResult<()> {
+    crate::recorder::start(&state)
+}
+
+/// Stops, aligns and saves the takes, then reloads the song with them and
+/// puts the playhead back where the recording started.
+#[tauri::command]
+pub async fn stop_recording(app: AppHandle) -> ApiResult<RecordingResult> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<AppState>();
+        let stopped = crate::recorder::stop(&state)?;
+        let song = load_song_blocking(&app, &stopped.song_id)?;
+        if let Ok(shared) = state.shared() {
+            shared.seek(stopped.start_pos);
+        }
+        Ok(RecordingResult { song, added: stopped.added, overflowed: stopped.overflowed })
+    })
+    .await
+    .map_err(|_| ApiError::new("internal", "recorder crashed"))?
+}
+
+/// Level, pan, mute and solo of a take.
+#[tauri::command]
+pub fn update_take(state: State<'_, AppState>, id: String, patch: TrackPatch) -> ApiResult<()> {
+    let gain = checked_db(patch.gain_db)?;
+    if patch.pan.is_some_and(|p| !p.is_finite()) {
+        return Err(ApiError::invalid("pan must be finite"));
+    }
+    let shared = state.shared().ok();
+    with_song(&state, |song| {
+        let stems = song.project.tracks.len();
+        let j = song.project.takes.iter().position(|t| t.id == id).ok_or_else(|| ApiError::invalid("no such take"))?;
+        let take = &mut song.project.takes[j];
+        let ch = shared.as_ref().and_then(|s| s.channels.get(stems + j).filter(|_| stems + j < MAX_TRACKS));
+        if let Some(db) = gain {
+            take.gain_db = db;
+            ch.inspect(|c| c.set_gain_db(db));
+        }
+        if let Some(pan) = patch.pan.map(|p| p.clamp(-1.0, 1.0)) {
+            take.pan = pan;
+            ch.inspect(|c| c.set_pan(pan));
+        }
+        if let Some(m) = patch.muted {
+            take.muted = m;
+            ch.inspect(|c| c.set_mute(m));
+        }
+        if let Some(s) = patch.solo {
+            take.solo = s;
+            ch.inspect(|c| c.set_solo(s));
+        }
+        song.dirty = true;
+        Ok(())
+    })
+}
+
+/// Deletes a take (file and track) and reloads the song.
+#[tauri::command]
+pub async fn delete_take(app: AppHandle, id: String) -> ApiResult<SongView> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<AppState>();
+        if crate::recorder::is_recording(&state) {
+            return Err(ApiError::new("recording", "stop the recording first"));
+        }
+        flush_dirty(&state);
+        let ws = state.workspace()?;
+        let song_id = lock(&state.current).as_ref().map(|s| s.project.id.clone()).ok_or_else(ApiError::no_song)?;
+        let mut project = ws.load_project(&song_id)?;
+        let j = project.takes.iter().position(|t| t.id == id).ok_or_else(|| ApiError::invalid("no such take"))?;
+        let take = project.takes.remove(j);
+        ws.save_project(&project)?;
+        if let Ok(path) = joshua_core::security::resolve_within(&ws.song_dir(&song_id)?, &take.file) {
+            let _ = std::fs::remove_file(path);
+        }
+        let pos = state.shared().map(|s| s.position()).unwrap_or(0);
+        let view = load_song_blocking(&app, &song_id)?;
+        if let Ok(shared) = state.shared() {
+            shared.seek(pos);
+        }
+        Ok(view)
+    })
+    .await
+    .map_err(|_| ApiError::new("internal", "delete crashed"))?
+}
+
+/// Manual alignment fine-tuning for future takes (milliseconds).
+#[tauri::command]
+pub fn set_record_offset(state: State<'_, AppState>, ms: f32) -> ApiResult<()> {
+    if !ms.is_finite() {
+        return Err(ApiError::invalid("offset must be finite"));
+    }
+    lock(&state.settings).record_offset_ms = ms.clamp(-500.0, 500.0);
+    state.save_settings()
+}
+
+/// Renders the current song's mix (stems, takes, click unless muted) to a
+/// 24-bit WAV in `<workspace>/Exports`. Progress: `export-progress` (0..1).
+#[tauri::command]
+pub async fn export_mix(app: AppHandle) -> ApiResult<String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<AppState>();
+        flush_dirty(&state);
+        let ws = state.workspace()?;
+        let (project, rate) = lock(&state.current)
+            .as_ref()
+            .map(|s| (s.project.clone(), s.session_rate))
+            .ok_or_else(ApiError::no_song)?;
+        let (session, _) = build_session(&ws, &project, rate)?;
+        let end = session.length;
+        let path = ws.new_export_path(&project.title, "mix", "wav")?;
+        let mut writer = joshua_core::wav::StereoWavWriter::create(&path, rate)?;
+        let report = |p: f32| {
+            let _ = app.emit("export-progress", p);
+        };
+        joshua_core::export::render_mix(
+            Box::new(session),
+            &|shared| apply_mix(shared, &project),
+            0,
+            end,
+            &mut |l, r| writer.write(l, r),
+            &report,
+            &AtomicBool::new(false),
+        )?;
+        let path = writer.finish()?;
+        Ok(path.to_string_lossy().into_owned())
+    })
+    .await
+    .map_err(|_| ApiError::new("internal", "export crashed"))?
+}
+
+/// Shows an exported file in Finder / Explorer. Only files inside the
+/// workspace's Exports folder are accepted.
+#[tauri::command]
+pub fn reveal_export(state: State<'_, AppState>, path: String) -> ApiResult<()> {
+    let ws = state.workspace()?;
+    let dir = ws.exports_dir()?;
+    let path = PathBuf::from(path);
+    let canon = path.canonicalize().map_err(|_| ApiError::new("not_found", "file not found"))?;
+    joshua_core::security::ensure_inside(&dir, &canon)?;
+    tauri_plugin_opener::reveal_item_in_dir(&canon).map_err(|e| ApiError::new("io", e.to_string()))
 }

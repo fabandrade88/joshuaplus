@@ -126,6 +126,18 @@
         </div>
       </div>
       <div class="chips">
+        <button
+          class="chip export"
+          title={i18n.t("export.hint")}
+          disabled={app.exportProgress !== null || app.recording}
+          onclick={() => app.exportMix()}
+        >
+          <Icon name="export" size={12} />
+          {app.exportProgress !== null ? `${Math.round(app.exportProgress * 100)}%` : i18n.t("export.audio")}
+        </button>
+        {#if app.lastExport}
+          <button class="chip link" title={app.lastExport} onclick={() => app.revealExport()}>{i18n.t("export.show")}</button>
+        {/if}
         <span class="chip tabular">{formatBpm(project.analysis.bpm)} BPM · {project.analysis.beatsPerBar}/4</span>
         <span class="chip">
           <Icon name={engine === "cloud" ? "cloud" : engine === "studio" ? "spark" : "music"} size={12} />
@@ -178,9 +190,42 @@
       <button class="round small" title={i18n.t("playlist.nextBtn")} aria-label={i18n.t("playlist.nextBtn")} onclick={() => app.playNext(app.transport.playing)} disabled={!app.nextSong}>
         <Icon name="next" size={16} />
       </button>
+      <span class="sep"></span>
+      <div class="rec-group">
+        <button
+          class="rec"
+          class:on={app.recording}
+          class:busy={app.savingTakes}
+          aria-pressed={app.recording}
+          title={app.recording ? i18n.t("record.stop") : app.recordMode === "video" ? i18n.t("record.openVideo") : i18n.t("record.start")}
+          aria-label={app.recording ? i18n.t("record.stop") : i18n.t("record.start")}
+          disabled={!app.canPlay || app.savingTakes}
+          onclick={() => (app.recordMode === "video" && !app.recording ? (app.videoOpen = true) : app.toggleRecording())}
+        >
+          <Icon name={app.recording ? "stop" : app.recordMode === "video" ? "video" : "record"} size={18} fill={app.recordMode === "audio" || app.recording} />
+        </button>
+        <div class="mode" role="radiogroup" aria-label={i18n.t("record.mode")}>
+          <button
+            role="radio"
+            aria-checked={app.recordMode === "audio"}
+            class:on={app.recordMode === "audio"}
+            title={i18n.t("record.audio")}
+            disabled={app.recording}
+            onclick={() => (app.recordMode = "audio")}><Icon name="mic" size={13} /></button
+          >
+          <button
+            role="radio"
+            aria-checked={app.recordMode === "video"}
+            class:on={app.recordMode === "video"}
+            title={i18n.t("record.video")}
+            disabled={app.recording}
+            onclick={() => (app.recordMode = "video")}><Icon name="video" size={13} /></button
+          >
+        </div>
+      </div>
     </div>
 
-    <div class="counter" class:counting={app.transport.countingIn}>
+    <div class="counter" class:counting={app.transport.countingIn} class:recording={app.recording}>
       <div class="cols">
         <div>
           <span class="k">{i18n.t("song.bar")}</span>
@@ -421,6 +466,77 @@
   .play:active {
     transform: scale(0.96);
   }
+  .sep {
+    width: 1px;
+    height: 30px;
+    background: var(--line);
+  }
+  .rec-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .rec {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 14%, var(--bg-active));
+    border: 2px solid color-mix(in srgb, var(--danger) 55%, transparent);
+  }
+  .rec:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--danger) 24%, var(--bg-active));
+  }
+  .rec.on {
+    color: #fff;
+    background: var(--danger);
+    animation: rec-pulse 1.2s ease-in-out infinite;
+  }
+  .rec.busy {
+    animation: none;
+    opacity: 0.6;
+  }
+  @keyframes rec-pulse {
+    50% {
+      box-shadow: 0 0 0 8px color-mix(in srgb, var(--danger) 20%, transparent);
+    }
+  }
+  .mode {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .mode button {
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 20px;
+    border-radius: 6px;
+    color: var(--text-faint);
+    background: var(--bg-active);
+  }
+  .mode button.on {
+    color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 16%, var(--bg-active));
+  }
+  .chip.export,
+  .chip.link {
+    cursor: pointer;
+    font-weight: 700;
+  }
+  .chip.export {
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+  }
+  .chip.export:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--accent) 22%, transparent);
+  }
+  .chip.link {
+    color: var(--text-dim);
+    text-decoration: underline;
+  }
   button:disabled {
     opacity: 0.4;
     cursor: not-allowed;
@@ -461,6 +577,14 @@
   }
   .counting .v {
     animation: blink 0.4s steps(2) infinite;
+  }
+  .counter.recording {
+    box-shadow:
+      inset 0 2px 8px rgb(0 0 0 / 70%),
+      0 0 0 2px color-mix(in srgb, var(--danger) 70%, transparent);
+  }
+  .counter.recording .bar div {
+    background: var(--danger);
   }
   @keyframes blink {
     50% {

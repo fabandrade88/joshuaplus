@@ -15,6 +15,7 @@ import type {
   FolderColor,
   JobUpdate,
   MetronomePatch,
+  RecordingResult,
   SeparatorChoice,
   SongSummary,
   SongView,
@@ -72,6 +73,13 @@ export const api = {
   setMidiPort: (portId: string | null) => invoke<DrumState>("set_midi_port", { portId }),
   setDrumBrand: (brandId: string) => invoke<DrumState>("set_drum_brand", { brandId }),
   drumLearn: (pad: DrumPad | null) => invoke<DrumState>("drum_learn", { pad }),
+  startRecording: () => invoke<void>("start_recording"),
+  stopRecording: () => invoke<RecordingResult>("stop_recording"),
+  updateTake: (id: string, patch: TrackPatch) => invoke<void>("update_take", { id, patch }),
+  deleteTake: (id: string) => invoke<SongView>("delete_take", { id }),
+  setRecordOffset: (ms: number) => invoke<void>("set_record_offset", { ms }),
+  exportMix: () => invoke<string>("export_mix"),
+  revealExport: (path: string) => invoke<void>("reveal_export", { path }),
 };
 
 export const events = {
@@ -86,4 +94,6 @@ export const events = {
     listen<[DrumPad, number]>("drum-learned", (e) => cb(e.payload[0], e.payload[1])),
   onModelProgress: (cb: (p: number) => void): Promise<UnlistenFn> =>
     listen<number>("model-progress", (e) => cb(e.payload)),
+  onExportProgress: (cb: (p: number) => void): Promise<UnlistenFn> =>
+    listen<number>("export-progress", (e) => cb(e.payload)),
 };

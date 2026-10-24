@@ -41,6 +41,45 @@ impl TrackSettings {
     }
 }
 
+/// Most recorded takes kept per song.
+pub const MAX_TAKES: usize = 8;
+
+/// A recorded take: one input's audio, aligned to the song timeline.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct TakeSettings {
+    /// Stable id (`take-<n>`), unique within the song.
+    pub id: String,
+    /// Display name, e.g. the input it came from ("SPD-SX PRO").
+    pub name: String,
+    /// Relative path inside the song directory (`takes/<id>.wav`).
+    pub file: String,
+    /// Song time (seconds) of the first sample in the file.
+    pub offset_secs: f64,
+    pub created_unix: u64,
+    pub gain_db: f32,
+    pub pan: f32,
+    pub muted: bool,
+    pub solo: bool,
+}
+
+impl TakeSettings {
+    fn is_valid(&self) -> bool {
+        self.id.len() <= 32
+            && self.id.starts_with("take-")
+            && self.id[5..].bytes().all(|b| b.is_ascii_digit())
+            && self.id.len() > 5
+            && self.name.chars().count() <= 80
+            && !self.name.chars().any(char::is_control)
+            && is_safe_relative_name(&self.file)
+            && self.file.starts_with("takes/")
+            && self.offset_secs.is_finite()
+            && (0.0..=24.0 * 3600.0).contains(&self.offset_secs)
+            && in_range(self.gain_db, -96.0, 12.0)
+            && in_range(self.pan, -1.0, 1.0)
+    }
+}
+
 /// Metronome settings.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
@@ -103,6 +142,9 @@ pub struct SongProject {
     /// Folder the song belongs to (`None` = not filed).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub folder: Option<String>,
+    /// Recorded takes, mixed after the stems (outside the song bus).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub takes: Vec<TakeSettings>,
 }
 
 fn in_range(v: f32, lo: f32, hi: f32) -> bool {
@@ -144,6 +186,13 @@ impl SongProject {
             && in_range(self.master_gain_db, -96.0, 12.0)
             && in_range(self.song_gain_db, -96.0, 12.0)
             && self.folder.as_deref().is_none_or(is_valid_song_id)
+            && self.takes.len() <= MAX_TAKES
+            && self.tracks.len() + self.takes.len() <= MAX_TRACKS
+            && self.takes.iter().all(TakeSettings::is_valid)
+            && self.takes.iter().enumerate().all(|(i, t)| {
+                self.takes[..i].iter().all(|o| o.id != t.id && o.file != t.file)
+                    && self.tracks.iter().all(|s| s.file != t.file)
+            })
             && self.metadata.is_valid();
         if ok { Ok(()) } else { Err(RejectReason::InvalidProject.into()) }
     }
@@ -207,6 +256,51 @@ pub(crate) mod tests {
             metadata_scanned: true,
             title_edited: false,
             folder: None,
+            takes: Vec::new(),
+        }
+    }
+
+    pub fn sample_take(n: u32) -> TakeSettings {
+        TakeSettings {
+            id: format!("take-{n}"),
+            name: "SPD-SX PRO".into(),
+            file: format!("takes/take-{n}.wav"),
+            offset_secs: 12.5,
+            created_unix: 0,
+            gain_db: 0.0,
+            pan: 0.0,
+            muted: false,
+            solo: false,
+        }
+    }
+
+    #[test]
+    fn takes_round_trip_and_hostile_takes_are_rejected() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut p = sample_project();
+        p.takes = vec![sample_take(1), sample_take(2)];
+        p.save(dir.path()).unwrap();
+        assert_eq!(SongProject::load(dir.path(), &Limits::default()).unwrap(), p);
+
+        type Tamper = Box<dyn Fn(&mut SongProject)>;
+        let cases: Vec<Tamper> = vec![
+            Box::new(|p| p.takes[0].file = "../../etc/passwd".into()),
+            Box::new(|p| p.takes[0].file = "stems/vocals.wav".into()),
+            Box::new(|p| p.takes[0].file = "takes/../project.json".into()),
+            Box::new(|p| p.takes[1].id = "take-1".into()),
+            Box::new(|p| p.takes[1].file = "takes/take-1.wav".into()),
+            Box::new(|p| p.takes[0].id = "take-../x".into()),
+            Box::new(|p| p.takes[0].id = "take-".into()),
+            Box::new(|p| p.takes[0].offset_secs = f64::NAN),
+            Box::new(|p| p.takes[0].offset_secs = -1.0),
+            Box::new(|p| p.takes[0].gain_db = 99.0),
+            Box::new(|p| p.takes[0].name = "x\u{0}".into()),
+            Box::new(|p| p.takes = (1..=MAX_TAKES as u32 + 1).map(sample_take).collect()),
+        ];
+        for (i, mutate) in cases.iter().enumerate() {
+            let mut q = p.clone();
+            mutate(&mut q);
+            assert!(q.validate().is_err(), "take case {i} should be rejected");
         }
     }
 

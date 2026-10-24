@@ -48,6 +48,8 @@ pub struct AppState {
     pub devices: crate::devices::Devices,
     /// Serialises song loads so engine and `current` always match.
     pub load_lock: Mutex<()>,
+    /// The take recording in progress, if any.
+    pub recording: Mutex<Option<crate::recorder::ActiveRecording>>,
 }
 
 /// Locks ignoring poisoning: a panicked holder never leaves our data in an
@@ -77,6 +79,7 @@ impl AppState {
             model_lock: Mutex::new(()),
             devices: crate::devices::Devices::default(),
             load_lock: Mutex::new(()),
+            recording: Mutex::new(None),
         }
     }
 

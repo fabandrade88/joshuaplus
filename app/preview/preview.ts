@@ -47,6 +47,9 @@ const project: SongProject = {
     solo: false,
   })),
   metronome: { gainDb: -6, muted: false, countIn: true, countInBars: 1, sound: "woodblock" },
+  takes: [
+    { id: "take-1", name: "SPD-SX PRO", file: "takes/take-1.wav", offsetSecs: 12.5, createdUnix: 0, gainDb: -2, pan: 0, muted: false, solo: false },
+  ],
   masterGainDb: 0,
   metadata: { artist: "The Session Band", album: "Live at Home EP", year: "2026", genre: "Funk", track: "3/5" },
   hasCover: true,
@@ -112,8 +115,8 @@ mockIPC(
         ];
       case "get_inputs":
         return [
-          { index: 0, deviceId: "coreaudio:ag06", name: "Yamaha AG06MK2", channels: 2, sampleRate: 48000, firstChannel: 0, stereo: false, monitor: true, gainDb: -3, monitorOk: false, directMonitor: true, error: null },
-          { index: 1, deviceId: "coreaudio:spd", name: "SPD-SX PRO", channels: 8, sampleRate: 48000, firstChannel: 0, stereo: true, monitor: true, gainDb: 0, monitorOk: true, directMonitor: false, error: null },
+          { index: 0, deviceId: "coreaudio:ag06", name: "Yamaha AG06MK2", channels: 2, sampleRate: 48000, firstChannel: 0, stereo: false, monitor: true, gainDb: -3, monitorOk: false, directMonitor: true, armed: false, canRecord: true, error: null },
+          { index: 1, deviceId: "coreaudio:spd", name: "SPD-SX PRO", channels: 8, sampleRate: 48000, firstChannel: 0, stereo: true, monitor: true, gainDb: 0, monitorOk: true, directMonitor: false, armed: true, canRecord: true, error: null },
         ];
       case "get_drums":
         return {
@@ -161,7 +164,7 @@ if (state === "song" || state === "away") {
         positionSecs: 71.6,
         playing: true,
         countingIn: false,
-        meters: [0.62, 0.81, 0.55, 0, 0.4, 0.18, 0.33],
+        meters: [0.62, 0.81, 0.55, 0, 0.4, 0.18, 0.33, 0.7],
         master: [0.72, 0.69],
         songMeter: 0.8,
         ended: false,

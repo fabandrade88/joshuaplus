@@ -21,9 +21,12 @@
     silenced = false,
     wide = false,
     muteable = true,
+    armed = undefined,
+    onarm = undefined,
+    ondelete = undefined,
     onchange,
   }: {
-    kind: StemKind | "master" | "song";
+    kind: StemKind | "master" | "song" | "take";
     name: string;
     color: string;
     gainDb: number;
@@ -35,6 +38,11 @@
     silenced?: boolean;
     wide?: boolean;
     muteable?: boolean;
+    /** Record-arm state (inputs only); shows an R button. */
+    armed?: boolean | undefined;
+    onarm?: (() => void) | undefined;
+    /** Shows a delete button in the header (takes). */
+    ondelete?: (() => void) | undefined;
     onchange: (patch: Patch) => void;
   } = $props();
 
@@ -48,6 +56,9 @@
   <div class="head">
     <span class="icon"><StemIcon {kind} size={17} /></span>
     <span class="name" title={name}>{name}</span>
+    {#if ondelete}
+      <button class="del" title={i18n.t("record.deleteTake")} aria-label={i18n.t("record.deleteTake")} onclick={() => ondelete?.()}>×</button>
+    {/if}
   </div>
   <div class="pan">
     {#if pan !== undefined}
@@ -75,6 +86,9 @@
     {#if muteable}<button class="lit mute" class:on={muted} aria-pressed={muted} title={i18n.t("track.mute")} onclick={() => onchange({ muted: !muted })}>M</button>{/if}
     {#if solo !== undefined}
       <button class="lit solo" class:on={solo} aria-pressed={solo} title={i18n.t("track.solo")} onclick={() => onchange({ solo: !solo })}>S</button>
+    {/if}
+    {#if armed !== undefined}
+      <button class="lit arm" class:on={armed} aria-pressed={armed} title={i18n.t("record.arm")} onclick={() => onarm?.()}>●</button>
     {/if}
   </div>
 </div>
@@ -170,6 +184,33 @@
     background: var(--danger);
     color: #fff;
     box-shadow: 0 0 10px color-mix(in srgb, var(--danger) 60%, transparent);
+  }
+  .arm {
+    color: color-mix(in srgb, var(--danger) 70%, var(--text-dim));
+  }
+  .arm.on {
+    background: var(--danger);
+    color: #fff;
+    box-shadow: 0 0 10px color-mix(in srgb, var(--danger) 60%, transparent);
+  }
+  .head {
+    position: relative;
+  }
+  .del {
+    position: absolute;
+    top: -8px;
+    right: -2px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    font-size: 13px;
+    line-height: 1;
+    color: var(--text-faint);
+    background: transparent;
+  }
+  .del:hover {
+    color: #fff;
+    background: var(--danger);
   }
   .solo.on {
     background: var(--accent);

@@ -5,6 +5,8 @@ use std::time::{Duration, Instant};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 
+use joshua_core::mixer::MAX_TRACKS;
+
 use crate::state::{AppState, lock};
 
 const TICK: Duration = Duration::from_millis(33);
@@ -22,6 +24,8 @@ pub struct TransportTick {
     /// The song just played to its end (drives playlist advance).
     pub ended: bool,
     pub device_error: bool,
+    /// Takes are being recorded.
+    pub recording: bool,
 }
 
 pub fn start(app: AppHandle) {
@@ -49,7 +53,7 @@ fn tick(app: &AppHandle, state: &AppState) {
     }
     let Ok(shared) = state.shared() else { return };
     let (rate, tracks) = match lock(&state.current).as_ref() {
-        Some(song) => (song.session_rate, song.project.tracks.len()),
+        Some(song) => (song.session_rate, (song.project.tracks.len() + song.project.takes.len()).min(MAX_TRACKS)),
         None => return,
     };
     let device_error = lock(&state.engine).as_ref().is_some_and(joshua_engine::Engine::has_device_error);
@@ -62,6 +66,7 @@ fn tick(app: &AppHandle, state: &AppState) {
         song_meter: shared.song_bus.meter.take(),
         ended: shared.take_ended(),
         device_error,
+        recording: crate::recorder::is_recording(state),
     };
     let _ = app.emit("transport", payload);
 }

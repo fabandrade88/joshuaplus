@@ -16,6 +16,9 @@
     note = undefined,
     noteTitle = "",
     onnote = undefined,
+    armed = undefined,
+    onarm = undefined,
+    armTitle = "",
   }: {
     kind: StemKind;
     name: string;
@@ -27,6 +30,10 @@
     note?: string | undefined;
     noteTitle?: string;
     onnote?: (() => void) | undefined;
+    /** Record-arm state; shows an arm button. */
+    armed?: boolean | undefined;
+    onarm?: (() => void) | undefined;
+    armTitle?: string;
   } = $props();
 </script>
 
@@ -43,6 +50,9 @@
   {#if caption}<span class="caption">{caption}</span>{/if}
   {#if note}
     <button class="note" title={noteTitle} onclick={() => onnote?.()}>{note}</button>
+  {/if}
+  {#if armed !== undefined}
+    <button class="arm" class:on={armed} aria-pressed={armed} title={armTitle} onclick={() => onarm?.()}>●</button>
   {/if}
 </div>
 
@@ -125,6 +135,21 @@
     line-height: 1.2;
     color: var(--accent);
     background: color-mix(in srgb, var(--accent) 12%, transparent);
+  }
+  .arm {
+    width: 30px;
+    height: 24px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 800;
+    color: color-mix(in srgb, var(--danger) 70%, var(--text-dim));
+    background: #222838;
+    box-shadow: inset 0 -2px 0 rgb(0 0 0 / 35%);
+  }
+  .arm.on {
+    background: var(--danger);
+    color: #fff;
+    box-shadow: 0 0 10px color-mix(in srgb, var(--danger) 60%, transparent);
   }
   .note:hover {
     background: color-mix(in srgb, var(--accent) 22%, transparent);

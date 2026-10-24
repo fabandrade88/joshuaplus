@@ -17,6 +17,7 @@
 pub mod audio;
 pub mod decode;
 pub mod error;
+pub mod export;
 pub mod folders;
 pub mod import;
 pub mod metadata;
@@ -24,6 +25,7 @@ pub mod metronome;
 pub mod mixer;
 pub mod peaks;
 pub mod project;
+pub mod recording;
 pub mod resample;
 pub mod security;
 pub mod separation;
