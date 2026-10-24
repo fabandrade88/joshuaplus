@@ -122,6 +122,7 @@
                 muted={take.muted}
                 solo={take.solo}
                 pan={take.pan}
+                room={take.room ?? 0.3}
                 silenced={anySolo && !take.solo}
                 level={app.takeMeter(j)}
                 ondelete={() => {

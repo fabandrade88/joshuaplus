@@ -7,7 +7,7 @@
   import StemIcon from "./StemIcon.svelte";
   import VFader from "./VFader.svelte";
 
-  type Patch = { gainDb?: number; muted?: boolean; solo?: boolean; pan?: number };
+  type Patch = { gainDb?: number; muted?: boolean; solo?: boolean; pan?: number; room?: number };
 
   let {
     kind,
@@ -17,6 +17,7 @@
     muted,
     solo = undefined,
     pan = undefined,
+    room = undefined,
     level = 0,
     silenced = false,
     wide = false,
@@ -33,6 +34,8 @@
     muted: boolean;
     solo?: boolean | undefined;
     pan?: number | undefined;
+    /** Room send `0..1` (recorded takes); shows a "Room" knob. */
+    room?: number | undefined;
     level?: number;
     /** Muted by another channel's solo. */
     silenced?: boolean;
@@ -77,6 +80,22 @@
       <span class="readout">{panLabel}</span>
     {/if}
   </div>
+  {#if room !== undefined}
+    <div class="room" title={i18n.t("track.roomHint")}>
+      <Knob
+        value={room}
+        min={0}
+        max={1}
+        reset={0.3}
+        size={30}
+        color="var(--accent)"
+        label={`${name} · ${i18n.t("track.room")}`}
+        display={`${Math.round(room * 100)}%`}
+        onchange={(v) => onchange({ room: Math.round(v * 100) / 100 })}
+      />
+      <span class="readout">{i18n.t("track.room")} {Math.round(room * 100)}%</span>
+    </div>
+  {/if}
   <div class="fader-zone">
     <VFader db={gainDb} {color} dim={muted || silenced} label={`${name} · ${i18n.t("track.volume")}`} onchange={(db) => onchange({ gainDb: db })} />
     <LedMeter {level} />
@@ -143,6 +162,12 @@
   }
   .pan {
     height: 50px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+  }
+  .room {
     display: flex;
     flex-direction: column;
     align-items: center;

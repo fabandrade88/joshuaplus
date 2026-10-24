@@ -61,6 +61,17 @@ pub struct TakeSettings {
     pub pan: f32,
     pub muted: bool,
     pub solo: bool,
+    /// How much of the take goes into the shared room (`0..=1`), so a dry
+    /// recording sits in the same space as the band.
+    #[serde(default = "default_take_room")]
+    pub room: f32,
+}
+
+/// Room send of a new take: enough to sit with the band, still clear.
+pub const DEFAULT_TAKE_ROOM: f32 = 0.3;
+
+const fn default_take_room() -> f32 {
+    DEFAULT_TAKE_ROOM
 }
 
 impl TakeSettings {
@@ -77,6 +88,7 @@ impl TakeSettings {
             && (0.0..=24.0 * 3600.0).contains(&self.offset_secs)
             && in_range(self.gain_db, -96.0, 12.0)
             && in_range(self.pan, -1.0, 1.0)
+            && in_range(self.room, 0.0, 1.0)
     }
 }
 
@@ -271,6 +283,7 @@ pub(crate) mod tests {
             pan: 0.0,
             muted: false,
             solo: false,
+            room: DEFAULT_TAKE_ROOM,
         }
     }
 

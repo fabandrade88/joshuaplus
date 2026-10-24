@@ -95,12 +95,14 @@ pub fn apply_mix(shared: &SharedState, project: &SongProject) {
                 ch.set_pan(t.pan);
                 ch.set_mute(t.muted);
                 ch.set_solo(t.solo);
+                ch.set_send(0.0);
             }
             None => {
                 ch.set_gain_db(0.0);
                 ch.set_pan(0.0);
                 ch.set_mute(false);
                 ch.set_solo(false);
+                ch.set_send(0.0);
             }
         }
     }
@@ -111,6 +113,7 @@ pub fn apply_mix(shared: &SharedState, project: &SongProject) {
             ch.set_pan(t.pan);
             ch.set_mute(t.muted);
             ch.set_solo(t.solo);
+            ch.set_send(t.room);
         }
     }
     let click = &shared.channels[METRONOME];
