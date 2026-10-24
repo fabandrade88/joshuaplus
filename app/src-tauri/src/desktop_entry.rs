@@ -165,6 +165,9 @@ mod tests {
         }
     }
 
+    // Menu entries are a Linux feature; Windows temp paths hold backslashes,
+    // which `entry_text` rightly refuses.
+    #[cfg(unix)]
     #[test]
     fn install_follow_move_and_remove() {
         let root = tempfile::tempdir().unwrap();
