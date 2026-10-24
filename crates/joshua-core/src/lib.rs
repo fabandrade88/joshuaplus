@@ -27,6 +27,7 @@ pub mod peaks;
 pub mod project;
 pub mod recording;
 pub mod resample;
+pub mod room;
 pub mod security;
 pub mod separation;
 pub mod stft;

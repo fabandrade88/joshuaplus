@@ -238,6 +238,7 @@ pub fn stop(state: &AppState) -> ApiResult<Stopped> {
                 pan: 0.0,
                 muted: false,
                 solo: false,
+                room: joshua_core::project::DEFAULT_TAKE_ROOM,
             }))
         })();
         let _ = std::fs::remove_file(&raw.path);

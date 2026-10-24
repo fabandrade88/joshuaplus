@@ -98,6 +98,8 @@ export interface TakeSettings {
   pan: number;
   muted: boolean;
   solo: boolean;
+  /** Room send 0..1: puts the take in the same space as the band. */
+  room: number;
 }
 
 export interface BeatAnalysis {
@@ -181,6 +183,7 @@ export interface TrackPatch {
   pan?: number;
   muted?: boolean;
   solo?: boolean;
+  room?: number;
 }
 
 export type ClickSound = "classic" | "woodblock" | "beep" | "cowbell" | "sticks" | "drums";

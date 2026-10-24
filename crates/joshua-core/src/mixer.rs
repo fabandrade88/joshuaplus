@@ -9,6 +9,7 @@ use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU32, AtomicU64, AtomicUsize
 
 use crate::audio::{StereoBuffer, db_to_gain};
 use crate::metronome::{ClickTrack, CountIn, MAX_COUNT_IN_CLICKS, mix_sound};
+use crate::room::Room;
 
 /// Maximum number of tracks (stems + recorded takes) in a session.
 pub const MAX_TRACKS: usize = 16;
@@ -60,6 +61,8 @@ pub struct ChannelControl {
     pan: AtomicF32,
     mute: AtomicBool,
     solo: AtomicBool,
+    /// Post-fader send into the shared [`Room`] (recorded takes), `0..=1`.
+    send: AtomicF32,
     /// Peak level since the UI last read it.
     pub meter: AtomicF32,
 }
@@ -71,6 +74,7 @@ impl Default for ChannelControl {
             pan: AtomicF32::new(0.0),
             mute: AtomicBool::new(false),
             solo: AtomicBool::new(false),
+            send: AtomicF32::new(0.0),
             meter: AtomicF32::new(0.0),
         }
     }
@@ -99,6 +103,17 @@ impl ChannelControl {
     #[must_use]
     pub fn is_solo(&self) -> bool {
         self.solo.load(Ordering::Relaxed)
+    }
+
+    /// Sets how much of the channel goes into the shared room, `0..=1`.
+    /// Only recorded takes use it.
+    pub fn set_send(&self, amount: f32) {
+        self.send.store(if amount.is_finite() { amount.clamp(0.0, 1.0) } else { 0.0 });
+    }
+
+    #[must_use]
+    pub fn send(&self) -> f32 {
+        self.send.load()
     }
 
     /// Target `(left, right)` gains.
@@ -299,11 +314,34 @@ impl Session {
     }
 }
 
-/// Audio-thread mixer. Owns the session; smooths gain changes.
-#[derive(Debug, Default)]
+/// Frames rendered per pass (longer device blocks are split): the size of
+/// the preallocated room send buffers.
+const BLOCK: usize = 2_048;
+
+/// Audio-thread mixer. Owns the session; smooths gain changes. Build it off
+/// the audio thread (it allocates the room); rendering never allocates.
+#[derive(Debug)]
 pub struct Mixer {
     session: Option<Box<Session>>,
     gains: [[f32; 2]; MAX_TRACKS + 1],
+    /// Room send level of each track at the end of the last block.
+    sends: [f32; MAX_TRACKS],
+    room: Room,
+    send_l: Vec<f32>,
+    send_r: Vec<f32>,
+}
+
+impl Default for Mixer {
+    fn default() -> Self {
+        Self {
+            session: None,
+            gains: [[0.0; 2]; MAX_TRACKS + 1],
+            sends: [0.0; MAX_TRACKS],
+            room: Room::new(),
+            send_l: vec![0.0; BLOCK],
+            send_r: vec![0.0; BLOCK],
+        }
+    }
 }
 
 impl Mixer {
@@ -316,6 +354,13 @@ impl Mixer {
     /// dropped *off* the audio thread.
     pub fn swap_session(&mut self, session: Option<Box<Session>>) -> Option<Box<Session>> {
         self.gains = [[0.0; 2]; MAX_TRACKS + 1];
+        self.sends = [0.0; MAX_TRACKS];
+        if let Some(s) = session.as_deref() {
+            if s.sample_rate != self.room.rate() {
+                self.room.tune(s.sample_rate);
+            }
+        }
+        self.room.clear();
         std::mem::replace(&mut self.session, session)
     }
 
@@ -335,8 +380,14 @@ impl Mixer {
 
     /// Fills `out` (interleaved, `channels` wide) with the next block.
     pub fn render(&mut self, shared: &SharedState, out: &mut [f32], channels: usize) {
-        out.fill(0.0);
         let channels = channels.max(1);
+        for part in out.chunks_mut(BLOCK * channels) {
+            self.render_block(shared, part, channels);
+        }
+    }
+
+    fn render_block(&mut self, shared: &SharedState, out: &mut [f32], channels: usize) {
+        out.fill(0.0);
         let frames = out.len() / channels;
         let Some(session) = self.session.as_deref() else { return };
         if frames == 0 {
@@ -347,9 +398,12 @@ impl Mixer {
         let mut pos = shared.position.load(Ordering::Relaxed);
         if seek != NO_SEEK {
             pos = seek.clamp(0, session.length);
+            self.room.clear();
         }
         if !shared.is_playing() {
             shared.position.store(pos, Ordering::Relaxed);
+            // A paused song has no room tail to resume into.
+            self.room.clear();
             return;
         }
 
@@ -366,6 +420,23 @@ impl Mixer {
         targets[METRONOME] = shared.channels[METRONOME].target(false);
         let start_gains = self.gains;
         let ramp = Ramp { start: &start_gains, end: &targets, frames };
+        // Room sends (post-fader) of the recorded takes.
+        let mut send_targets = [0.0f32; MAX_TRACKS];
+        for (i, t) in send_targets.iter_mut().enumerate().take(session.tracks.len()).skip(session.stems) {
+            *t = shared.channels[i].send();
+        }
+        let start_sends = self.sends;
+        let any_send = start_sends.iter().chain(&send_targets).any(|s| *s > 0.0);
+        let mut sends = Sends {
+            start: &start_sends,
+            end: &send_targets,
+            frames,
+            l: &mut self.send_l[..frames],
+            r: &mut self.send_r[..frames],
+            active: any_send,
+        };
+        sends.l.fill(0.0);
+        sends.r.fill(0.0);
 
         let mut done = 0usize;
         while done < frames {
@@ -408,12 +479,22 @@ impl Mixer {
                 pos = loop_region.map_or(session.length, |(a, _)| a);
                 continue;
             }
-            render_segment(shared, session, &ramp, pos, done, n, out, channels);
+            render_segment(shared, session, &ramp, &mut sends, pos, done, n, out, channels);
             pos += n as i64;
             done += n;
         }
         self.gains = targets;
+        self.sends = send_targets;
         shared.position.store(pos, Ordering::Relaxed);
+
+        // The shared room, added under the dry signal.
+        let (send_l, send_r) = (&mut self.send_l[..frames], &mut self.send_r[..frames]);
+        self.room.process(send_l, send_r);
+        for (f, (l, r)) in send_l.iter().zip(send_r.iter()).enumerate() {
+            if *l != 0.0 || *r != 0.0 {
+                write_frame(out, channels, f, *l, *r);
+            }
+        }
 
         // Master gain, soft safety limiter and meters.
         let master = shared.master_gain.load();
@@ -446,6 +527,25 @@ impl Ramp<'_> {
     }
 }
 
+/// Per-block room send ramp and the buffers the takes are sent into.
+struct Sends<'a> {
+    start: &'a [f32; MAX_TRACKS],
+    end: &'a [f32; MAX_TRACKS],
+    frames: usize,
+    l: &'a mut [f32],
+    r: &'a mut [f32],
+    /// Some take sends (or was sending) into the room.
+    active: bool,
+}
+
+impl Sends<'_> {
+    #[inline]
+    fn at(&self, ch: usize, frame: usize) -> f32 {
+        let t = frame as f32 / self.frames as f32;
+        self.start[ch] + (self.end[ch] - self.start[ch]) * t
+    }
+}
+
 #[inline]
 fn write_frame(out: &mut [f32], channels: usize, frame: usize, l: f32, r: f32) {
     let base = frame * channels;
@@ -462,6 +562,7 @@ fn render_segment(
     shared: &SharedState,
     session: &Session,
     ramp: &Ramp<'_>,
+    sends: &mut Sends<'_>,
     pos: i64,
     offset: usize,
     n: usize,
@@ -471,6 +572,7 @@ fn render_segment(
     let Ok(start) = usize::try_from(pos) else { return };
     for (i, track) in session.tracks.iter().enumerate() {
         let (left, right) = (track.left(), track.right());
+        let to_room = sends.active && i >= session.stems && (sends.start[i] > 0.0 || sends.end[i] > 0.0);
         let mut peak = 0.0f32;
         for f in 0..n {
             let idx = start + f;
@@ -479,6 +581,11 @@ fn render_segment(
             let (l, r) = (l * gl, r * gr);
             peak = peak.max(l.abs()).max(r.abs());
             write_frame(out, channels, offset + f, l, r);
+            if to_room {
+                let s = sends.at(i, offset + f);
+                sends.l[offset + f] += l * s;
+                sends.r[offset + f] += r * s;
+            }
         }
         shared.channels[i].meter.fetch_max(peak);
         if i < session.stems {
@@ -670,6 +777,37 @@ mod tests {
         shared.song_bus.set_mute(false);
         shared.channels[0].set_solo(true);
         assert!((settled(&mut mixer, &shared)[0] - 0.2).abs() < 1e-6, "solo on a stem silences the take");
+    }
+
+    #[test]
+    fn takes_send_into_the_room_and_stems_never_do() {
+        let impulse = |at: usize| {
+            let mut v = vec![0.0f32; 48_000];
+            v[at] = 1.0;
+            StereoBuffer::new(SR, v.clone(), v).unwrap()
+        };
+        let run = |stem_send: f32, take_send: f32| {
+            let shared = SharedState::default();
+            let mut mixer = Mixer::new();
+            let s = Session::with_takes(SR, vec![impulse(5_000)], vec![impulse(6_000)], no_click());
+            mixer.swap_session(Some(Box::new(s)));
+            shared.channels[0].set_send(stem_send);
+            shared.channels[1].set_send(take_send);
+            shared.play();
+            // Device blocks larger than the internal block are split; the
+            // impulses come after the first block, once the gains have settled.
+            let mut out = vec![0.0f32; 12_000 * 2];
+            mixer.render(&shared, &mut out, 2);
+            out
+        };
+        let dry = run(1.0, 0.0);
+        // Stems ignore the send: only the two dry impulses are heard.
+        let nz: Vec<_> = dry.iter().enumerate().filter(|(_, s)| **s != 0.0).collect();
+        assert_eq!(nz.len(), 4, "{nz:?}");
+        let wet = run(0.0, 0.8);
+        let tail: f32 = wet[2 * 6_100..].iter().map(|s| s * s).sum();
+        assert!(tail > 1e-6, "the take rings in the room");
+        assert!(wet.iter().all(|s| s.is_finite() && s.abs() <= 1.0));
     }
 
     #[test]

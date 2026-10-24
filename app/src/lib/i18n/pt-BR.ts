@@ -50,6 +50,8 @@ export const ptBR: Messages = {
   "track.solo": "Solo",
   "track.volume": "Volume",
   "track.pan": "Pan",
+  "track.room": "Sala",
+  "track.roomHint": "Sala: coloca este take no mesmo ambiente da banda, para a gravação seca não soar colada por cima da mixagem. Clique duplo volta para 30%.",
 
   "song.bpm": "BPM",
   "song.bar": "Compasso",
