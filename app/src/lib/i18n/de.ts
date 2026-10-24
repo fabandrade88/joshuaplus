@@ -154,6 +154,7 @@ export const de: Messages = {
   "console.song": "Song",
   "console.lastPad": "Zuletzt gespieltes Pad",
   "console.noAudio": "Kein USB-Audio",
+  "console.direct": "Direkt",
   "console.collapse": "Zu einer Spur einklappen",
   "console.expand": "Instrumente zeigen",
   "console.master": "Master",

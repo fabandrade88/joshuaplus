@@ -152,6 +152,7 @@ export const en = {
   "console.song": "Song",
   "console.lastPad": "Last pad hit",
   "console.noAudio": "No USB audio",
+  "console.direct": "Direct",
   "console.collapse": "Collapse into one track",
   "console.expand": "Show instruments",
   "console.master": "Master",

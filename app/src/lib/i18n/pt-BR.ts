@@ -154,6 +154,7 @@ export const ptBR: Messages = {
   "console.song": "Música",
   "console.lastPad": "Último pad tocado",
   "console.noAudio": "Sem áudio USB",
+  "console.direct": "Direto",
   "console.collapse": "Recolher em uma faixa",
   "console.expand": "Mostrar instrumentos",
   "console.master": "Master",

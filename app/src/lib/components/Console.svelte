@@ -6,6 +6,7 @@
   import { STEM_COLORS, stemLabelKey } from "../stems";
   import ChannelStrip from "./ChannelStrip.svelte";
   import ClickPedal from "./ClickPedal.svelte";
+  import MeterStrip from "./MeterStrip.svelte";
   import MidiStrip from "./MidiStrip.svelte";
   import Icon from "./Icon.svelte";
 
@@ -63,6 +64,18 @@
         </header>
         <div class="strips">
           {#each app.inputs as input (input.index)}
+            {#if input.directMonitor}
+              <MeterStrip
+                kind="other"
+                name={input.name}
+                color="var(--ok)"
+                tag={i18n.t("console.direct")}
+                level={app.inputLevels[input.index] ?? 0}
+                note={i18n.t("gear.directMonitor")}
+                noteTitle={i18n.t("gear.directMonitorHint")}
+                onnote={() => app.openGear()}
+              />
+            {:else}
             <ChannelStrip
               kind="other"
               name={input.name}
@@ -75,6 +88,7 @@
                 if (p.muted !== undefined && input.monitorOk) void app.updateInput(input.index, { monitor: !p.muted });
               }}
             />
+            {/if}
           {/each}
           {#if app.drums?.connected}<MidiStrip />{/if}
         </div>
