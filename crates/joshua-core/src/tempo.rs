@@ -7,7 +7,10 @@
 //! 3. **Beats**: dynamic programming (Ellis, 2007) that balances onset
 //!    strength against deviations from the estimated period, so the grid
 //!    follows a band that drifts slightly in tempo.
-//! 4. **Downbeat**: the bar phase whose beats carry the most low-frequency
+//! 4. **Following the band**: a steady grid that drifts away from a band
+//!    playing without a click (live recordings) becomes a grid that follows
+//!    it, each beat placed by how its neighbours line up with the hits.
+//! 5. **Downbeat**: the bar phase whose beats carry the most low-frequency
 //!    onset energy (kick drum / bass hits).
 
 use rustfft::num_complex::Complex32;
@@ -215,6 +218,9 @@ struct Onsets {
     low: Vec<f32>,
     /// Raw full-band flux used for activity detection.
     raw: Vec<f32>,
+    /// How early the envelope sees a hit (seconds): a frame's window is
+    /// centred on it, so a hit already shows in its leading half.
+    lead_secs: f64,
 }
 
 /// Diagnostic view of the analysis (used by `examples/tempo_debug.rs`).
@@ -281,6 +287,14 @@ pub fn analyze_with(audio: &StereoBuffer, mode: TempoMode) -> BeatAnalysis {
         return BeatAnalysis::empty();
     };
     let fps = onsets.fps;
+    // The strongest pulse can be a dotted or triplet one (common in heavy
+    // grooves): pick the level at which the song repeats bar after bar.
+    let level = metrical_level(audio, 60.0 * fps / period);
+    let period = if (level * period / (60.0 * fps) - 1.0).abs() > 0.01 {
+        period_near(&onsets.full, 60.0 * fps / level).unwrap_or(60.0 * fps / level)
+    } else {
+        period
+    };
     let periods = match mode {
         TempoMode::Auto => local_periods(&onsets.full, fps, period),
         // Tightness of the tracker still keeps beats near the global period.
@@ -298,18 +312,233 @@ pub fn analyze_with(audio: &StereoBuffer, mode: TempoMode) -> BeatAnalysis {
         return BeatAnalysis { confidence, ..BeatAnalysis::empty() };
     }
     let tracked: Vec<f64> = frames.iter().map(|&f| f as f64 / fps).collect();
-    let (beats, bpm) = if variable_tempo {
-        let bpm = refine_bpm(&tracked).unwrap_or(60.0 * fps / period);
-        (tracked, bpm)
+    let (beats, bpm, variable_tempo) = if variable_tempo {
+        // Tracked beats sit on analysis frames (~12 ms): place each one on
+        // the hits around it.
+        let beats = band_shifts(&tracked, &onsets).and_then(|(s, _)| shifted(&tracked, &s)).unwrap_or(tracked);
+        let bpm = refine_bpm(&beats).unwrap_or(60.0 * fps / period);
+        (beats, bpm, true)
     } else {
-        // One tempo for the whole song: a perfectly even grid.
+        // One tempo for the whole song: a perfectly even grid, fine-tuned on
+        // the hits; it follows the band only if the band drifts away from
+        // it (no click, e.g. live) and the user did not ask for a steady one.
         let (grid, p) = constant_grid(&tracked, &onsets, period / fps);
-        if grid.len() >= 2 { (grid, 60.0 / p) } else { (tracked, 60.0 / p) }
+        let grid = if grid.len() >= 2 { grid } else { tracked };
+        match fit_to_band(&grid, &onsets, mode == TempoMode::Auto) {
+            Some(Fit::Follows(beats)) => {
+                let bpm = refine_bpm(&beats).unwrap_or(60.0 / p);
+                (beats, bpm, true)
+            }
+            Some(Fit::Steady(beats)) => {
+                let bpm = refine_bpm(&beats).unwrap_or(60.0 / p);
+                (beats, bpm, false)
+            }
+            None => (grid, 60.0 / p, false),
+        }
     };
     #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     let beat_frames: Vec<usize> = beats.iter().map(|b| (b * fps).round().max(0.0) as usize).collect();
     let downbeat_phase = downbeat_phase(&beat_frames, &onsets.low, 4);
+    // Beats on the envelope's clock come early by its lead: put them on the
+    // hits themselves (a click that is early by 10–25 ms feels rushed).
+    let beats: Vec<f64> = beats.into_iter().map(|b| b + onsets.lead_secs).collect();
     BeatAnalysis { bpm, beats, beats_per_bar: 4, downbeat_phase, confidence, variable_tempo }
+}
+
+/// Bars (4/4) after which a song is expected to repeat itself.
+const REPEAT_BARS: [f64; 4] = [1.0, 2.0, 4.0, 8.0];
+/// Pulse levels weighed against the detected one, each with its double and
+/// half. Heavy grooves (3+3+2 riffs, dotted-eighth figures) often make a
+/// dotted quarter the strongest pulse: the tempo is then ¾ of it (or 1½).
+/// The opposite reading (×4⁄3) never won on real songs, and a stream of
+/// identical hits repeats after any 3 beats, so it is not considered.
+const LEVEL_FACTORS: [f64; 2] = [1.0, 0.75];
+/// Another level must repeat this much better to replace the detected one.
+const LEVEL_MARGIN: f64 = 1.15;
+/// Analysis bands of the repetition features.
+const REPEAT_BANDS: usize = 24;
+
+/// The tempo (BPM) of the level at which the song repeats best, starting
+/// from the `detected` strongest pulse. Music repeats every 1, 2, 4 and 8
+/// bars; a dotted or triplet pulse puts its "bars" across those repeats.
+/// Between double and half, the snare decides (it marks beats 2 and 4),
+/// else the octave nearest the detected tempo is kept.
+fn metrical_level(audio: &StereoBuffer, detected: f64) -> f64 {
+    let Some(rep) = Repetition::new(audio) else { return detected };
+
+    let family = |f: f64| -> Vec<f64> {
+        [0.5, 1.0, 2.0].iter().map(|o| detected * f * o).filter(|b| (50.0..=220.0).contains(b)).collect()
+    };
+    let scored: Vec<(f64, Vec<f64>, f64)> = LEVEL_FACTORS
+        .iter()
+        .map(|f| {
+            let members = family(*f);
+            let best = members.iter().map(|b| rep.score(*b)).fold(f64::MIN, f64::max);
+            (*f, members, best)
+        })
+        .collect();
+    let base = scored[0].2;
+    let Some((factor, members, best)) = scored.iter().max_by(|a, b| a.2.total_cmp(&b.2)).cloned() else {
+        return detected;
+    };
+    if factor == 1.0 || best < 0.01 || best < base * LEVEL_MARGIN || members.is_empty() {
+        return detected;
+    }
+    let near = |a: f64, b: f64| (a / b).ln().abs();
+    if let Some(snare) = snare_tempo(audio) {
+        if let Some(m) = members.iter().copied().find(|m| near(*m, snare) < 0.03) {
+            return m;
+        }
+    }
+    members.into_iter().min_by(|a, b| near(*a, detected).total_cmp(&near(*b, detected))).unwrap_or(detected)
+}
+
+/// How much a song sounds like itself some time later (log band energies,
+/// z-normalised per band, ~46 ms frames).
+struct Repetition {
+    frames: Vec<[f32; REPEAT_BANDS]>,
+    fps: f64,
+    cache: std::cell::RefCell<std::collections::HashMap<usize, f64>>,
+}
+
+impl Repetition {
+    fn new(audio: &StereoBuffer) -> Option<Self> {
+        let sr = f64::from(audio.sample_rate());
+        let mono = audio.to_mono();
+        let n = 2048;
+        if mono.len() < n * 64 {
+            return None;
+        }
+        let window = hann(n);
+        let mut stft = Stft::new(n);
+        let mut frame = vec![0.0; n];
+        let mut spec = vec![Complex32::default(); stft.bins()];
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let edges: Vec<usize> = (0..=REPEAT_BANDS)
+            .map(|i| {
+                let f = 40.0 * (8000.0f64 / 40.0).powf(i as f64 / REPEAT_BANDS as f64);
+                ((f * n as f64 / sr).round() as usize).clamp(1, stft.bins() - 1)
+            })
+            .collect();
+        let mut frames = Vec::with_capacity(mono.len() / n + 1);
+        let mut t = 0usize;
+        while t < mono.len() {
+            windowed_frame(&mono, t as isize - (n / 2) as isize, &window, &mut frame);
+            stft.forward(&frame, &mut spec);
+            let mut v = [0.0f32; REPEAT_BANDS];
+            for (b, out) in v.iter_mut().enumerate() {
+                let (lo, hi) = (edges[b], edges[b + 1].max(edges[b] + 1));
+                *out = (1e-6 + spec[lo..hi].iter().map(|c| c.norm_sqr()).sum::<f32>() / (hi - lo) as f32).ln();
+            }
+            frames.push(v);
+            t += n;
+        }
+        for b in 0..REPEAT_BANDS {
+            let m = frames.iter().map(|v| v[b]).sum::<f32>() / frames.len() as f32;
+            let sd = (frames.iter().map(|v| (v[b] - m).powi(2)).sum::<f32>() / frames.len() as f32).sqrt().max(1e-6);
+            for v in &mut frames {
+                v[b] = (v[b] - m) / sd;
+            }
+        }
+        Some(Self { frames, fps: sr / n as f64, cache: std::cell::RefCell::default() })
+    }
+
+    /// Mean correlation of frames `lag` apart.
+    fn at(&self, lag: usize) -> f64 {
+        if let Some(v) = self.cache.borrow().get(&lag) {
+            return *v;
+        }
+        let f = &self.frames;
+        let v = if lag == 0 || lag >= f.len() {
+            0.0
+        } else {
+            let n = f.len() - lag;
+            (0..n).map(|t| f64::from(f[t].iter().zip(&f[t + lag]).map(|(a, b)| a * b).sum::<f32>())).sum::<f64>()
+                / (n * REPEAT_BANDS) as f64
+        };
+        self.cache.borrow_mut().insert(lag, v);
+        v
+    }
+
+    /// How sharply the song repeats every 1, 2, 4 and 8 bars at `bpm`: the
+    /// similarity at each bar lag above the median around it (±15 %).
+    fn score(&self, bpm: f64) -> f64 {
+        let peak = |secs: f64| -> f64 {
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            let l = (secs * self.fps).round() as usize;
+            if l < 3 || l + 2 >= self.frames.len() {
+                return 0.0;
+            }
+            let top = (l - 1..=l + 1).map(|x| self.at(x)).fold(f64::MIN, f64::max);
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            let (lo, hi) = ((l as f64 * 0.85) as usize, (l as f64 * 1.15) as usize);
+            let mut around: Vec<f64> = (lo..=hi).filter(|x| x.abs_diff(l) > 2).map(|x| self.at(x)).collect();
+            if around.is_empty() {
+                return 0.0;
+            }
+            around.sort_by(f64::total_cmp);
+            top - around[around.len() / 2]
+        };
+        let bar = 4.0 * 60.0 / bpm;
+        REPEAT_BARS.iter().map(|k| peak(k * bar)).sum::<f64>() / REPEAT_BARS.len() as f64
+    }
+}
+
+/// Tempo implied by the snare's backbeat (beats 2 and 4: one hit every two
+/// beats), from the strongest repetition of snare-band onsets in 0.5–2 s.
+fn snare_tempo(audio: &StereoBuffer) -> Option<f64> {
+    let sr = f64::from(audio.sample_rate());
+    let mono = audio.to_mono();
+    let (n, hop) = (1024usize, 256usize);
+    let window = hann(n);
+    let mut stft = Stft::new(n);
+    let mut frame = vec![0.0; n];
+    let mut spec = vec![Complex32::default(); stft.bins()];
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    let bin = |hz: f64| ((hz * n as f64 / sr).round() as usize).min(stft.bins() - 1);
+    let (body, snap) = (bin(160.0)..bin(320.0), bin(2000.0)..bin(6000.0));
+    let (mut prev, mut env) = (0.0f32, Vec::with_capacity(mono.len() / hop + 1));
+    let mut t = 0usize;
+    while t < mono.len() {
+        windowed_frame(&mono, t as isize - (n / 2) as isize, &window, &mut frame);
+        stft.forward(&frame, &mut spec);
+        let e = (1.0 + spec[body.clone()].iter().chain(&spec[snap.clone()]).map(|c| c.norm()).sum::<f32>()).ln();
+        env.push((e - prev).max(0.0));
+        prev = e;
+        t += hop;
+    }
+    let fps = sr / hop as f64;
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    let (lo, hi) = ((0.5 * fps) as usize, ((2.0 * fps) as usize).min(env.len().saturating_sub(1)));
+    if hi <= lo {
+        return None;
+    }
+    let ac = |lag: usize| -> f64 {
+        let n = env.len() - lag;
+        (0..n).map(|i| f64::from(env[i] * env[i + lag])).sum::<f64>() / n as f64
+    };
+    let best = (lo..=hi).max_by(|a, b| ac(*a).total_cmp(&ac(*b)))?;
+    (ac(best) > 0.0).then(|| 120.0 * fps / best as f64)
+}
+
+/// The envelope's period (frames) nearest `target` (±4 %), refined to a
+/// fraction of a frame.
+fn period_near(env: &[f32], target: f64) -> Option<f64> {
+    let env = &gaussian_smooth(env, 1.5);
+    let ac = |lag: usize| -> f64 {
+        if lag == 0 || lag >= env.len() {
+            return 0.0;
+        }
+        let n = env.len() - lag;
+        env[..n].iter().zip(&env[lag..]).map(|(a, b)| f64::from(*a) * f64::from(*b)).sum::<f64>() / n as f64
+    };
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    let (lo, hi) = (((target * 0.96).floor() as usize).max(2), (target * 1.04).ceil() as usize);
+    let best = (lo..=hi).max_by(|a, b| ac(*a).total_cmp(&ac(*b)))?;
+    let (a, b, c) = (ac(best - 1), ac(best), ac(best + 1));
+    let denom = a - 2.0 * b + c;
+    let offset = if denom.abs() > 1e-12 { (0.5 * (a - c) / denom).clamp(-0.5, 0.5) } else { 0.0 };
+    (b > 0.0).then_some(best as f64 + offset)
 }
 
 /// Least-squares line `t = t0 + k·period` through `(k, t)` points.
@@ -403,6 +632,217 @@ fn constant_grid(tracked: &[f64], onsets: &Onsets, period_guess: f64) -> (Vec<f6
     (grid, period)
 }
 
+/// Largest shift of a beat from the grid it follows (fraction of a beat).
+const FOLLOW_RANGE: f64 = 0.25;
+/// Beats on each side that place a beat (the band's feel, not one hit).
+const FOLLOW_SPAN: usize = 4;
+/// A band typically this far from the best steady grid (over four-bar
+/// stretches) is followed instead. Measured on real songs: records made to a
+/// click stay within 0.3–2.2 ms, bands playing live without one drift by
+/// 3.6–4.8 ms.
+const FOLLOW_MIN_SECS: f64 = 0.003;
+/// Beats over which a drift must last to count (four bars of 4/4).
+const FOLLOW_TREND_BEATS: usize = 16;
+/// Search step of the beat placement.
+const FOLLOW_STEP_SECS: f64 = 0.001;
+
+/// Onset strength at any time (seconds), lightly smoothed and interpolated.
+fn onset_sampler(onsets: &Onsets) -> impl Fn(f64) -> f32 + '_ {
+    let smooth = gaussian_smooth(&onsets.full, 1.0);
+    let fps = onsets.fps;
+    move |t: f64| -> f32 {
+        let x = t * fps;
+        if x < 0.0 {
+            return 0.0;
+        }
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let i = x as usize;
+        #[allow(clippy::cast_possible_truncation)]
+        let frac = (x - i as f64) as f32;
+        let a = smooth.get(i).copied().unwrap_or(0.0);
+        let b = smooth.get(i + 1).copied().unwrap_or(0.0);
+        a + (b - a) * frac
+    }
+}
+
+/// How far each beat of `grid` should move to line up, with its neighbours,
+/// with the hits (varying smoothly from beat to beat; quiet stretches take
+/// their neighbours' shift), and which beats had hits to go by.
+fn band_shifts(grid: &[f64], onsets: &Onsets) -> Option<(Vec<f64>, Vec<bool>)> {
+    let n = grid.len();
+    if n < 2 * FOLLOW_SPAN + 2 {
+        return None;
+    }
+    let sample = onset_sampler(onsets);
+    let period_at = |k: usize| {
+        let (a, b) = if k + 1 < n { (grid[k], grid[k + 1]) } else { (grid[k - 1], grid[k]) };
+        b - a
+    };
+    let place = |base: &[f64], range: f64| -> Vec<Option<f64>> {
+        (0..n)
+            .map(|k| {
+                let lo = k.saturating_sub(FOLLOW_SPAN);
+                let hi = (k + FOLLOW_SPAN + 1).min(n);
+                let r = range * period_at(k);
+                #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                let steps = (r / FOLLOW_STEP_SECS).ceil() as i64;
+                let score = |d: f64| -> f32 {
+                    (lo..hi)
+                        .map(|j| {
+                            #[allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
+                            let w = (FOLLOW_SPAN + 1 - j.abs_diff(k)) as f32;
+                            w * sample(base[j] + d)
+                        })
+                        .sum()
+                };
+                let scores: Vec<(f64, f32)> = (-steps..=steps)
+                    .map(|i| {
+                        #[allow(clippy::cast_precision_loss)]
+                        let d = i as f64 * FOLLOW_STEP_SECS;
+                        (d, score(d))
+                    })
+                    .collect();
+                #[allow(clippy::cast_precision_loss)]
+                let mean = scores.iter().map(|s| s.1).sum::<f32>() / scores.len() as f32;
+                let best = scores.iter().copied().max_by(|a, b| a.1.total_cmp(&b.1))?;
+                // A flat score (no hits nearby) says nothing about the beat.
+                (best.1 > 1.5 * mean && best.1 > 0.0).then_some(best.0)
+            })
+            .collect()
+    };
+    // Coarse pass over a wide range (catches a drift), then a fine pass
+    // around it.
+    let coarse = place(grid, FOLLOW_RANGE);
+    let known: Vec<bool> = coarse.iter().map(Option::is_some).collect();
+    let mut shifts = smooth_shifts(&coarse)?;
+    let moved: Vec<f64> = grid.iter().zip(&shifts).map(|(b, d)| b + d).collect();
+    if let Some(fine) = smooth_shifts(&place(&moved, FOLLOW_RANGE / 3.0)) {
+        for (s, f) in shifts.iter_mut().zip(fine) {
+            *s += f;
+        }
+    }
+    Some((shifts, known))
+}
+
+/// `grid` moved by `shifts`, kept a sane pulse: increasing, every interval
+/// within ±30 % of the grid's own.
+fn shifted(grid: &[f64], shifts: &[f64]) -> Option<Vec<f64>> {
+    let mut out: Vec<f64> = grid.iter().zip(shifts).map(|(b, d)| b + d).collect();
+    for k in 1..out.len() {
+        let p = grid[k] - grid[k - 1];
+        out[k] = out[k].clamp(out[k - 1] + 0.7 * p, out[k - 1] + 1.3 * p);
+    }
+    out.retain(|t| *t >= 0.0);
+    (out.len() >= 2).then_some(out)
+}
+
+/// Line `shift = a + b·k` through the beats with hits, ignoring the ones a
+/// fill or a breakdown pulled away (iteratively trimmed at 3 MADs).
+fn robust_line(shifts: &[f64], known: &[bool]) -> Option<(f64, f64)> {
+    #[allow(clippy::cast_precision_loss)]
+    let all: Vec<(f64, f64)> =
+        shifts.iter().zip(known).enumerate().filter(|(_, (_, k))| **k).map(|(i, (s, _))| (i as f64, *s)).collect();
+    let mut line = fit_line(&all)?;
+    for _ in 0..3 {
+        let mut dev: Vec<f64> = all.iter().map(|(k, s)| (s - (line.0 + line.1 * k)).abs()).collect();
+        dev.sort_by(f64::total_cmp);
+        let limit = (3.0 * dev[dev.len() / 2]).max(0.005);
+        let kept: Vec<(f64, f64)> =
+            all.iter().copied().filter(|(k, s)| (s - (line.0 + line.1 * k)).abs() <= limit).collect();
+        line = fit_line(&kept)?;
+    }
+    Some(line)
+}
+
+/// A grid fitted to the band.
+enum Fit {
+    /// Still one tempo, with tempo and phase fine-tuned to the hits.
+    Steady(Vec<f64>),
+    /// The band drifts (no click): every beat follows it.
+    Follows(Vec<f64>),
+}
+
+/// Fits a steady `grid` to the band. A small error in the tempo shows up as
+/// shifts growing linearly along the song: the line through them corrects
+/// tempo and phase and the grid stays steady. Only when the band still
+/// drifts around that line for good stretches (typically more than
+/// `FOLLOW_MIN_SECS`) does the grid follow it, if `may_follow`.
+fn fit_to_band(grid: &[f64], onsets: &Onsets, may_follow: bool) -> Option<Fit> {
+    let n = grid.len();
+    let (shifts, known) = band_shifts(grid, onsets)?;
+    let (a, b) = robust_line(&shifts, &known)?;
+    let period = (grid[n - 1] - grid[0]) / (n - 1) as f64;
+    #[allow(clippy::cast_precision_loss)]
+    let line = |k: usize| a + b * k as f64;
+    // A "tempo error" worth half a beat over the song is no small error.
+    if (b * n as f64).abs() > 0.5 * period {
+        return None;
+    }
+    let half = FOLLOW_TREND_BEATS / 2;
+    let residual: Vec<f64> = (0..n).map(|k| shifts[k] - line(k)).collect();
+    let mut typical: Vec<f64> = (0..n)
+        .filter(|k| known[*k])
+        .map(|i| {
+            let w = &residual[i.saturating_sub(half)..(i + half + 1).min(n)];
+            (w.iter().sum::<f64>() / w.len() as f64).abs()
+        })
+        .collect();
+    typical.sort_by(f64::total_cmp);
+    let typical = typical.get(typical.len() / 2).copied().unwrap_or(0.0);
+    if may_follow && typical > FOLLOW_MIN_SECS {
+        return shifted(grid, &shifts).map(Fit::Follows);
+    }
+    let steady: Vec<f64> = grid.iter().enumerate().map(|(k, t)| t + line(k)).filter(|t| *t >= 0.0).collect();
+    (steady.len() >= 2).then_some(Fit::Steady(steady))
+}
+
+/// Fills unknown shifts from their neighbours, then smooths them (median of
+/// 5, then a Gaussian over ~2 beats) so single hits cannot bend the pulse.
+fn smooth_shifts(raw: &[Option<f64>]) -> Option<Vec<f64>> {
+    let known: Vec<(usize, f64)> = raw.iter().enumerate().filter_map(|(i, d)| d.map(|d| (i, d))).collect();
+    if known.len() < 2 {
+        return None;
+    }
+    let filled: Vec<f64> = (0..raw.len())
+        .map(|i| {
+            let j = known.partition_point(|(k, _)| *k < i);
+            match (j.checked_sub(1).map(|a| known[a]), known.get(j)) {
+                (_, Some(&(k, d))) if k == i => d,
+                (Some((ka, da)), Some(&(kb, db))) => {
+                    #[allow(clippy::cast_precision_loss)]
+                    let f = (i - ka) as f64 / (kb - ka) as f64;
+                    da + (db - da) * f
+                }
+                (Some((_, d)), None) | (None, Some(&(_, d))) => d,
+                (None, None) => 0.0,
+            }
+        })
+        .collect();
+    let median: Vec<f64> = (0..filled.len())
+        .map(|i| {
+            let mut w: Vec<f64> = filled[i.saturating_sub(2)..(i + 3).min(filled.len())].to_vec();
+            w.sort_by(f64::total_cmp);
+            w[w.len() / 2]
+        })
+        .collect();
+    let sigma = 2.0f64;
+    Some(
+        (0..median.len())
+            .map(|i| {
+                let lo = i.saturating_sub(6);
+                let (mut sum, mut wsum) = (0.0, 0.0);
+                for (j, m) in median.iter().enumerate().take(i + 7).skip(lo) {
+                    #[allow(clippy::cast_precision_loss)]
+                    let w = (-0.5 * ((j as f64 - i as f64) / sigma).powi(2)).exp();
+                    sum += w * m;
+                    wsum += w;
+                }
+                sum / wsum
+            })
+            .collect(),
+    )
+}
+
 fn onset_envelopes(audio: &StereoBuffer) -> Option<Onsets> {
     let sr = audio.sample_rate() as usize;
     let decim = (sr / 22_050).max(1);
@@ -461,8 +901,14 @@ fn onset_envelopes(audio: &StereoBuffer) -> Option<Onsets> {
     for x in &mut full {
         *x /= std;
     }
-    Some(Onsets { fps, full, low, raw })
+    let lead_secs = ONSET_LEAD * n as f64 / f64::from(sr_d);
+    Some(Onsets { fps, full, low, raw, lead_secs })
 }
+
+/// How early a hit shows in the onset envelope, as a fraction of the
+/// analysis window (measured on sample-accurate kicks, snares, hi-hats and
+/// clicks at 44.1 and 48 kHz: 0.24–0.29).
+const ONSET_LEAD: f64 = 0.27;
 
 /// Number of log-spaced analysis bands.
 const BANDS: usize = 40;
@@ -944,6 +1390,128 @@ mod tests {
         let mean = |v: &[f64]| v.iter().sum::<f64>() / v.len() as f64;
         assert!((60.0 / mean(&early) - 90.0).abs() < 3.0, "early {}", 60.0 / mean(&early));
         assert!((60.0 / mean(&late) - 130.0).abs() < 4.0, "late {}", 60.0 / mean(&late));
+    }
+
+    #[test]
+    fn a_band_playing_without_a_click_is_followed() {
+        // ~120 BPM whose tempo breathes ±1.5 % over 40 s (the beats wander
+        // ~50 ms from any steady grid), each hit ±4 ms off: a live take.
+        let mut times = Vec::new();
+        let (mut t, mut k) = (0.5f64, 0u32);
+        while t < 79.0 {
+            times.push(t + 0.004 * ((f64::from(k.wrapping_mul(2_654_435_761) % 1000) / 500.0) - 1.0));
+            t += 0.5 * (1.0 + 0.015 * (std::f64::consts::TAU * t / 40.0).sin());
+            k += 1;
+        }
+        let a = analyze(&hits(&times, 80.0));
+        assert!(a.variable_tempo, "a drifting band must be followed");
+        let off = |h: f64| a.beats.iter().map(|b| (b - h).abs()).fold(f64::MAX, f64::min);
+        let inner = &times[8..times.len() - 8];
+        let worst = inner.iter().map(|h| off(*h)).fold(0.0, f64::max);
+        assert!(worst < 0.02, "every hit within 20 ms of a beat, worst {worst}s");
+        // The steady analysis of the same take could not do that.
+        let steady = analyze_with(&hits(&times, 80.0), TempoMode::Constant);
+        assert!(!steady.variable_tempo);
+        let steady_worst = inner
+            .iter()
+            .map(|h| steady.beats.iter().map(|b| (b - h).abs()).fold(f64::MAX, f64::min))
+            .fold(0.0, f64::max);
+        assert!(steady_worst > 0.03, "steady worst {steady_worst}s");
+    }
+
+    #[test]
+    fn a_song_on_a_click_stays_steady_at_its_exact_tempo() {
+        // 151.95 BPM, exactly on a click, for over three minutes: a tiny
+        // tempo error would drift by tens of milliseconds by the end.
+        let p = 60.0 / 151.95;
+        let times: Vec<f64> = (0..500).map(|k| 0.4 + f64::from(k) * p).collect();
+        let a = analyze(&hits(&times, 0.4 + 500.0 * p + 1.0));
+        assert!(!a.variable_tempo, "a click track stays steady");
+        assert!((a.bpm - 151.95).abs() < 0.01, "bpm {}", a.bpm);
+        let worst =
+            times.iter().map(|h| a.beats.iter().map(|b| (b - h).abs()).fold(f64::MAX, f64::min)).fold(0.0, f64::max);
+        assert!(worst < 0.006, "worst {worst}s");
+    }
+
+    #[test]
+    fn beats_land_on_the_start_of_the_hits() {
+        // The click must sound with the hit, not before it, whatever the
+        // instrument and the sample rate (the analysis window differs).
+        type Hit = fn(f32, u32) -> f32;
+        let kinds: [(&str, Hit); 4] = [
+            ("kick", |tt, _| 0.9 * (std::f32::consts::TAU * 55.0 * tt).sin() * (-tt * 25.0).exp()),
+            ("snare", |tt, j| {
+                let n = (j.wrapping_mul(2_654_435_761) >> 16) as f32 / 32_768.0 - 1.0;
+                (0.6 * n + 0.4 * (std::f32::consts::TAU * 190.0 * tt).sin()) * (-tt * 30.0).exp()
+            }),
+            ("hi-hat", |tt, j| {
+                0.4 * ((j.wrapping_mul(2_654_435_761) >> 16) as f32 / 32_768.0 - 1.0) * (-tt * 120.0).exp()
+            }),
+            ("click", |tt, _| if tt < 0.002 { 0.9 } else { 0.0 }),
+        ];
+        for rate in [44_100u32, 48_000] {
+            let sr = f64::from(rate);
+            for (name, f) in kinds {
+                let times: Vec<f64> = (0..100).map(|k| 0.3 + f64::from(k) * 0.5).collect();
+                let mut x = vec![0.0f32; (51.0 * sr) as usize];
+                for t in &times {
+                    let start = (t * sr) as usize;
+                    for j in 0..(0.3 * sr) as usize {
+                        if let Some(v) = x.get_mut(start + j) {
+                            *v += f(j as f32 / rate as f32, j as u32);
+                        }
+                    }
+                }
+                let a = analyze(&StereoBuffer::from_mono(rate, x).unwrap());
+                let mut d: Vec<f64> = times[5..95]
+                    .iter()
+                    .map(|h| a.beats.iter().map(|b| b - h).min_by(|x, y| x.abs().total_cmp(&y.abs())).unwrap())
+                    .collect();
+                d.sort_by(f64::total_cmp);
+                let median = d[d.len() / 2];
+                assert!(median.abs() < 0.004, "{name} at {rate} Hz: beats {:.1} ms off the hits", median * 1000.0);
+            }
+        }
+    }
+
+    #[test]
+    fn a_dotted_groove_is_counted_in_its_real_tempo() {
+        // 100 BPM in 4/4: kick and crash on a 3+3+3+3+4 sixteenth-note
+        // figure (its strongest pulse is a dotted eighth, 133 BPM), a light
+        // snare on 2 and 4, and a bass note per bar cycling over four bars —
+        // like a metal riff.
+        let sr = f64::from(SR);
+        let beat = 0.6;
+        let secs = 64.0;
+        let mut x = vec![0.0f32; (secs * sr) as usize];
+        let mut add = |t: f64, f: &dyn Fn(f32, u32) -> f32| {
+            let start = (t * sr) as usize;
+            for j in 0..(0.25 * sr) as usize {
+                if let Some(v) = x.get_mut(start + j) {
+                    *v += f(j as f32 / SR as f32, j as u32);
+                }
+            }
+        };
+        let notes = [41.2f32, 49.0, 36.7, 55.0];
+        for bar in 0..(secs / (4.0 * beat)) as usize - 1 {
+            let t0 = 0.5 + bar as f64 * 4.0 * beat;
+            for e in [0.0, 3.0, 6.0, 9.0, 12.0] {
+                add(t0 + e * beat / 4.0, &|tt, j| {
+                    let n = (j.wrapping_mul(2_654_435_761) >> 16) as f32 / 32_768.0 - 1.0;
+                    0.9 * (std::f32::consts::TAU * 55.0 * tt).sin() * (-tt * 30.0).exp() + 0.5 * n * (-tt * 8.0).exp()
+                });
+            }
+            for b in [1.0, 3.0] {
+                add(t0 + b * beat, &|tt, j| {
+                    let n = (j.wrapping_mul(2_654_435_761) >> 16) as f32 / 32_768.0 - 1.0;
+                    (0.15 * n + 0.1 * (std::f32::consts::TAU * 190.0 * tt).sin()) * (-tt * 25.0).exp()
+                });
+            }
+            let note = notes[bar % 4];
+            add(t0, &move |tt, _| 0.4 * (std::f32::consts::TAU * note * tt).sin() * (-tt * 4.0).exp());
+        }
+        let a = analyze(&StereoBuffer::from_mono(SR, x).unwrap());
+        assert!((a.bpm - 100.0).abs() < 1.0, "counted at {} BPM", a.bpm);
     }
 
     #[test]

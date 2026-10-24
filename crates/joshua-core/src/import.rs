@@ -213,6 +213,7 @@ pub fn import_song(ws: &Workspace, source: &Path, opts: &ImportOptions<'_>) -> R
         title_edited: false,
         folder: opts.folder.clone(),
         takes: Vec::new(),
+        typed_bpm: None,
     };
     project.save(&staging)?;
     std::fs::rename(&staging, ws.song_dir(&id)?)?;

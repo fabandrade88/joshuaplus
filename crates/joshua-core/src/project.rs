@@ -157,6 +157,10 @@ pub struct SongProject {
     /// Recorded takes, mixed after the stems (outside the song bus).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub takes: Vec<TakeSettings>,
+    /// The tempo the user last typed. Detecting the tempo again keeps it,
+    /// so it can be offered back.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub typed_bpm: Option<f64>,
 }
 
 fn in_range(v: f32, lo: f32, hi: f32) -> bool {
@@ -181,6 +185,7 @@ impl SongProject {
             && self.separator.len() <= 64
             && a.bpm.is_finite()
             && (20.0..=400.0).contains(&a.bpm)
+            && self.typed_bpm.is_none_or(|b| b.is_finite() && (20.0..=400.0).contains(&b))
             && a.beats.len() <= MAX_BEATS
             && a.beats.iter().all(|b| b.is_finite() && *b >= 0.0 && *b <= self.duration_secs + 1.0)
             && a.beats.windows(2).all(|w| w[1] > w[0])
@@ -269,6 +274,7 @@ pub(crate) mod tests {
             title_edited: false,
             folder: None,
             takes: Vec::new(),
+            typed_bpm: None,
         }
     }
 
@@ -314,6 +320,19 @@ pub(crate) mod tests {
             let mut q = p.clone();
             mutate(&mut q);
             assert!(q.validate().is_err(), "take case {i} should be rejected");
+        }
+    }
+
+    #[test]
+    fn a_typed_tempo_is_kept_and_checked() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut p = sample_project();
+        p.typed_bpm = Some(100.0);
+        p.save(dir.path()).unwrap();
+        assert_eq!(SongProject::load(dir.path(), &Limits::default()).unwrap().typed_bpm, Some(100.0));
+        for bad in [f64::NAN, f64::INFINITY, 5.0, 900.0] {
+            p.typed_bpm = Some(bad);
+            assert!(p.validate().is_err(), "typed {bad} accepted");
         }
     }
 

@@ -45,7 +45,7 @@ x86_64 with glibc 2.39+ (Ubuntu 24.04+, Debian 13+, Fedora 40+, Arch). Paste in 
 curl -fsSL https://raw.githubusercontent.com/fabandrade88/joshuaplus/main/scripts/install.sh | sh
 ```
 
-The scripts download the newest release, **check its SHA-256 against the release's `SHA256SUMS`** and only then install it: the `.deb` with apt on Debian/Ubuntu, the AppImage in `~/.local/bin` on other Linux, the app in Applications on macOS. They are short; read [`install.sh`](scripts/install.sh) and [`install.ps1`](scripts/install.ps1) first if you like. Set `JOSHUA_VERSION=v0.5.2` to pick a version.
+The scripts download the newest release, **check its SHA-256 against the release's `SHA256SUMS`** and only then install it: the `.deb` with apt on Debian/Ubuntu, the AppImage in `~/.local/bin` on other Linux, the app in Applications on macOS. They are short; read [`install.sh`](scripts/install.sh) and [`install.ps1`](scripts/install.ps1) first if you like. Set `JOSHUA_VERSION=v0.5.3` to pick a version.
 
 **Prefer to download by hand?** Get the `.dmg` (macOS), `-setup.exe` or `.msi` (Windows), or `.deb`, `.rpm` or `.AppImage` (Linux) from [Releases](https://github.com/fabandrade88/joshuaplus/releases/latest). The builds are not code-signed yet: on macOS right-click the app and choose **Open** the first time; on Windows choose **More info → Run anyway**.
 
@@ -58,7 +58,7 @@ Every installer is also installed and started on clean Windows, macOS and Linux 
 | | Feature | Why it helps |
 |---|---|---|
 | 🎚️ | **Instrument separation** into vocals, drums, bass, guitar, piano and other, on your own computer (HT-Demucs) | Mute the part you play and play it yourself, or solo it to learn it |
-| 🥁 | **A click locked to the song**: tempo and bars detected, constant or variable tempo, count-in, six click sounds, tap or type the BPM | Practise in time with the real recording, not a grid that drifts away |
+| 🥁 | **A click locked to the song**: tempo and bars detected on the drums (dotted-pulse grooves counted in their real tempo, live bands without a click followed beat by beat), a count-in that ends before the intro and a click that keeps time through it, six click sounds, tap or type the BPM | Practise in time with the real recording, not a grid that drifts away |
 | 🔁 | **Bar map and loops**: click a bar to jump, double-click to loop it, loop 1–8 bars | Drill the hard part until it sits |
 | 📁 | **Folders as setlists** that remember every song's mix, tempo fixes and loop | Open a song and continue exactly where you left it |
 | 🎤 | **Record every input as its own take**, lined up with the song automatically (latency and clock drift corrected). Recording again replaces the previous take | Hear how you really played, against the band |
@@ -145,3 +145,5 @@ Bug reports, translations, tests and code are welcome. Read [CONTRIBUTING.md](CO
 ## License
 
 [MIT](LICENSE) © 2026 **Fabricio O. de Andrade**
+
+The MIT License covers the code, not the brand: the **Joshua+** name, logo and app icon belong to the author and may not be used for other products or modified releases. Forks are welcome under their own name and icon. See [TRADEMARKS.md](TRADEMARKS.md).

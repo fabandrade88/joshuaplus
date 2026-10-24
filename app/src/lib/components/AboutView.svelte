@@ -38,14 +38,6 @@
   </header>
 
   <div class="grid">
-    <section class="card" style="--c: var(--accent)" aria-labelledby="about-created">
-      <div class="card-head">
-        <span class="badge"><Icon name="music" size={14} /></span>
-        <h2 id="about-created">{i18n.t("about.createdBy")}</h2>
-      </div>
-      <p class="big">Fabricio O. de Andrade</p>
-    </section>
-
     <section class="card" style="--c: var(--folder-violet)" aria-labelledby="about-repo">
       <div class="card-head">
         <span class="badge"><Icon name="edit" size={14} /></span>
@@ -143,7 +135,7 @@
   }
   .grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 10px;
   }
   .card {
@@ -183,11 +175,6 @@
     margin: 0;
     font-size: var(--fs-body);
     color: var(--text-dim);
-  }
-  .card .big {
-    font-size: var(--fs-emph);
-    font-weight: 600;
-    color: var(--text);
   }
   code {
     font-family: var(--mono);

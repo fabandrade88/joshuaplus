@@ -45,7 +45,7 @@ x86_64 com glibc 2.39+ (Ubuntu 24.04+, Debian 13+, Fedora 40+, Arch). Cole num t
 curl -fsSL https://raw.githubusercontent.com/fabandrade88/joshuaplus/main/scripts/install.sh | sh
 ```
 
-Os scripts baixam a versão mais nova, **conferem o SHA-256 com o `SHA256SUMS` da versão** e só então instalam: o `.deb` com apt no Debian/Ubuntu, o AppImage em `~/.local/bin` nos outros Linux, o app em Aplicativos no macOS. São curtos; leia [`install.sh`](scripts/install.sh) e [`install.ps1`](scripts/install.ps1) antes, se quiser. Use `JOSHUA_VERSION=v0.5.2` para escolher uma versão.
+Os scripts baixam a versão mais nova, **conferem o SHA-256 com o `SHA256SUMS` da versão** e só então instalam: o `.deb` com apt no Debian/Ubuntu, o AppImage em `~/.local/bin` nos outros Linux, o app em Aplicativos no macOS. São curtos; leia [`install.sh`](scripts/install.sh) e [`install.ps1`](scripts/install.ps1) antes, se quiser. Use `JOSHUA_VERSION=v0.5.3` para escolher uma versão.
 
 **Prefere baixar na mão?** Pegue o `.dmg` (macOS), o `-setup.exe` ou `.msi` (Windows), ou o `.deb`, `.rpm` ou `.AppImage` (Linux) em [Releases](https://github.com/fabandrade88/joshuaplus/releases/latest). Os instaladores ainda não são assinados: no macOS, clique com o botão direito no app e escolha **Abrir** na primeira vez; no Windows, escolha **Mais informações → Executar assim mesmo**.
 
@@ -58,7 +58,7 @@ Além disso, antes de cada versão ser publicada, todos os instaladores são ins
 | | Recurso | Por que ajuda |
 |---|---|---|
 | 🎚️ | **Separação de instrumentos** em voz, bateria, baixo, guitarra, piano e outros, no seu computador (HT-Demucs) | Tire o instrumento que você toca e toque no lugar, ou deixe só ele para aprender |
-| 🥁 | **Click preso à música**: andamento e compassos detectados, tempo constante ou variável, contagem, seis sons de click, TAP ou digitar o BPM | Pratique no tempo da gravação real, não numa grade que se perde |
+| 🥁 | **Click preso à música**: andamento e compassos detectados na bateria (grooves de pulso pontuado contados no tempo real, bandas ao vivo sem click acompanhadas batida a batida), contagem que termina antes da intro e click que segue no tempo por ela, seis sons de click, TAP ou digitar o BPM | Pratique no tempo da gravação real, não numa grade que se perde |
 | 🔁 | **Mapa de compassos e loops**: clique num compasso para ir, clique duplo para repetir, repita de 1 a 8 compassos | Repita a parte difícil até sair |
 | 📁 | **Pastas como setlists** que lembram a mixagem, as correções de tempo e o loop de cada música | Abra a música e continue de onde parou |
 | 🎤 | **Grave cada entrada no seu próprio take**, alinhado à música automaticamente (latência e diferença de clock corrigidas). Gravar de novo substitui o take anterior | Ouça como você tocou de verdade, junto com a banda |
@@ -128,3 +128,5 @@ Relatos de bugs, traduções, testes e código são bem-vindos. Leia [CONTRIBUTI
 ## Licença
 
 [MIT](LICENSE) © 2026 **Fabricio O. de Andrade**
+
+A licença MIT cobre o código, não a marca: o nome **Joshua+**, o logo e o ícone do app pertencem ao autor e não podem ser usados em outros produtos nem em versões modificadas. Forks são bem-vindos com nome e ícone próprios. Veja [TRADEMARKS.md](TRADEMARKS.md) (em inglês).

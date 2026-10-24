@@ -55,7 +55,7 @@ const METER_DECAY = 0.82;
 /** `all` = every song, `null` = songs without a folder, otherwise a folder id. */
 export type FolderKey = string | null | "all";
 
-export type View = { kind: "home" } | { kind: "folder"; folder: FolderKey } | { kind: "song" } | { kind: "gear" } | { kind: "help" } | { kind: "about" } | { kind: "exports" };
+export type View = { kind: "home" } | { kind: "folder"; folder: FolderKey } | { kind: "song" } | { kind: "gear" } | { kind: "help" } | { kind: "about" } | { kind: "exports" } | { kind: "settings" };
 
 function idleTransport(): TransportTick {
   return {
@@ -92,7 +92,6 @@ class AppStore {
   loop = $state<{ start: number; end: number } | null>(null);
   loopEnabled = $state(false);
   dragging = $state(false);
-  settingsOpen = $state(false);
   modelProgress = $state<number | null>(null);
   // Live inputs and e-drums.
   inputs = $state<InputView[]>([]);
@@ -348,6 +347,10 @@ class AppStore {
     if ((await this.guard(() => api.moveSong(id, folder))) === undefined) return;
     this.songs = this.songs.map((s) => (s.id === id ? { ...s, folder } : s));
     if (this.song?.project.id === id) this.song.project.folder = folder;
+  }
+
+  openSettings(): void {
+    this.view = { kind: "settings" };
   }
 
   // ── Inputs & e-drums ─────────────────────────────────────────────────────
@@ -864,7 +867,27 @@ class AppStore {
   async editTempo(edit: TempoEdit): Promise<void> {
     if (!this.song) return;
     const analysis = await this.guard(() => api.editTempo(edit));
-    if (analysis) this.applyAnalysis(analysis);
+    if (!analysis) return;
+    this.applyAnalysis(analysis);
+    if (edit.kind === "setBpm") this.song.project.typedBpm = edit.value.bpm;
+  }
+
+  /** The tempo the user typed, when the current one differs (e.g. after
+   *  detecting the tempo again): offered back under the BPM. */
+  get typedBpmReminder(): number | null {
+    const p = this.song?.project;
+    const typed = p?.typedBpm;
+    return typed && Math.abs(typed - p.analysis.bpm) >= 0.05 ? typed : null;
+  }
+
+  async useTypedBpm(): Promise<void> {
+    const bpm = this.typedBpmReminder;
+    if (bpm) await this.editTempo({ kind: "setBpm", value: { bpm, anchor: this.transport.positionSecs } });
+  }
+
+  async forgetTypedBpm(): Promise<void> {
+    if (!this.song || (await this.guard(() => api.forgetTypedBpm())) === undefined) return;
+    this.song.project.typedBpm = null;
   }
 
   toggleSongCollapsed(): void {

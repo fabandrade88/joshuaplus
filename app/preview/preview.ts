@@ -56,6 +56,7 @@ const project: SongProject = {
   hasCover: true,
   songGainDb: 0,
   songMuted: false,
+  typedBpm: params.get("typed") ? Number(params.get("typed")) : null,
 };
 
 function art(a: string, b: string): string {
@@ -154,7 +155,7 @@ mockIPC(
       }
       case "get_app_info":
         return {
-          version: "0.5.2",
+          version: "0.5.3",
           locale: lang,
           workspace: state === "welcome" ? null : "/Users/musician/Music/Joshua+",
           inbox: "/Users/musician/Music/Joshua+/inbox",
@@ -239,7 +240,7 @@ if (state === "exportdialog") {
 }
 if (state === "folder") app.openFolder("igreja");
 if (state === "settings") {
-  app.settingsOpen = true;
+  app.openSettings();
   if (params.get("pending") === "1") app.pendingWorkspace = "/Volumes/SSD Externo/Joshua+";
 }
 if (state === "song" || state === "away" || state === "video") {
