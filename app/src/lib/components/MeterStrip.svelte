@@ -66,18 +66,16 @@
     align-items: center;
     gap: 6px;
     padding: 12px 6px 10px;
-    border-radius: 12px;
-    background: linear-gradient(180deg, #171b26, #11141c);
-    border: 1px solid #222838;
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 4%);
+    border-radius: var(--radius-s);
+    background: var(--bg-panel);
+    border: 1px solid var(--line);
   }
   .cap {
     position: absolute;
-    inset: 0 10px auto;
-    height: 3px;
-    border-radius: 0 0 3px 3px;
+    inset: -1px -1px auto;
+    height: 2px;
+    border-radius: 0;
     background: var(--c);
-    box-shadow: 0 0 10px var(--c);
   }
   .idle .cap {
     opacity: 0.5;
@@ -96,7 +94,7 @@
   .name {
     max-width: 100%;
     font-size: var(--fs-small);
-    font-weight: 700;
+    font-weight: 500;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -104,17 +102,14 @@
   .tag {
     font-family: var(--mono);
     font-size: var(--fs-label);
-    font-weight: 800;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
     max-width: 100%;
-    padding: 1px 5px;
-    border-radius: 999px;
+    padding: 0 4px;
+    border-radius: var(--radius-s);
+    border: 1px solid currentColor;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     color: var(--c);
-    background: color-mix(in srgb, var(--c) 14%, transparent);
   }
   .meter-zone {
     flex: 1;
@@ -139,31 +134,28 @@
   .note {
     width: 100%;
     padding: 4px 2px;
-    border-radius: 6px;
+    border-radius: var(--radius-s);
     font-size: var(--fs-small);
-    font-weight: 700;
     line-height: 1.2;
     hyphens: auto;
     overflow-wrap: break-word;
     color: var(--accent);
-    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    border: 1px solid var(--accent);
   }
   .arm {
     width: 30px;
     height: 24px;
-    border-radius: 6px;
+    border-radius: var(--radius-s);
     font-size: var(--fs-label);
-    font-weight: 800;
     color: color-mix(in srgb, var(--danger) 70%, var(--text-dim));
-    background: #222838;
-    box-shadow: inset 0 -2px 0 rgb(0 0 0 / 35%);
+    border: 1px solid var(--line-strong);
   }
   .arm.on {
     background: var(--danger);
-    color: #fff;
-    box-shadow: 0 0 10px color-mix(in srgb, var(--danger) 60%, transparent);
+    border-color: var(--danger);
+    color: var(--accent-ink);
   }
   .note:hover {
-    background: color-mix(in srgb, var(--accent) 22%, transparent);
+    background: var(--bg-hover);
   }
 </style>

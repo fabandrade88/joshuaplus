@@ -13,6 +13,8 @@ export default defineConfig({
     sourcemap: false,
     // No inline scripts: keeps the strict CSP (`script-src 'self'`) valid.
     assetsInlineLimit: 0,
+    // The video exporter (mediabunny) is one ~520 kB chunk, loaded on first export.
+    chunkSizeWarningLimit: 600,
   },
   test: {
     environment: "node",

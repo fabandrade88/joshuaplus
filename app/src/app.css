@@ -1,60 +1,61 @@
-/* Joshua+ design tokens — a dark "studio at night" palette with warm amber
-   as the signature accent (think VU meters and tube glow). */
+/* Joshua+ design tokens. A plain, flat desktop look in the spirit of tiling
+   window managers such as Omarchy: one monospace face, square corners, 1 px
+   borders, no glows or shadows, and amber (the app icon's colour) as the only
+   accent, kept for what is active or needs a hand. */
 :root {
   color-scheme: dark;
 
-  --bg: #0b0d12;
-  --bg-raised: #11141b;
-  --bg-panel: #151923;
-  --bg-hover: #1b2030;
-  --bg-active: #222839;
-  --line: #232838;
-  --line-strong: #2e3448;
+  --bg: #121212;
+  --bg-raised: #161616;
+  --bg-panel: #1a1a1a;
+  --bg-hover: #222222;
+  --bg-active: #2a2a2a;
+  --line: #2a2a2a;
+  --line-strong: #3a3a3a;
 
-  --text: #e9ecf3;
-  --text-dim: #9aa3b5;
-  --text-faint: #8089a0; /* ≥ 4.6:1 on every background */
+  --text: #d9d9d9;
+  --text-dim: #a3a3a3;
+  --text-faint: #8a8a8a; /* ≥ 4.5:1 on every background */
 
-  --accent: #ffb020;
-  --accent-strong: #ffc552;
-  --accent-ink: #1a1200;
-  --danger: #ff5a5f;
-  --ok: #3ddc97;
+  --accent: #f0a830;
+  --accent-strong: #f5bb55;
+  --accent-ink: #121212;
+  --danger: #e5534b;
+  --ok: #6cc085;
 
-  --stem-vocals: #ff6b8a;
-  --stem-drums: #ffb020;
-  --stem-bass: #8b6cff;
-  --stem-guitar: #3ddc97;
-  --stem-acoustic: #e0a96d;
-  --stem-piano: #4cc9f0;
-  --stem-other: #a7b0c2;
-  --stem-click: #f2f4f8;
+  --stem-vocals: #e07a8f;
+  --stem-drums: #f0a830;
+  --stem-bass: #9d8be0;
+  --stem-guitar: #6cc085;
+  --stem-acoustic: #d4a373;
+  --stem-piano: #6fb8d6;
+  --stem-other: #a3a3a3;
+  --stem-click: #e5e5e5;
 
-  --folder-amber: #ffb020;
-  --folder-rose: #ff6b8a;
-  --folder-violet: #8b6cff;
-  --folder-green: #3ddc97;
-  --folder-cyan: #4cc9f0;
-  --folder-slate: #a7b0c2;
+  --folder-amber: #f0a830;
+  --folder-rose: #e07a8f;
+  --folder-violet: #9d8be0;
+  --folder-green: #6cc085;
+  --folder-cyan: #6fb8d6;
+  --folder-slate: #a3a3a3;
 
-  --radius-s: 6px;
-  --radius: 10px;
-  --radius-l: 16px;
-  --shadow: 0 12px 40px rgb(0 0 0 / 45%);
+  --radius-s: 2px;
+  --radius: 3px;
+  --radius-l: 4px;
+  --shadow: none;
 
-  --font: "Inter", "SF Pro Text", -apple-system, "Segoe UI", system-ui, Roboto, "Helvetica Neue", Arial, sans-serif;
-  --mono: "JetBrains Mono", "SF Mono", ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+  --font: "JetBrains Mono Variable", "JetBrains Mono", "SF Mono", ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+  --mono: var(--font);
 
-  /* Type scale. Nothing below --fs-label, and --fs-label only for short
-     UPPERCASE labels, tags and chips (bold, letter-spaced). */
-  --fs-label: 11.5px;
-  --fs-small: 12.5px; /* secondary text, hints, captions, meta, table cells */
-  --fs-body: 14px; /* default UI text, buttons, inputs, list items */
-  --fs-emph: 15px;
-  --fs-title: 18px;
-  --fs-h1: 24px;
+  /* Type scale. Nothing below --fs-label. */
+  --fs-label: 11px;
+  --fs-small: 12px; /* secondary text, hints, captions, meta, table cells */
+  --fs-body: 13px; /* default UI text, buttons, inputs, list items */
+  --fs-emph: 14px;
+  --fs-title: 16px;
+  --fs-h1: 20px;
 
-  --sidebar-w: 300px;
+  --sidebar-w: 280px;
   --lane-header-w: 248px;
   --lane-h: 84px;
 }
@@ -83,8 +84,9 @@ body {
   color: var(--text);
   font-family: var(--font);
   font-size: var(--fs-body);
-  line-height: 1.4;
+  line-height: 1.45;
   -webkit-font-smoothing: antialiased;
+  font-feature-settings: "calt" 0; /* no ligatures in a UI */
   user-select: none;
   -webkit-user-select: none;
 }
@@ -101,8 +103,8 @@ button {
 button:focus-visible,
 input:focus-visible,
 select:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .tabular {
@@ -114,13 +116,13 @@ select:focus-visible {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  height: 36px;
-  padding: 0 16px;
-  border-radius: var(--radius);
-  background: var(--bg-active);
+  height: 32px;
+  padding: 0 14px;
+  border-radius: var(--radius-s);
+  background: var(--bg-panel);
   border: 1px solid var(--line-strong);
-  font-weight: 600;
-  transition: background 0.15s, border-color 0.15s, transform 0.05s;
+  font-weight: 500;
+  transition: background 0.1s, border-color 0.1s;
 }
 
 .btn:hover {
@@ -129,7 +131,7 @@ select:focus-visible {
 }
 
 .btn:active {
-  transform: translateY(1px);
+  background: var(--bg-active);
 }
 
 .btn.primary {
@@ -140,6 +142,7 @@ select:focus-visible {
 
 .btn.primary:hover {
   background: var(--accent-strong);
+  border-color: var(--accent-strong);
 }
 
 .icon-btn {
@@ -149,7 +152,7 @@ select:focus-visible {
   height: 32px;
   border-radius: var(--radius-s);
   color: var(--text-dim);
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.1s, color 0.1s;
 }
 
 .icon-btn:hover {
@@ -159,29 +162,27 @@ select:focus-visible {
 
 .icon-btn.on {
   color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  background: var(--bg-active);
 }
 
 .chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 24px;
-  padding: 0 10px;
-  border-radius: 999px;
-  background: var(--bg-active);
+  height: 22px;
+  padding: 0 8px;
+  border-radius: var(--radius-s);
+  border: 1px solid var(--line-strong);
   color: var(--text-dim);
   font-size: var(--fs-small);
-  font-weight: 600;
+  font-weight: 500;
   white-space: nowrap;
 }
 
 .section-title {
   margin: 0;
   font-size: var(--fs-label);
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-weight: 600;
   color: var(--text-faint);
 }
 
@@ -195,40 +196,39 @@ input[type="range"] {
 }
 
 input[type="range"]::-webkit-slider-runnable-track {
-  height: 4px;
-  border-radius: 2px;
+  height: 2px;
+  border-radius: 0;
   background: linear-gradient(to right, var(--fill, var(--accent)) var(--pct, 0%), var(--line-strong) var(--pct, 0%));
 }
 
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 14px;
+  width: 8px;
   height: 14px;
-  margin-top: -5px;
-  border-radius: 50%;
+  margin-top: -6px;
+  border-radius: 1px;
   background: var(--text);
-  border: 2px solid var(--bg);
-  box-shadow: 0 0 0 1px var(--line-strong);
+  border: 0;
 }
 
 input[type="range"]::-moz-range-track {
-  height: 4px;
-  border-radius: 2px;
+  height: 2px;
+  border-radius: 0;
   background: var(--line-strong);
 }
 
 input[type="range"]::-moz-range-progress {
-  height: 4px;
-  border-radius: 2px;
+  height: 2px;
+  border-radius: 0;
   background: var(--fill, var(--accent));
 }
 
 input[type="range"]::-moz-range-thumb {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
+  width: 8px;
+  height: 14px;
+  border-radius: 1px;
   background: var(--text);
-  border: 2px solid var(--bg);
+  border: 0;
 }
 
 ::-webkit-scrollbar {
@@ -238,7 +238,7 @@ input[type="range"]::-moz-range-thumb {
 
 ::-webkit-scrollbar-thumb {
   background: var(--line-strong);
-  border-radius: 10px;
+  border-radius: 0;
   border: 3px solid var(--bg);
 }
 

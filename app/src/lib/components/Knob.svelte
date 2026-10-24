@@ -112,18 +112,18 @@
   .track {
     fill: none;
     stroke: var(--line-strong);
-    stroke-width: 2.5;
-    stroke-linecap: round;
+    stroke-width: 2;
+    stroke-linecap: butt;
   }
   .value {
     fill: none;
     stroke: var(--c);
-    stroke-width: 2.5;
-    stroke-linecap: round;
+    stroke-width: 2;
+    stroke-linecap: butt;
   }
   .cap {
-    fill: #262c3d;
-    stroke: #39415a;
+    fill: var(--bg-active);
+    stroke: var(--line-strong);
     stroke-width: 1;
   }
   .pointer {

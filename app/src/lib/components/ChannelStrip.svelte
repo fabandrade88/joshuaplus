@@ -122,21 +122,19 @@
     align-items: center;
     gap: 6px;
     padding: 12px 6px 10px;
-    border-radius: 12px;
-    background: linear-gradient(180deg, #171b26, #11141c);
-    border: 1px solid #222838;
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 4%);
+    border-radius: var(--radius-s);
+    background: var(--bg-panel);
+    border: 1px solid var(--line);
   }
   .strip.wide {
     width: 88px;
   }
   .cap {
     position: absolute;
-    inset: 0 10px auto;
-    height: 3px;
-    border-radius: 0 0 3px 3px;
+    inset: -1px -1px auto;
+    height: 2px;
+    border-radius: 0;
     background: var(--c);
-    box-shadow: 0 0 10px var(--c);
   }
   .off .cap {
     opacity: 0.3;
@@ -155,7 +153,7 @@
   .name {
     max-width: 100%;
     font-size: var(--fs-small);
-    font-weight: 700;
+    font-weight: 500;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -195,28 +193,26 @@
   .lit {
     width: 30px;
     height: 24px;
-    border-radius: 6px;
+    border-radius: var(--radius-s);
     font-size: var(--fs-label);
-    font-weight: 800;
     color: var(--text-dim);
-    background: #222838;
-    box-shadow: inset 0 -2px 0 rgb(0 0 0 / 35%);
+    border: 1px solid var(--line-strong);
   }
   .lit:hover {
     color: var(--text);
   }
   .mute.on {
     background: var(--danger);
-    color: #fff;
-    box-shadow: 0 0 10px color-mix(in srgb, var(--danger) 60%, transparent);
+    border-color: var(--danger);
+    color: var(--accent-ink);
   }
   .arm {
     color: color-mix(in srgb, var(--danger) 70%, var(--text-dim));
   }
   .arm.on {
     background: var(--danger);
-    color: #fff;
-    box-shadow: 0 0 10px color-mix(in srgb, var(--danger) 60%, transparent);
+    border-color: var(--danger);
+    color: var(--accent-ink);
   }
   .head {
     position: relative;
@@ -227,7 +223,7 @@
     right: -2px;
     width: 18px;
     height: 18px;
-    border-radius: 50%;
+    border-radius: var(--radius-s);
     font-size: var(--fs-body);
     line-height: 1;
     color: var(--text-faint);
@@ -239,7 +235,7 @@
   }
   .solo.on {
     background: var(--accent);
+    border-color: var(--accent);
     color: var(--accent-ink);
-    box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 60%, transparent);
   }
 </style>

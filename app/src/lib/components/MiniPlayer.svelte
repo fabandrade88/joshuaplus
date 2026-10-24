@@ -72,7 +72,7 @@
     place-items: center;
     width: 36px;
     height: 36px;
-    border-radius: 7px;
+    border-radius: var(--radius-s);
     overflow: hidden;
     background: var(--bg-active);
     color: var(--accent);
@@ -117,7 +117,7 @@
     min-width: 0;
   }
   .title {
-    font-weight: 700;
+    font-weight: 600;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -132,7 +132,7 @@
     place-items: center;
     width: 32px;
     height: 32px;
-    border-radius: 50%;
+    border-radius: var(--radius-s);
     background: var(--accent);
     color: var(--accent-ink);
   }

@@ -293,8 +293,8 @@
     flex-wrap: wrap;
     padding: 10px 16px;
     border-radius: var(--radius);
-    background: color-mix(in srgb, var(--accent) 7%, var(--bg-raised));
-    border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
+    background: var(--bg-panel);
+    border: 1px solid var(--line-strong);
   }
   .head-text {
     min-width: 0;
@@ -303,8 +303,7 @@
   .head h1 {
     margin: 0;
     font-size: var(--fs-title);
-    letter-spacing: -0.02em;
-    color: var(--accent);
+    color: var(--text);
   }
   .head p {
     margin: 2px 0 0;
@@ -323,12 +322,12 @@
     gap: 5px;
     max-width: 260px;
     padding: 3px 9px;
-    border-radius: 999px;
+    border-radius: var(--radius);
     font-size: var(--fs-small);
-    font-weight: 700;
+    font-weight: 600;
     color: var(--c);
-    background: color-mix(in srgb, var(--c) 14%, transparent);
-    border: 1px solid color-mix(in srgb, var(--c) 30%, transparent);
+    background: var(--bg-active);
+    border: 1px solid var(--line-strong);
   }
   .pill-text {
     min-width: 0;
@@ -357,13 +356,6 @@
     flex-direction: column;
     gap: 10px;
   }
-  .panel::before {
-    content: "";
-    position: absolute;
-    inset: 0 auto 0 0;
-    width: 3px;
-    background: var(--c);
-  }
   .panel-head {
     display: flex;
     align-items: center;
@@ -383,9 +375,9 @@
     place-items: center;
     width: 28px;
     height: 28px;
-    border-radius: 8px;
+    border-radius: var(--radius);
     color: var(--c);
-    background: color-mix(in srgb, var(--c) 16%, transparent);
+    background: var(--bg-active);
   }
   h3 {
     margin: 0;
@@ -465,7 +457,7 @@
     min-width: 0;
     color: var(--text);
     font-size: var(--fs-body);
-    font-weight: 700;
+    font-weight: 600;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -501,7 +493,7 @@
     gap: 5px;
     height: 24px;
     padding: 0 9px;
-    border-radius: 999px;
+    border-radius: var(--radius);
     font-size: var(--fs-small);
     font-weight: 600;
     color: var(--text-dim);
@@ -512,11 +504,11 @@
   .toggle.direct {
     cursor: help;
     color: var(--accent);
-    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    background: var(--bg-active);
   }
   .toggle:has(input:checked) {
     color: var(--ok);
-    background: color-mix(in srgb, var(--ok) 15%, transparent);
+    background: var(--bg-active);
   }
   .toggle input {
     accent-color: var(--ok);
@@ -534,7 +526,7 @@
   .tag {
     align-self: flex-start;
     padding: 2px 8px;
-    border-radius: 6px;
+    border-radius: var(--radius-s);
     font-size: var(--fs-small);
     white-space: nowrap;
     color: var(--text-dim);
@@ -542,12 +534,12 @@
   }
   .tag.ok {
     color: var(--ok);
-    background: color-mix(in srgb, var(--ok) 14%, transparent);
-    font-weight: 700;
+    background: var(--bg-active);
+    font-weight: 600;
   }
   .tag.warn {
     color: var(--danger);
-    background: color-mix(in srgb, var(--danger) 14%, transparent);
+    background: var(--bg-active);
     white-space: normal;
   }
   .tip {
@@ -560,7 +552,7 @@
     font-size: var(--fs-small);
     line-height: 1.45;
     color: var(--ok);
-    background: color-mix(in srgb, var(--ok) 10%, transparent);
+    background: var(--bg-active);
   }
   .tip :global(svg) {
     flex: none;
@@ -568,7 +560,7 @@
   }
   .tip.alert {
     color: var(--accent);
-    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    background: var(--bg-active);
   }
   .note {
     flex: none;
@@ -593,9 +585,7 @@
   }
   .field span {
     font-size: var(--fs-label);
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    font-weight: 600;
     color: color-mix(in srgb, var(--c) 70%, var(--text-faint));
   }
   .status {
@@ -647,7 +637,7 @@
     min-width: 0;
     min-height: 44px;
     padding: 3px 6px;
-    border-radius: 8px;
+    border-radius: var(--radius);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -656,14 +646,13 @@
     line-height: 1.2;
     background: color-mix(in srgb, var(--stem-drums) calc(var(--light) * 75%), var(--bg-panel));
     border: 1px solid var(--line-strong);
-    box-shadow: 0 0 calc(var(--light) * 16px) color-mix(in srgb, var(--stem-drums) calc(var(--light) * 100%), transparent);
     transition: border-color 0.12s;
   }
   .pad:hover {
     border-color: var(--text-faint);
   }
   .pad.cymbal {
-    border-radius: 999px;
+    border-radius: var(--radius);
     background: color-mix(in srgb, var(--accent-strong) calc(var(--light) * 75%), #1a1914);
     border-color: color-mix(in srgb, var(--accent) 25%, var(--line-strong));
   }
@@ -683,7 +672,7 @@
   .pad-name {
     max-width: 100%;
     font-size: var(--fs-small);
-    font-weight: 700;
+    font-weight: 600;
     text-align: center;
     /* Long names (e.g. "Hi-Hat geschlossen") take a second line. */
     display: -webkit-box;
@@ -729,7 +718,7 @@
   .learning-msg {
     font-size: var(--fs-body);
     color: var(--accent);
-    font-weight: 700;
+    font-weight: 600;
   }
   .small {
     flex: none;

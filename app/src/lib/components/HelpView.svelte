@@ -90,11 +90,6 @@
           <span style="--c: var(--stem-vocals)"><Icon name="loop" size={13} />{i18n.t("help.tip2")}</span>
           <span style="--c: var(--stem-guitar)"><Icon name="click" size={13} />{i18n.t("help.tip3")}</span>
         </div>
-        <div class="bars" aria-hidden="true">
-          {#each ["vocals", "drums", "bass", "guitar", "acoustic", "piano", "other"] as stem, i (stem)}
-            <i style={`--c:var(--stem-${stem});--d:${i * 110}ms`}></i>
-          {/each}
-        </div>
       </header>
     {/if}
 
@@ -138,7 +133,6 @@
   h1 {
     margin: 0;
     font-size: var(--fs-h1);
-    letter-spacing: -0.03em;
   }
   .search {
     display: flex;
@@ -192,7 +186,7 @@
   }
   ul button.active {
     color: var(--text);
-    background: color-mix(in srgb, var(--c) 14%, transparent);
+    background: var(--bg-active);
   }
   .dot {
     width: 8px;
@@ -204,7 +198,6 @@
   }
   .active .dot {
     opacity: 1;
-    box-shadow: 0 0 8px var(--c);
   }
   .content {
     flex: 1;
@@ -225,14 +218,13 @@
     overflow: hidden;
     padding: 24px 26px;
     border-radius: var(--radius-l);
-    background: color-mix(in srgb, var(--accent) 7%, var(--bg-raised));
-    border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
+    background: var(--bg-panel);
+    border: 1px solid var(--line-strong);
   }
   .hero h2 {
     margin: 0;
     font-size: 22px;
-    letter-spacing: -0.02em;
-    color: var(--accent);
+    color: var(--text);
   }
   .hero p {
     margin: 6px 0 0;
@@ -250,38 +242,12 @@
     align-items: center;
     gap: 6px;
     padding: 5px 11px;
-    border-radius: 999px;
+    border-radius: var(--radius);
     font-size: var(--fs-small);
-    font-weight: 700;
+    font-weight: 600;
     color: var(--c);
-    background: color-mix(in srgb, var(--c) 14%, transparent);
-    border: 1px solid color-mix(in srgb, var(--c) 30%, transparent);
-  }
-  .bars {
-    position: absolute;
-    right: 26px;
-    top: 22px;
-    display: flex;
-    align-items: flex-end;
-    gap: 5px;
-    height: 54px;
-    opacity: 0.9;
-  }
-  .bars i {
-    width: 9px;
-    height: 100%;
-    border-radius: 3px;
-    background: var(--c);
-    transform-origin: bottom;
-    animation: bounce 1.3s var(--d) ease-in-out infinite alternate;
-  }
-  @keyframes bounce {
-    from {
-      transform: scaleY(0.3);
-    }
-    to {
-      transform: scaleY(1);
-    }
+    background: var(--bg-active);
+    border: 1px solid var(--line-strong);
   }
   .card {
     position: relative;
@@ -291,13 +257,6 @@
     border: 1px solid var(--line);
     scroll-margin-top: 16px;
     overflow: hidden;
-  }
-  .card::before {
-    content: "";
-    position: absolute;
-    inset: 0 auto 0 0;
-    width: 4px;
-    background: var(--c);
   }
   .card-head {
     display: flex;
@@ -310,9 +269,9 @@
     place-items: center;
     width: 36px;
     height: 36px;
-    border-radius: 10px;
+    border-radius: var(--radius);
     color: var(--c);
-    background: color-mix(in srgb, var(--c) 16%, transparent);
+    background: var(--bg-active);
   }
   .card h2 {
     margin: 0;
@@ -339,7 +298,7 @@
     border-top: 0;
   }
   dt {
-    font-weight: 700;
+    font-weight: 600;
     color: color-mix(in srgb, var(--c) 65%, var(--text));
     padding-right: 16px;
   }
@@ -351,14 +310,14 @@
   kbd {
     display: inline-block;
     padding: 3px 9px;
-    border-radius: 7px;
-    border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
+    border-radius: var(--radius-s);
+    border: 1px solid var(--line-strong);
     border-bottom-width: 3px;
-    background: color-mix(in srgb, var(--accent) 12%, var(--bg-panel));
+    background: var(--bg-panel);
     color: var(--accent);
     font-family: var(--mono);
     font-size: var(--fs-small);
-    font-weight: 700;
+    font-weight: 600;
   }
   .empty {
     color: var(--text-faint);

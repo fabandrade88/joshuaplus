@@ -206,9 +206,7 @@
   th {
     text-align: left;
     font-size: var(--fs-label);
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    font-weight: 600;
     color: var(--text-faint);
     padding: 0 12px 8px;
     border-bottom: 1px solid var(--line);
@@ -244,7 +242,7 @@
     position: relative;
     width: 34px;
     height: 28px;
-    border-radius: 6px;
+    border-radius: var(--radius-s);
     cursor: grab;
     touch-action: none;
   }
@@ -257,7 +255,6 @@
     display: grid;
     place-items: center;
     color: var(--text-dim);
-    letter-spacing: -3px;
     opacity: 0;
   }
   tr:hover .grip .num,
@@ -324,7 +321,7 @@
     min-width: 0;
     text-align: left;
     color: var(--text);
-    font-weight: 600;
+    font-weight: 500;
   }
   .play {
     position: relative;
@@ -333,14 +330,14 @@
     place-items: center;
     width: 34px;
     height: 34px;
-    border-radius: 50%;
+    border-radius: var(--radius-s);
     overflow: hidden;
     background: var(--bg-active);
     color: var(--text-dim);
     transition: background 0.15s, color 0.15s;
   }
   .play.has-cover {
-    border-radius: 6px;
+    border-radius: var(--radius-s);
   }
   .play img {
     position: absolute;
@@ -378,18 +375,16 @@
   }
   .engine {
     font-size: var(--fs-small);
-    font-weight: 700;
-    padding: 3px 8px;
-    border-radius: 999px;
-    background: var(--bg-active);
+    padding: 1px 6px;
+    border-radius: var(--radius-s);
+    border: 1px solid var(--line-strong);
+    color: var(--text-dim);
   }
   .engine[data-engine="studio"] {
     color: var(--accent);
-    background: color-mix(in srgb, var(--accent) 14%, transparent);
   }
   .engine[data-engine="cloud"] {
     color: var(--stem-piano);
-    background: color-mix(in srgb, var(--stem-piano) 14%, transparent);
   }
   .folder {
     display: flex;

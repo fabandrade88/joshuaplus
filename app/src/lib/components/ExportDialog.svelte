@@ -78,11 +78,9 @@
     border-radius: var(--radius-l);
     background: var(--bg-panel);
     color: var(--text);
-    box-shadow: var(--shadow);
   }
   dialog::backdrop {
     background: rgb(0 0 0 / 55%);
-    backdrop-filter: blur(3px);
   }
   header {
     display: flex;
@@ -112,7 +110,7 @@
   }
   .click.on {
     border-color: color-mix(in srgb, var(--accent) 60%, var(--line));
-    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    background: var(--bg-active);
   }
   .click input {
     width: 18px;
@@ -126,7 +124,7 @@
     width: 32px;
     height: 32px;
     flex: none;
-    border-radius: 8px;
+    border-radius: var(--radius);
     color: var(--text-dim);
     background: var(--bg-raised);
   }
@@ -153,7 +151,7 @@
   }
   code {
     padding: 6px 8px;
-    border-radius: 6px;
+    border-radius: var(--radius-s);
     background: var(--bg-raised);
     font-size: var(--fs-small);
     color: var(--text-dim);

@@ -163,9 +163,7 @@
     padding: 12px 12px 14px;
     overflow: hidden;
     border-top: 1px solid var(--line);
-    background:
-      linear-gradient(180deg, rgb(255 255 255 / 2%), transparent 30%),
-      #0d0f15;
+    background: var(--bg);
   }
   .scroller {
     flex: 1;
@@ -192,8 +190,8 @@
     flex-direction: column;
     gap: 8px;
     padding: 8px;
-    border-radius: 16px;
-    background: #12151d;
+    border-radius: var(--radius-s);
+    background: var(--bg-raised);
     border: 1px solid var(--line);
   }
   header {
@@ -209,9 +207,7 @@
   }
   .group-name {
     font-size: var(--fs-label);
-    font-weight: 800;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
+    font-weight: 500;
     color: var(--accent);
   }
   .toggle {
@@ -219,7 +215,6 @@
     align-items: center;
     gap: 4px;
     font-size: var(--fs-small);
-    font-weight: 600;
     color: var(--text-faint);
     white-space: nowrap;
   }

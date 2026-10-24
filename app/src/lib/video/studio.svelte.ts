@@ -19,7 +19,6 @@ import {
   type SyncSample,
   type VideoFormat,
 } from "./formats";
-import { ComposeCancelled, canComposeOffline, composeOffline } from "./compose";
 
 /** Longest take the studio films (the backend renders audio up to 30 min). */
 const MAX_TAKE_SECS = 20 * 60;
@@ -504,8 +503,10 @@ class VideoStudio {
     const t0 = performance.now();
     const step = (what: string) => trace(`${what} (+${Math.round(performance.now() - t0)} ms)`);
     let video: HTMLVideoElement | null = null;
+    // Loaded on first export: the media library is large.
+    const compose = await import("./compose");
     try {
-      const offline = await canComposeOffline();
+      const offline = await compose.canComposeOffline();
       if (!offline) {
         // Real time: start loading the picture while the sound renders.
         video = this.composeElement();
@@ -529,7 +530,7 @@ class VideoStudio {
       };
       this.exportStage = "encoding";
       const keep = offline
-        ? await this.composeFrames(clip, formats, buffer, overlay, handles, step)
+        ? await this.composeFrames(compose, clip, formats, buffer, overlay, handles, step)
         : await this.composeRealtime(video!, ctx, clip, container, formats, buffer, overlay, handles, step);
       for (const h of handles) {
         const path = await api.videoSaveEnd(h, keep, offline);
@@ -542,7 +543,7 @@ class VideoStudio {
       else app.notify(i18n.t("video.exported", { n: this.saved.length }));
       void app.refreshExports();
     } catch (e) {
-      if (!(e instanceof Cancelled) && !(e instanceof ComposeCancelled)) {
+      if (!(e instanceof Cancelled) && !(e instanceof compose.ComposeCancelled)) {
         const why = e instanceof Error ? e.message : isApiError(e) ? e.code : String(e);
         trace(
           `failed: ${why}` +
@@ -586,6 +587,7 @@ class VideoStudio {
 
   /** Frame-by-frame export (WebCodecs). Returns whether to keep the files. */
   private async composeFrames(
+    compose: typeof import("./compose"),
     clip: Clip,
     formats: VideoFormat[],
     audio: AudioBuffer,
@@ -594,7 +596,7 @@ class VideoStudio {
     step: (what: string) => void,
   ): Promise<boolean> {
     step(`composing ${formats.length} format(s) frame by frame`);
-    const length = await composeOffline({
+    const length = await compose.composeOffline({
       clip: clip.blob,
       formats,
       audio,

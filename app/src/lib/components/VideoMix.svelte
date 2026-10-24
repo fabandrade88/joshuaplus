@@ -211,9 +211,9 @@
   .mute {
     width: 28px;
     height: 22px;
-    border-radius: 6px;
+    border-radius: var(--radius-s);
     font-size: var(--fs-label);
-    font-weight: 800;
+    font-weight: 600;
     color: var(--text-dim);
     background: var(--bg-hover);
   }

@@ -117,7 +117,6 @@
     border-radius: var(--radius);
     background: var(--bg-active);
     border: 1px solid var(--line-strong);
-    box-shadow: var(--shadow);
     font-weight: 600;
     animation: rise 0.2s ease-out;
   }
