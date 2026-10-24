@@ -20,9 +20,14 @@ export function matchLocale(tag: string | null | undefined): Locale {
   return "en";
 }
 
-/** Replaces `{name}` placeholders. Values are plain text (rendered escaped by Svelte). */
+/** Replaces `{name}` placeholders, and `{n:one|other}` with the form that
+ *  fits the number `n`. Values are plain text (rendered escaped by Svelte). */
 export function format(template: string, vars: Record<string, string | number> = {}): string {
-  return template.replace(/\{(\w+)\}/g, (m, k: string) => (k in vars ? String(vars[k]) : m));
+  return template
+    .replace(/\{(\w+):([^{}|]*)\|([^{}]*)\}/g, (m, k: string, one: string, other: string) =>
+      k in vars ? (Number(vars[k]) === 1 ? one : other) : m,
+    )
+    .replace(/\{(\w+)\}/g, (m, k: string) => (k in vars ? String(vars[k]) : m));
 }
 
 class I18n {

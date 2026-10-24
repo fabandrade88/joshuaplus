@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { en } from "./en";
 import { catalogs, format, matchLocale } from "./index.svelte";
 
-const placeholders = (s: string) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
+const placeholders = (s: string) => [...new Set([...s.matchAll(/\{(\w+)[:}]/g)].map((m) => m[1]))].sort();
 
 describe("catalogs", () => {
   for (const [locale, messages] of Object.entries(catalogs)) {

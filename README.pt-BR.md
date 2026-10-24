@@ -25,7 +25,7 @@ O app está em **English, Português (Brasil) e Deutsch**.
 
 ## Instalação
 
-**macOS** (Apple Silicon ou Intel, macOS 13.4 ou mais novo) e **Linux** (x86_64, glibc 2.39+: Ubuntu 24.04+, Debian 13+, Fedora 40+):
+**macOS** (Apple Silicon, macOS 13.4 ou mais novo; Macs Intel ainda não são suportados no beta, porque o ONNX Runtime não publica mais versões para Intel) e **Linux** (x86_64, glibc 2.39+: Ubuntu 24.04+, Debian 13+, Fedora 40+):
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/fabandrade88/joshuaplus/main/scripts/install.sh | sh
