@@ -420,7 +420,7 @@ export const ptBR: Messages = {
   "about.contributors": "Contribuidores",
   "about.allContributors": "Ver todos os contribuidores no GitHub",
   "about.license": "Licença",
-  "about.licenseText": "Livre e de código aberto sob a licença MIT.",
+  "about.licenseText": "Livre e de código aberto sob a licença MIT. O nome Joshua+, o logo e o ícone não fazem parte da licença: pertencem ao autor.",
   "about.builtWith": "Feito com código aberto",
   "about.version": "Versão",
   "about.issues": "Relatar um problema",

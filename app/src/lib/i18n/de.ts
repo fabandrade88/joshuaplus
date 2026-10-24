@@ -420,7 +420,7 @@ export const de: Messages = {
   "about.contributors": "Mitwirkende",
   "about.allContributors": "Alle Mitwirkenden auf GitHub",
   "about.license": "Lizenz",
-  "about.licenseText": "Frei und quelloffen unter der MIT-Lizenz.",
+  "about.licenseText": "Frei und quelloffen unter der MIT-Lizenz. Name, Logo und Icon von Joshua+ sind davon ausgenommen: Sie gehören dem Autor.",
   "about.builtWith": "Mit Open Source gebaut",
   "about.version": "Version",
   "about.issues": "Problem melden",

@@ -418,7 +418,7 @@ export const en = {
   "about.contributors": "Contributors",
   "about.allContributors": "See all contributors on GitHub",
   "about.license": "License",
-  "about.licenseText": "Free and open source under the MIT license.",
+  "about.licenseText": "Free and open source under the MIT License. The Joshua+ name, logo and icon are not covered: they belong to the author.",
   "about.builtWith": "Built with open source",
   "about.version": "Version",
   "about.issues": "Report a problem",

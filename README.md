@@ -145,3 +145,5 @@ Bug reports, translations, tests and code are welcome. Read [CONTRIBUTING.md](CO
 ## License
 
 [MIT](LICENSE) © 2026 **Fabricio O. de Andrade**
+
+The MIT License covers the code, not the brand: the **Joshua+** name, logo and app icon belong to the author and may not be used for other products or modified releases. Forks are welcome under their own name and icon. See [TRADEMARKS.md](TRADEMARKS.md).

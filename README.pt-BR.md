@@ -128,3 +128,5 @@ Relatos de bugs, traduções, testes e código são bem-vindos. Leia [CONTRIBUTI
 ## Licença
 
 [MIT](LICENSE) © 2026 **Fabricio O. de Andrade**
+
+A licença MIT cobre o código, não a marca: o nome **Joshua+**, o logo e o ícone do app pertencem ao autor e não podem ser usados em outros produtos nem em versões modificadas. Forks são bem-vindos com nome e ícone próprios. Veja [TRADEMARKS.md](TRADEMARKS.md) (em inglês).
