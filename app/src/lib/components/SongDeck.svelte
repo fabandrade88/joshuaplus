@@ -276,9 +276,8 @@
     width: 84px;
     height: 84px;
     flex: none;
-    border-radius: 10px;
+    border-radius: var(--radius);
     object-fit: cover;
-    box-shadow: 0 8px 24px rgb(0 0 0 / 45%);
   }
   .title-row {
     display: flex;
@@ -289,7 +288,7 @@
   .title {
     min-width: 0;
     text-align: left;
-    border-radius: 6px;
+    border-radius: var(--radius-s);
     cursor: text;
   }
   .title:hover h1 {
@@ -302,13 +301,13 @@
     height: 34px;
     margin: 2px 0 6px;
     padding: 0 8px;
-    border-radius: 6px;
+    border-radius: var(--radius-s);
     border: 1px solid var(--accent);
     background: var(--bg);
     color: var(--text);
     font: inherit;
     font-size: var(--fs-title);
-    font-weight: 800;
+    font-weight: 600;
     user-select: text;
   }
   .info-wrap {
@@ -318,13 +317,10 @@
   .info-btn {
     width: 20px;
     height: 20px;
-    border-radius: 50%;
+    border-radius: var(--radius-s);
     border: 1px solid var(--line-strong);
     color: var(--text-faint);
     font-size: var(--fs-small);
-    font-weight: 800;
-    font-family: Georgia, serif;
-    font-style: italic;
   }
   .info-btn:hover,
   .info-btn.on {
@@ -341,13 +337,12 @@
     border-radius: var(--radius);
     background: var(--bg-panel);
     border: 1px solid var(--line-strong);
-    box-shadow: var(--shadow);
   }
   .popover img {
     width: 100%;
     aspect-ratio: 1;
     object-fit: cover;
-    border-radius: 8px;
+    border-radius: var(--radius);
     margin-bottom: 12px;
   }
   dl {
@@ -378,7 +373,6 @@
     max-width: 100%;
     white-space: nowrap;
     font-size: var(--fs-small);
-    font-weight: 600;
     color: var(--text-faint);
   }
   .back:hover {
@@ -407,15 +401,14 @@
     gap: 4px;
     height: 22px;
     padding: 0 8px;
-    border-radius: 999px;
+    border-radius: var(--radius-s);
     font-size: var(--fs-small);
-    font-weight: 700;
     color: var(--text-faint);
     border: 1px solid var(--line-strong);
   }
   .auto.on {
     color: var(--accent);
-    border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+    border-color: var(--accent);
   }
   .next {
     font-size: var(--fs-small);
@@ -431,9 +424,8 @@
   }
   h1 {
     margin: 2px 0 6px;
-    font-size: 22px;
-    font-weight: 800;
-    letter-spacing: -0.02em;
+    font-size: var(--fs-h1);
+    font-weight: 600;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -451,40 +443,40 @@
     display: flex;
     align-items: center;
     gap: 14px;
-    padding: 8px 14px;
-    border-radius: 999px;
-    background: #0d0f15;
+    padding: 8px 12px;
+    border-radius: var(--radius-s);
+    background: var(--bg);
     border: 1px solid var(--line);
   }
   .round {
     display: grid;
     place-items: center;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-s);
     color: var(--text-dim);
-    background: var(--bg-active);
+    border: 1px solid var(--line-strong);
   }
   .round:hover {
     color: var(--text);
+    background: var(--bg-hover);
   }
   .round.lit {
     color: var(--accent-ink);
     background: var(--accent);
-    box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 50%, transparent);
+    border-color: var(--accent);
   }
   .play {
     display: grid;
     place-items: center;
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
+    width: 52px;
+    height: 40px;
+    border-radius: var(--radius-s);
     color: var(--accent-ink);
     background: var(--accent);
-    box-shadow: 0 6px 24px color-mix(in srgb, var(--accent) 35%, transparent);
   }
-  .play:active {
-    transform: scale(0.96);
+  .play:hover {
+    background: var(--accent-strong);
   }
   .sep {
     width: 1px;
@@ -499,15 +491,14 @@
   .rec {
     display: grid;
     place-items: center;
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-s);
     color: var(--danger);
-    background: color-mix(in srgb, var(--danger) 14%, var(--bg-active));
-    border: 2px solid color-mix(in srgb, var(--danger) 55%, transparent);
+    border: 1px solid var(--danger);
   }
   .rec:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--danger) 24%, var(--bg-active));
+    background: var(--bg-hover);
   }
   .rec.on {
     color: #fff;
@@ -520,7 +511,7 @@
   }
   @keyframes rec-pulse {
     50% {
-      box-shadow: 0 0 0 8px color-mix(in srgb, var(--danger) 20%, transparent);
+      opacity: 0.7;
     }
   }
   .mode {
@@ -533,25 +524,24 @@
     place-items: center;
     width: 26px;
     height: 20px;
-    border-radius: 6px;
+    border-radius: var(--radius-s);
     color: var(--text-faint);
-    background: var(--bg-active);
+    border: 1px solid var(--line-strong);
   }
   .mode button.on {
     color: var(--danger);
-    background: color-mix(in srgb, var(--danger) 16%, var(--bg-active));
+    border-color: var(--danger);
   }
   .chip.export,
   .chip.link {
     cursor: pointer;
-    font-weight: 700;
   }
   .chip.export {
     color: var(--accent);
-    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    border-color: var(--accent);
   }
   .chip.export:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--accent) 22%, transparent);
+    background: var(--bg-hover);
   }
   .chip.link {
     color: var(--text-dim);
@@ -565,9 +555,9 @@
     grid-area: counter;
     min-width: 0;
     padding: 10px 14px 8px;
-    border-radius: 12px;
-    background: #0b0c10;
-    box-shadow: inset 0 2px 8px rgb(0 0 0 / 70%);
+    border-radius: var(--radius-s);
+    background: var(--bg);
+    border: 1px solid var(--line);
   }
   .cols {
     display: grid;
@@ -580,15 +570,12 @@
   }
   .k {
     font-size: var(--fs-label);
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
     color: var(--text-faint);
   }
   .v {
     font-family: var(--mono);
-    font-size: 28px;
-    font-weight: 700;
+    font-size: 26px;
+    font-weight: 500;
     line-height: 1.1;
     color: var(--accent);
   }
@@ -601,9 +588,7 @@
     animation: blink 0.4s steps(2) infinite;
   }
   .counter.recording {
-    box-shadow:
-      inset 0 2px 8px rgb(0 0 0 / 70%),
-      0 0 0 2px color-mix(in srgb, var(--danger) 70%, transparent);
+    border-color: var(--danger);
   }
   .counter.recording .bar div {
     background: var(--danger);
@@ -614,9 +599,9 @@
     }
   }
   .bar {
-    height: 3px;
+    height: 2px;
     margin-top: 8px;
-    border-radius: 2px;
+    border-radius: 0;
     background: var(--line);
     overflow: hidden;
   }
@@ -648,12 +633,12 @@
       height: 28px;
     }
     .play {
-      width: 50px;
-      height: 50px;
+      width: 46px;
+      height: 34px;
     }
     .rec {
-      width: 38px;
-      height: 38px;
+      width: 34px;
+      height: 34px;
     }
     .rec-group {
       gap: 6px;

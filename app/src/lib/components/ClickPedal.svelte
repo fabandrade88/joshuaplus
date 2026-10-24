@@ -187,14 +187,9 @@
     flex-direction: column;
     gap: 8px;
     padding: 12px 14px;
-    border-radius: 16px;
-    background:
-      linear-gradient(160deg, rgb(255 255 255 / 6%), transparent 40%),
-      linear-gradient(180deg, #2a2418, #1a160f);
-    border: 1px solid #4a3d22;
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 8%),
-      0 10px 30px rgb(0 0 0 / 40%);
+    border-radius: var(--radius-s);
+    background: var(--bg-panel);
+    border: 1px solid var(--line);
   }
   header {
     display: flex;
@@ -203,18 +198,14 @@
   }
   .brand {
     font-size: var(--fs-label);
-    font-weight: 800;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
+    font-weight: 600;
     color: var(--accent);
   }
   .redetect {
     width: 24px;
     height: 24px;
-    border-radius: 6px;
-    background: #322a19;
+    border-radius: var(--radius-s);
     color: var(--text-dim);
-    font-weight: 800;
   }
   .redetect:hover {
     color: var(--text);
@@ -229,19 +220,16 @@
     gap: 10px;
   }
   .leds i {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background: #3a301c;
-    box-shadow: inset 0 1px 2px rgb(0 0 0 / 60%);
+    width: 14px;
+    height: 6px;
+    border-radius: 0;
+    background: var(--line-strong);
   }
   .leds i.on {
     background: var(--ok);
-    box-shadow: 0 0 10px var(--ok);
   }
   .leds i.on.one {
     background: var(--accent);
-    box-shadow: 0 0 12px var(--accent);
   }
   .display {
     display: flex;
@@ -249,39 +237,38 @@
     justify-content: space-between;
     gap: 6px;
     padding: 8px;
-    border-radius: 10px;
-    background: #0b0c08;
-    box-shadow: inset 0 2px 6px rgb(0 0 0 / 80%);
+    border-radius: var(--radius-s);
+    background: var(--bg);
+    border: 1px solid var(--line);
   }
   .bpm {
     font-family: var(--mono);
-    font-size: 34px;
-    font-weight: 700;
+    font-size: 30px;
+    font-weight: 500;
     line-height: 1;
     color: var(--accent);
-    text-shadow: 0 0 12px color-mix(in srgb, var(--accent) 50%, transparent);
     display: flex;
     align-items: baseline;
     gap: 4px;
   }
   .bpm {
     cursor: text;
-    border-radius: 6px;
+    border-radius: var(--radius-s);
     padding: 0 4px;
   }
   .bpm:hover {
-    background: rgb(255 176 32 / 8%);
+    background: var(--bg-hover);
   }
   .bpm-input {
     width: 110px;
     height: 40px;
     border: 1px solid var(--accent);
-    border-radius: 6px;
-    background: #000;
+    border-radius: var(--radius-s);
+    background: var(--bg);
     color: var(--accent);
     font-family: var(--mono);
-    font-size: 30px;
-    font-weight: 700;
+    font-size: 26px;
+    font-weight: 500;
     text-align: center;
     user-select: text;
   }
@@ -293,16 +280,15 @@
     min-width: 30px;
     height: 26px;
     padding: 0 6px;
-    border-radius: 6px;
-    background: #322a19;
+    border-radius: var(--radius-s);
+    border: 1px solid var(--line-strong);
     color: var(--text-dim);
     font-size: var(--fs-small);
-    font-weight: 800;
   }
   .mini:hover,
   .one-here:hover {
     color: var(--text);
-    background: #3d3420;
+    background: var(--bg-hover);
   }
   .nudge {
     display: flex;
@@ -311,11 +297,10 @@
   .one-here {
     flex: 1;
     height: 26px;
-    border-radius: 6px;
-    background: #322a19;
+    border-radius: var(--radius-s);
+    border: 1px solid var(--line-strong);
     color: var(--text-dim);
     font-size: var(--fs-small);
-    font-weight: 700;
   }
   .row {
     display: flex;
@@ -337,17 +322,14 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     font-size: var(--fs-label);
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: #8f7f5c;
+    color: var(--text-faint);
   }
   select {
     height: 28px;
     padding: 0 6px;
-    border-radius: 6px;
-    border: 1px solid #4a3d22;
-    background: #15120c;
+    border-radius: var(--radius-s);
+    border: 1px solid var(--line-strong);
+    background: var(--bg);
     color: var(--text);
     font: inherit;
     font-size: var(--fs-small);
@@ -355,10 +337,10 @@
   }
   .segmented {
     display: flex;
-    padding: 2px;
-    border-radius: 8px;
-    background: #15120c;
-    border: 1px solid #4a3d22;
+    padding: 1px;
+    border-radius: var(--radius-s);
+    background: var(--bg);
+    border: 1px solid var(--line-strong);
   }
   .segmented button {
     flex: 1;
@@ -366,9 +348,8 @@
     padding: 0 6px;
     white-space: nowrap;
     height: 24px;
-    border-radius: 6px;
+    border-radius: 1px;
     font-size: var(--fs-small);
-    font-weight: 700;
     color: var(--text-dim);
   }
   .grow {
@@ -388,13 +369,10 @@
     position: relative;
     flex: none;
     width: 52px;
-    border-radius: 8px;
+    border-radius: var(--radius-s);
     font-size: var(--fs-small);
-    font-weight: 900;
-    letter-spacing: 0.08em;
     color: var(--accent);
-    background: #322a19;
-    border: 1px solid #5a4824;
+    border: 1px solid var(--accent);
   }
   .tap:active,
   .tap.active {
@@ -407,9 +385,9 @@
     right: -6px;
     min-width: 16px;
     height: 16px;
-    border-radius: 8px;
+    border-radius: var(--radius-s);
     background: var(--ok);
-    color: #04140c;
+    color: var(--accent-ink);
     font-size: 11px; /* tap counter inside a 16 px badge */
     line-height: 16px;
   }
@@ -425,28 +403,26 @@
     padding-top: 4px;
   }
   .switch {
-    width: 54px;
-    height: 54px;
-    border-radius: 50%;
+    width: 44px;
+    height: 36px;
+    border-radius: var(--radius-s);
     display: grid;
     place-items: center;
-    background: radial-gradient(circle at 35% 30%, #d9dce4, #7d8293 60%, #4b4f5c);
-    box-shadow:
-      0 4px 10px rgb(0 0 0 / 50%),
-      inset 0 -3px 6px rgb(0 0 0 / 35%);
+    border: 1px solid var(--line-strong);
   }
-  .switch:active {
-    transform: translateY(1px) scale(0.98);
+  .switch:hover {
+    background: var(--bg-hover);
+  }
+  .switch.on {
+    border-color: var(--accent);
   }
   .lamp {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: #3b1a1a;
+    width: 14px;
+    height: 6px;
+    background: var(--line-strong);
   }
   .switch.on .lamp {
-    background: #ff4d4d;
-    box-shadow: 0 0 10px #ff4d4d;
+    background: var(--accent);
   }
   @media (max-width: 1180px) {
     .pedal {
@@ -460,8 +436,8 @@
       padding-bottom: 8px;
     }
     .switch {
-      width: 44px;
-      height: 44px;
+      width: 40px;
+      height: 32px;
     }
   }
 </style>

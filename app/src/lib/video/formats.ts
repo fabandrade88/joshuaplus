@@ -83,8 +83,9 @@ export function estimateSongAtVideoStart(samples: readonly SyncSample[]): number
  *  plus the audio output latency (the musician reacts to what they hear). */
 export const DEFAULT_SYNC_MS = -100;
 
-/** Bitrate giving good quality for social platforms at each size. */
+/** Bitrate giving good quality for social platforms at each size (about
+ *  16 Mbit/s at 1080p: platforms re-encode uploads, so give them detail). */
 export function videoBitrate(f: VideoFormat): number {
   const pixels = f.width * f.height;
-  return Math.round(Math.min(16_000_000, Math.max(4_000_000, pixels * 4.5)));
+  return Math.round(Math.min(20_000_000, Math.max(6_000_000, pixels * 8)));
 }

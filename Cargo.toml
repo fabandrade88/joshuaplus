@@ -3,7 +3,7 @@ resolver = "2"
 members = ["crates/joshua-core", "crates/joshua-engine", "crates/joshua-ai", "crates/joshua-midi", "app/src-tauri"]
 
 [workspace.package]
-version = "0.5.1"
+version = "0.5.2"
 edition = "2024"
 license = "MIT"
 authors = ["Fabricio O. de Andrade"]

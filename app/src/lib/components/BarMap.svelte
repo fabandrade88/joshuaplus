@@ -233,15 +233,13 @@
   }
   .label {
     font-size: var(--fs-label);
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
+    font-weight: 600;
     color: var(--text-faint);
   }
   .seg {
     display: flex;
     padding: 2px;
-    border-radius: 7px;
+    border-radius: var(--radius-s);
     background: var(--bg-panel);
     border: 1px solid var(--line);
   }
@@ -249,9 +247,9 @@
     min-width: 28px;
     height: 22px;
     padding: 0 7px;
-    border-radius: 5px;
+    border-radius: var(--radius-s);
     font-size: var(--fs-small);
-    font-weight: 700;
+    font-weight: 600;
     color: var(--text-dim);
   }
   .seg button:hover:not(:disabled) {
@@ -269,7 +267,7 @@
     align-items: center;
     gap: 4px;
     font-size: var(--fs-small);
-    font-weight: 700;
+    font-weight: 600;
     color: var(--accent);
     white-space: nowrap;
   }
@@ -296,7 +294,7 @@
   .cell {
     position: relative;
     overflow: hidden;
-    border-radius: 6px;
+    border-radius: var(--radius-s);
     background: var(--bg-panel);
     border: 1px solid var(--line);
     padding: 3px 5px;
@@ -319,7 +317,7 @@
     font-family: var(--mono);
     font-size: 11px; /* bar number in a 52 px cell */
     line-height: 1.1;
-    font-weight: 700;
+    font-weight: 600;
     color: var(--text-faint);
   }
   .beats {
@@ -332,20 +330,20 @@
   .beats i {
     flex: 1;
     border-radius: 2px 2px 0 0;
-    background: color-mix(in srgb, var(--text) 18%, transparent);
+    background: var(--bg-active);
   }
   .beats i.first {
-    background: color-mix(in srgb, var(--text) 30%, transparent);
+    background: var(--bg-active);
   }
   .selected {
     border-color: color-mix(in srgb, var(--accent) 50%, transparent);
-    background: color-mix(in srgb, var(--accent) 7%, var(--bg-panel));
+    background: var(--bg-panel);
   }
   .looping {
     border-color: var(--accent);
   }
   .looping .beats i {
-    background: color-mix(in srgb, var(--accent) 45%, transparent);
+    background: var(--bg-active);
   }
   .current {
     border-color: var(--text);
@@ -364,7 +362,6 @@
     bottom: 0;
     height: 3px;
     background: var(--accent);
-    box-shadow: 0 0 8px var(--accent);
   }
   /* Short windows: two rows of bars leave the console its height. */
   @media (max-height: 760px) {

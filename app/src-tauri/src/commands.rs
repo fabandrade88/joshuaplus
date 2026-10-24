@@ -55,6 +55,8 @@ pub struct AppInfo {
     pub music_dir: Option<String>,
     /// The user is told about new releases.
     pub update_check: bool,
+    /// Takes are balanced automatically after recording.
+    pub auto_balance: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -148,6 +150,7 @@ pub fn get_app_info(app: AppHandle, state: State<'_, AppState>) -> AppInfo {
         suggested_workspace: music.as_ref().map(|m| m.join("Joshua+").display().to_string()),
         music_dir: music.map(|m| m.display().to_string()),
         update_check: settings.update_check,
+        auto_balance: settings.auto_balance,
     }
 }
 
@@ -433,7 +436,7 @@ pub(crate) fn load_song_blocking(app: &AppHandle, id: &str) -> ApiResult<SongVie
     Ok(SongView { project, peaks, audio_ready, cover })
 }
 
-fn with_song<T>(state: &AppState, f: impl FnOnce(&mut LoadedSong) -> ApiResult<T>) -> ApiResult<T> {
+pub(crate) fn with_song<T>(state: &AppState, f: impl FnOnce(&mut LoadedSong) -> ApiResult<T>) -> ApiResult<T> {
     lock(&state.current).as_mut().map_or_else(|| Err(ApiError::no_song()), f)
 }
 
@@ -1039,6 +1042,12 @@ pub fn skip_update(state: State<'_, AppState>, version: String) -> ApiResult<()>
         return Err(ApiError::invalid("not a version"));
     }
     lock(&state.settings).skipped_version = Some(version);
+    state.save_settings()
+}
+
+#[tauri::command]
+pub fn set_auto_balance(state: State<'_, AppState>, enabled: bool) -> ApiResult<()> {
+    lock(&state.settings).auto_balance = enabled;
     state.save_settings()
 }
 

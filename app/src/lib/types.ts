@@ -28,6 +28,7 @@ export interface AppInfo {
   musicDir: string | null;
   /** Tell the user about new releases. */
   updateCheck: boolean;
+  autoBalance: boolean;
 }
 
 /** A newer published release. */
@@ -185,6 +186,27 @@ export interface TransportTick {
   deviceError: boolean;
   /** Takes are being recorded. */
   recording?: boolean;
+}
+
+/** The open song's mixer levels after a whole-mix change. */
+export interface MixView {
+  tracks: TrackSettings[];
+  takes: TakeSettings[];
+  songGainDb: number;
+  songMuted: boolean;
+  masterGainDb: number;
+}
+
+export interface BalancedTake {
+  id: string;
+  /** The original instrument it replaces (now muted), if one matched. */
+  stem: StemKind | null;
+  gainDb: number;
+}
+
+export interface BalanceResult {
+  mix: MixView;
+  takes: BalancedTake[];
 }
 
 export interface RecordingResult {

@@ -105,8 +105,8 @@
     place-items: center;
     width: 46px;
     height: 46px;
-    border-radius: 13px;
-    background: color-mix(in srgb, var(--c, var(--accent)) 18%, transparent);
+    border-radius: var(--radius);
+    background: var(--bg-active);
     color: var(--c, var(--accent));
     flex: none;
   }
@@ -117,7 +117,6 @@
   h1 {
     margin: 0;
     font-size: 26px;
-    letter-spacing: -0.03em;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

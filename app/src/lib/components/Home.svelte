@@ -117,9 +117,7 @@
     display: flex;
     flex-direction: column;
     gap: 24px;
-    background:
-      radial-gradient(900px 320px at 20% -10%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 70%),
-      var(--bg);
+    background: var(--bg);
   }
   .head {
     display: flex;
@@ -130,8 +128,8 @@
   }
   h1 {
     margin: 0;
-    font-size: 28px;
-    letter-spacing: -0.03em;
+    font-size: var(--fs-h1);
+    font-weight: 600;
   }
   .head p {
     margin: 4px 0 0;
@@ -161,10 +159,7 @@
     background: var(--bg-hover);
   }
   .folder .tab {
-    position: absolute;
-    inset: 0 auto 0 0;
-    width: 3px;
-    background: var(--c);
+    display: none;
   }
   .card-main {
     flex: 1;
@@ -179,14 +174,13 @@
     flex: none;
     display: grid;
     place-items: center;
-    width: 34px;
-    height: 34px;
-    border-radius: 9px;
-    background: color-mix(in srgb, var(--c, var(--accent)) 18%, transparent);
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-s);
+    border: 1px solid var(--line-strong);
     color: var(--c, var(--accent));
   }
   .badge.hollow {
-    background: var(--bg-active);
     color: var(--text-dim);
   }
   .badge.bars {
@@ -194,7 +188,6 @@
     align-items: flex-end;
     gap: 2px;
     padding: 8px;
-    background: var(--bg-active);
   }
   .badge.bars i {
     flex: 1;
@@ -211,7 +204,7 @@
   }
   .card-name {
     font-size: var(--fs-body);
-    font-weight: 800;
+    font-weight: 600;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -227,7 +220,7 @@
     width: 30px;
     height: 30px;
     margin-right: 12px;
-    border-radius: 50%;
+    border-radius: var(--radius-s);
     background: var(--bg-active);
     color: var(--text-dim);
     opacity: 0;

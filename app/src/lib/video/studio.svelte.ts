@@ -97,8 +97,9 @@ class VideoStudio {
   exportStage = $state<"audio" | "encoding" | "saving" | null>(null);
   exportError = $state<string | null>(null);
   exportFormats = $state<FormatId[]>([]);
-  /** The element being encoded; the sidebar card displays it. */
-  composeVideo = $state<HTMLVideoElement | null>(null);
+  /** The element being encoded (the clip playing, or the first format's
+   *  frame); the sidebar card displays it. */
+  composeVideo = $state<HTMLVideoElement | HTMLCanvasElement | null>(null);
   clipUrl = $state<string | null>(null);
   readonly container: Container | null =
     typeof MediaRecorder === "undefined" ? null : pickContainer((m) => MediaRecorder.isTypeSupported(m));
@@ -229,7 +230,8 @@ class VideoStudio {
     this.samples = [];
     const recorder = new MediaRecorder(this.stream, {
       mimeType: videoOnly(this.container),
-      videoBitsPerSecond: 12_000_000,
+      // The source of every export: keep it well above the export bitrates.
+      videoBitsPerSecond: 24_000_000,
     });
     recorder.ondataavailable = (e) => {
       if (e.data.size > 0) this.chunks.push(e.data);
@@ -497,139 +499,41 @@ class VideoStudio {
     this.exportFormats = formats.map((f) => f.id);
     // Created inside the click, so the browser lets it play sound.
     const ctx = new AudioContext();
-    const video = document.createElement("video");
-    video.muted = true;
-    video.playsInline = true;
-    video.preload = "auto";
-    video.className = "compose-video";
-    // WebKit pauses (and may not even load) muted videos that are not in
-    // the page and visible: the sidebar card shows this element as a live
-    // thumbnail. Put it in the page first, then load it.
-    this.composeVideo = video;
     const handles: number[] = [];
     const t0 = performance.now();
     const step = (what: string) => trace(`${what} (+${Math.round(performance.now() - t0)} ms)`);
+    let video: HTMLVideoElement | null = null;
+    // Loaded on first export: the media library is large.
+    const compose = await import("./compose");
     try {
-      await ensureInDocument(video);
-      video.src = this.clipUrl!;
-      video.load();
-      step(`video loading, in page: ${video.isConnected}`);
+      const offline = await compose.canComposeOffline();
+      if (!offline) {
+        // Real time: start loading the picture while the sound renders.
+        video = this.composeElement();
+        await ensureInDocument(video);
+        video.src = this.clipUrl!;
+        video.load();
+        step(`video loading, in page: ${video.isConnected}`);
+      }
       await ctx.resume();
       const buffer = await this.audioFor(ctx);
       step(`sound ready: ${buffer.duration.toFixed(1)} s`);
       if (this.cancelExport) throw new Cancelled();
-      await whenReady(video);
-      step(`video ready ${video.videoWidth}x${video.videoHeight}`);
-      this.exportStage = "encoding";
-      const dest = ctx.createMediaStreamDestination();
-      const src = ctx.createBufferSource();
-      src.buffer = buffer;
-      src.connect(dest);
       const ov = { ...this.overlay };
       // Always the song the clip was filmed on.
       const title = ov.title ? clip.song.title : "";
       const artist = ov.artist ? clip.song.artist : "";
       const cover = ov.cover ? await loadImage(clip.song.cover) : null;
       const withOverlay = !!(title || artist || cover);
-
-      const outputs = await Promise.all(
-        formats.map(async (f) => {
-          const canvas = document.createElement("canvas");
-          canvas.width = f.width;
-          canvas.height = f.height;
-          const g = canvas.getContext("2d")!;
-          const stream = canvas.captureStream(FPS);
-          for (const t of dest.stream.getAudioTracks()) stream.addTrack(t.clone());
-          const rec = new MediaRecorder(stream, {
-            mimeType: container.mime,
-            videoBitsPerSecond: videoBitrate(f),
-            audioBitsPerSecond: 256_000,
-          });
-          const handle = await api.videoSaveBegin(f.id, container.ext);
-          handles.push(handle);
-          let queue = Promise.resolve();
-          let failed: unknown = null;
-          rec.ondataavailable = (e) => {
-            if (e.data.size === 0) return;
-            queue = queue
-              .then(async () => api.videoSaveChunk(handle, new Uint8Array(await e.data.arrayBuffer())))
-              .catch((err: unknown) => {
-                failed = err;
-              });
-          };
-          const finished = new Promise<void>((resolve) => (rec.onstop = () => resolve()));
-          return { f, g, rec, handle, finished, flush: () => queue, failed: () => failed };
-        }),
-      );
-
-      const draw = () => {
-        const vw = video.videoWidth;
-        const vh = video.videoHeight;
-        for (const o of outputs) {
-          const { sx, sy, sw, sh } = coverCrop(vw, vh, o.f.width, o.f.height);
-          o.g.drawImage(video, sx, sy, sw, sh, 0, 0, o.f.width, o.f.height);
-          if (withOverlay) drawTitle(o.g, o.f, title, artist, cover);
-        }
-        this.progress = Math.min(1, video.currentTime / Math.max(clip.durationSecs, 0.1));
+      const overlay = (g: CanvasRenderingContext2D, f: VideoFormat) => {
+        if (withOverlay) drawTitle(g, f, title, artist, cover);
       };
-      let frameLoop: number | undefined;
-      const tick = () => {
-        draw();
-        if (!video.ended) frameLoop = requestAnimationFrame(tick);
-      };
-
-      for (const o of outputs) o.rec.start(1000);
-      draw();
-      step(`encoding ${outputs.length} format(s) as ${container.mime}`);
-      await new Promise<void>((resolve, reject) => {
-        let lastTime = -1;
-        let lastMove = performance.now();
-        const watchdog = setInterval(() => {
-          if (this.cancelExport) {
-            clearInterval(watchdog);
-            video.pause();
-            resolve();
-            return;
-          }
-          if (video.currentTime !== lastTime) {
-            lastTime = video.currentTime;
-            lastMove = performance.now();
-          } else if (performance.now() - lastMove > STALL_MS) {
-            clearInterval(watchdog);
-            video.pause();
-            reject(new Error("stalled"));
-          } else if (video.paused && !video.ended) {
-            void video.play().catch(() => undefined); // paused by the system: resume
-          }
-        }, 500);
-        video.onplaying = () => {
-          video.onplaying = null;
-          src.start(ctx.currentTime, video.currentTime);
-          tick();
-        };
-        video.onended = () => {
-          clearInterval(watchdog);
-          resolve();
-        };
-        video.play().catch(() => {
-          clearInterval(watchdog);
-          reject(new Error("play"));
-        });
-      });
-      if (frameLoop !== undefined) cancelAnimationFrame(frameLoop);
-      try {
-        src.stop();
-      } catch {
-        /* already stopped */
-      }
-      this.exportStage = "saving";
-      step(`picture done at ${video.currentTime.toFixed(1)} s`);
-      for (const o of outputs) o.rec.stop();
-      await Promise.all(outputs.map((o) => o.finished));
-      await Promise.all(outputs.map((o) => o.flush()));
-      const keep = !this.cancelExport && outputs.every((o) => o.failed() === null);
-      for (const o of outputs) {
-        const path = await api.videoSaveEnd(o.handle, keep);
+      this.exportStage = "encoding";
+      const keep = offline
+        ? await this.composeFrames(compose, clip, formats, buffer, overlay, handles, step)
+        : await this.composeRealtime(video!, ctx, clip, container, formats, buffer, overlay, handles, step);
+      for (const h of handles) {
+        const path = await api.videoSaveEnd(h, keep, offline);
         if (path) this.saved = [...this.saved, path];
       }
       handles.length = 0;
@@ -639,24 +543,198 @@ class VideoStudio {
       else app.notify(i18n.t("video.exported", { n: this.saved.length }));
       void app.refreshExports();
     } catch (e) {
-      if (!(e instanceof Cancelled)) {
+      if (!(e instanceof Cancelled) && !(e instanceof compose.ComposeCancelled)) {
         const why = e instanceof Error ? e.message : isApiError(e) ? e.code : String(e);
-        trace(`failed: ${why}; video readyState=${video.readyState} networkState=${video.networkState} error=${video.error?.code ?? "-"}`);
+        trace(
+          `failed: ${why}` +
+            (video ? `; video readyState=${video.readyState} networkState=${video.networkState} error=${video.error?.code ?? "-"}` : ""),
+        );
         this.exportError = `${i18n.t("video.exportFailed")} (${why})`;
         app.notify(this.exportError);
+      } else {
+        app.notify(i18n.t("video.exportCancelled"));
       }
     } finally {
       for (const h of handles) void api.videoSaveEnd(h, false).catch(() => undefined);
-      video.pause();
-      video.removeAttribute("src");
-      video.load();
-      video.remove();
+      if (video) {
+        video.pause();
+        video.removeAttribute("src");
+        video.load();
+      }
+      this.composeVideo?.remove();
       this.composeVideo = null;
       this.exportStage = null;
       void ctx.close();
       this.exportRunning = false;
       this.phase = "review";
     }
+  }
+
+  /** The hidden player the real-time path encodes from (shown as the
+   *  sidebar thumbnail). */
+  private composeElement(): HTMLVideoElement {
+    const video = document.createElement("video");
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = "auto";
+    video.className = "compose-video";
+    // WebKit pauses (and may not even load) muted videos that are not in
+    // the page and visible: the sidebar card shows this element as a live
+    // thumbnail. Put it in the page first, then load it.
+    this.composeVideo = video;
+    return video;
+  }
+
+  /** Frame-by-frame export (WebCodecs). Returns whether to keep the files. */
+  private async composeFrames(
+    compose: typeof import("./compose"),
+    clip: Clip,
+    formats: VideoFormat[],
+    audio: AudioBuffer,
+    overlay: (g: CanvasRenderingContext2D, f: VideoFormat) => void,
+    handles: number[],
+    step: (what: string) => void,
+  ): Promise<boolean> {
+    step(`composing ${formats.length} format(s) frame by frame`);
+    const length = await compose.composeOffline({
+      clip: clip.blob,
+      formats,
+      audio,
+      overlay,
+      open: async (f) => {
+        const handle = await api.videoSaveBegin(f.id, "mp4");
+        handles.push(handle);
+        return { write: (data, position) => api.videoSaveChunk(handle, data, position) };
+      },
+      onProgress: (p) => (this.progress = p),
+      log: step,
+      onCanvas: (canvas) => {
+        canvas.className = "compose-video";
+        this.composeVideo = canvas;
+      },
+      cancelled: () => this.cancelExport,
+    });
+    this.exportStage = "saving";
+    step(`picture done: ${length.toFixed(1)} s`);
+    return true;
+  }
+
+  /** Real-time export (MediaRecorder on a canvas while the clip plays), for
+   *  engines without WebCodecs. Returns whether to keep the files. */
+  private async composeRealtime(
+    video: HTMLVideoElement,
+    ctx: AudioContext,
+    clip: Clip,
+    container: Container,
+    formats: VideoFormat[],
+    buffer: AudioBuffer,
+    overlay: (g: CanvasRenderingContext2D, f: VideoFormat) => void,
+    handles: number[],
+    step: (what: string) => void,
+  ): Promise<boolean> {
+    await whenReady(video);
+    step(`video ready ${video.videoWidth}x${video.videoHeight}`);
+    const dest = ctx.createMediaStreamDestination();
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    src.connect(dest);
+
+    const outputs = await Promise.all(
+      formats.map(async (f) => {
+        const canvas = document.createElement("canvas");
+        canvas.width = f.width;
+        canvas.height = f.height;
+        const g = canvas.getContext("2d")!;
+        const stream = canvas.captureStream(FPS);
+        for (const t of dest.stream.getAudioTracks()) stream.addTrack(t.clone());
+        const rec = new MediaRecorder(stream, {
+          mimeType: container.mime,
+          videoBitsPerSecond: videoBitrate(f),
+          audioBitsPerSecond: 256_000,
+        });
+        const handle = await api.videoSaveBegin(f.id, container.ext);
+        handles.push(handle);
+        let queue = Promise.resolve();
+        let failed: unknown = null;
+        rec.ondataavailable = (e) => {
+          if (e.data.size === 0) return;
+          queue = queue
+            .then(async () => api.videoSaveChunk(handle, new Uint8Array(await e.data.arrayBuffer())))
+            .catch((err: unknown) => {
+              failed = err;
+            });
+        };
+        const finished = new Promise<void>((resolve) => (rec.onstop = () => resolve()));
+        return { f, g, rec, finished, flush: () => queue, failed: () => failed };
+      }),
+    );
+
+    const draw = () => {
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+      for (const o of outputs) {
+        const { sx, sy, sw, sh } = coverCrop(vw, vh, o.f.width, o.f.height);
+        o.g.drawImage(video, sx, sy, sw, sh, 0, 0, o.f.width, o.f.height);
+        overlay(o.g, o.f);
+      }
+      this.progress = Math.min(1, video.currentTime / Math.max(clip.durationSecs, 0.1));
+    };
+    let frameLoop: number | undefined;
+    const tick = () => {
+      draw();
+      if (!video.ended) frameLoop = requestAnimationFrame(tick);
+    };
+
+    for (const o of outputs) o.rec.start(1000);
+    draw();
+    step(`encoding ${outputs.length} format(s) as ${container.mime}`);
+    await new Promise<void>((resolve, reject) => {
+      let lastTime = -1;
+      let lastMove = performance.now();
+      const watchdog = setInterval(() => {
+        if (this.cancelExport) {
+          clearInterval(watchdog);
+          video.pause();
+          resolve();
+          return;
+        }
+        if (video.currentTime !== lastTime) {
+          lastTime = video.currentTime;
+          lastMove = performance.now();
+        } else if (performance.now() - lastMove > STALL_MS) {
+          clearInterval(watchdog);
+          video.pause();
+          reject(new Error("stalled"));
+        } else if (video.paused && !video.ended) {
+          void video.play().catch(() => undefined); // paused by the system: resume
+        }
+      }, 500);
+      video.onplaying = () => {
+        video.onplaying = null;
+        src.start(ctx.currentTime, video.currentTime);
+        tick();
+      };
+      video.onended = () => {
+        clearInterval(watchdog);
+        resolve();
+      };
+      video.play().catch(() => {
+        clearInterval(watchdog);
+        reject(new Error("play"));
+      });
+    });
+    if (frameLoop !== undefined) cancelAnimationFrame(frameLoop);
+    try {
+      src.stop();
+    } catch {
+      /* already stopped */
+    }
+    this.exportStage = "saving";
+    step(`picture done at ${video.currentTime.toFixed(1)} s`);
+    for (const o of outputs) o.rec.stop();
+    await Promise.all(outputs.map((o) => o.finished));
+    await Promise.all(outputs.map((o) => o.flush()));
+    return !this.cancelExport && outputs.every((o) => o.failed() === null);
   }
 
   /** Closes the studio window. While exporting, the export keeps running in
@@ -751,9 +829,6 @@ export function loadImage(src: string | null): Promise<HTMLImageElement | null> 
   });
 }
 
-/** Album cover, song title and artist in the lower left, over a soft shade.
- *  Any part may be missing (empty text / null cover); with nothing to show it
- *  draws nothing at all. */
 const CAMERA_KEY = "joshua.video.camera";
 
 function readCameraLabel(): string | null {
@@ -772,6 +847,9 @@ function writeCameraLabel(label: string): void {
   }
 }
 
+/** Album cover, song title and artist in the lower left, over a soft shade.
+ *  Any part may be missing (empty text / null cover); with nothing to show it
+ *  draws nothing at all. */
 export function drawTitle(
   g: CanvasRenderingContext2D,
   f: VideoFormat,
@@ -780,41 +858,40 @@ export function drawTitle(
   cover: HTMLImageElement | null,
 ): void {
   if (!title && !artist && !cover) return;
-  // Bottom-left corner in every format; a little larger on tall frames,
-  // where the same pixel size reads smaller on a phone.
+  // Bottom-left corner in every format, small enough to leave the picture
+  // to the musician; a touch larger on tall frames, which phones show small.
   const tall = f.height > f.width * 1.2;
-  const unit = (Math.min(f.width, f.height) / 1080) * (tall ? 1.3 : 1);
-  const pad = 48 * unit;
-  const bottom = 0;
-  const shadeTop = f.height * (tall ? 0.78 : 0.7);
+  const unit = (Math.min(f.width, f.height) / 1080) * (tall ? 1.1 : 1);
+  const pad = 40 * unit;
+  const shadeTop = f.height * (tall ? 0.84 : 0.76);
   const shade = g.createLinearGradient(0, shadeTop, 0, f.height);
   shade.addColorStop(0, "rgba(0,0,0,0)");
-  shade.addColorStop(1, "rgba(0,0,0,0.6)");
+  shade.addColorStop(1, "rgba(0,0,0,0.55)");
   g.fillStyle = shade;
   g.fillRect(0, shadeTop, f.width, f.height - shadeTop);
-  const base = f.height - bottom; // text baseline area ends here
+  const base = f.height;
 
   // Cover: a rounded square whose bottom lines up with the last text line.
-  const size = 132 * unit;
+  const size = 92 * unit;
   let textX = pad;
   if (cover) {
     const x = pad;
-    const y = base - pad - size + 8 * unit;
+    const y = base - pad - size + 6 * unit;
     const side = Math.min(cover.naturalWidth, cover.naturalHeight);
     const sx = (cover.naturalWidth - side) / 2;
     const sy = (cover.naturalHeight - side) / 2;
     g.save();
-    g.shadowColor = "rgba(0,0,0,0.45)";
-    g.shadowBlur = 24 * unit;
+    g.shadowColor = "rgba(0,0,0,0.4)";
+    g.shadowBlur = 16 * unit;
     g.beginPath();
-    g.roundRect(x, y, size, size, 14 * unit);
+    g.roundRect(x, y, size, size, 8 * unit);
     g.fillStyle = "#000";
     g.fill();
     g.shadowColor = "transparent";
     g.clip();
     g.drawImage(cover, sx, sy, side, side, x, y, size, size);
     g.restore();
-    textX = pad + size + 26 * unit;
+    textX = pad + size + 18 * unit;
   }
   if (!title && !artist) return;
 
@@ -825,18 +902,31 @@ export function drawTitle(
   let top = base - pad;
   if (artist) {
     g.fillStyle = "rgba(255,255,255,0.75)";
-    g.font = `600 ${Math.round(30 * unit)}px ${font}`;
-    g.fillText(artist, textX, top, maxW);
+    fitText(g, artist, textX, top, maxW, 22 * unit, `500 {size}px ${font}`);
   }
   if (title) {
-    if (artist) top -= 40 * unit;
+    if (artist) top -= 30 * unit;
     g.fillStyle = "#ffffff";
-    g.font = `800 ${Math.round(46 * unit)}px ${font}`;
-    g.fillText(title, textX, top, maxW);
+    fitText(g, title, textX, top, maxW, 32 * unit, `700 {size}px ${font}`);
   }
   // Accent bar above the first line of text.
   g.fillStyle = "#ffb000";
-  g.fillRect(textX, top - (title ? 62 : 48) * unit, 56 * unit, 6 * unit);
+  g.fillRect(textX, top - (title ? 44 : 34) * unit, 40 * unit, 4 * unit);
+}
+
+/** Draws `text` at up to `size` px: smaller (down to 75%) when it does not
+ *  fit `maxW`, then cut with an ellipsis. Never squeezes the letters. */
+function fitText(g: CanvasRenderingContext2D, text: string, x: number, y: number, maxW: number, size: number, font: string): void {
+  let px = size;
+  g.font = font.replace("{size}", String(Math.round(px)));
+  const width = g.measureText(text).width;
+  if (width > maxW) {
+    px = Math.max(size * 0.75, (size * maxW) / width);
+    g.font = font.replace("{size}", String(Math.round(px)));
+  }
+  let shown = text;
+  while (shown.length > 1 && g.measureText(shown).width > maxW) shown = shown.slice(0, -2) + "…";
+  g.fillText(shown, x, y);
 }
 
 export const studio = new VideoStudio();

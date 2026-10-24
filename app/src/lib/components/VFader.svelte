@@ -96,31 +96,27 @@
     left: 50%;
     top: 0;
     bottom: 0;
-    width: 4px;
+    width: 2px;
     translate: -50% 0;
-    border-radius: 2px;
-    background: #07080c;
-    box-shadow: inset 0 0 0 1px #20263a;
+    border-radius: 0;
+    background: var(--line-strong);
   }
   .cap {
     position: absolute;
     left: 50%;
-    width: 26px;
-    height: 16px;
+    width: 24px;
+    height: 12px;
     translate: -50% 50%;
-    border-radius: 4px;
-    background: linear-gradient(#3a4258, #232a3c);
-    box-shadow:
-      0 2px 6px rgb(0 0 0 / 60%),
-      inset 0 1px 0 rgb(255 255 255 / 10%);
+    border-radius: 1px;
+    background: var(--bg-active);
+    border: 1px solid var(--line-strong);
     display: grid;
     place-items: center;
   }
   .cap i {
-    width: 18px;
-    height: 3px;
-    border-radius: 2px;
+    width: 16px;
+    height: 2px;
+    border-radius: 0;
     background: var(--c);
-    box-shadow: 0 0 6px var(--c);
   }
 </style>

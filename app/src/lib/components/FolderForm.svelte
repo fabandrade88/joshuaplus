@@ -78,7 +78,7 @@
   .swatch {
     width: 22px;
     height: 22px;
-    border-radius: 6px;
+    border-radius: var(--radius-s);
     background: var(--c);
     opacity: 0.55;
     transition: opacity 0.12s, transform 0.12s;

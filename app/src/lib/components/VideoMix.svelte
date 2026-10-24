@@ -9,6 +9,7 @@
   import { STEM_COLORS, stemLabelKey } from "../stems";
   import type { StemKind } from "../types";
   import { studio } from "../video/studio.svelte";
+  import Icon from "./Icon.svelte";
   import StemIcon from "./StemIcon.svelte";
 
   let { disabled = false }: { disabled?: boolean } = $props();
@@ -87,6 +88,16 @@
     <header>
       <h3 id="video-mix-title">{i18n.t("video.mixTitle")}</h3>
       <p>{i18n.t("video.mixHint")}</p>
+      <div class="actions">
+        {#if takes.length > 0}
+          <button class="btn" title={i18n.t("mix.balanceHint")} disabled={disabled || app.balancing} onclick={async () => (await app.autoBalance()) && studio.mixChanged()}>
+            <Icon name="spark" size={14} />{app.balancing ? i18n.t("mix.balancing") : i18n.t("mix.balance")}
+          </button>
+        {/if}
+        <button class="btn" title={i18n.t("mix.resetHint")} {disabled} onclick={async () => (await app.resetMix()) && studio.mixChanged()}>
+          <Icon name="reset" size={14} />{i18n.t("mix.reset")}
+        </button>
+      </div>
     </header>
     {@render group(i18n.t("console.song"), songRows)}
     {#if takeRows.length > 0}
@@ -164,6 +175,21 @@
     font-size: var(--fs-small);
     color: var(--text-dim);
   }
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .actions .btn {
+    height: 28px;
+    padding: 0 10px;
+    font-size: var(--fs-small);
+  }
+  .actions .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
   .group {
     display: flex;
     flex-direction: column;
@@ -211,9 +237,9 @@
   .mute {
     width: 28px;
     height: 22px;
-    border-radius: 6px;
+    border-radius: var(--radius-s);
     font-size: var(--fs-label);
-    font-weight: 800;
+    font-weight: 600;
     color: var(--text-dim);
     background: var(--bg-hover);
   }

@@ -171,7 +171,7 @@
     padding: 8px 10px;
     border-radius: var(--radius-s);
     color: var(--text-dim);
-    font-weight: 600;
+    font-weight: 500;
     text-align: left;
   }
   .nav-item:hover {
@@ -181,6 +181,7 @@
   .nav-item.active {
     background: var(--bg-active);
     color: var(--text);
+    box-shadow: inset 2px 0 0 var(--accent);
   }
   .nav-item.muted {
     font-weight: 500;
@@ -198,7 +199,6 @@
   .count {
     font-size: var(--fs-small);
     color: var(--text-faint);
-    font-weight: 600;
   }
   .block {
     padding: 14px 10px 4px;
@@ -226,17 +226,17 @@
     display: flex;
     gap: 10px;
     align-items: center;
-    border: 1.5px dashed var(--line-strong);
+    border: 1px dashed var(--line-strong);
     border-radius: var(--radius);
     color: var(--accent);
     transition: border-color 0.15s, background 0.15s;
   }
   .drop.active {
     border-color: var(--accent);
-    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    background: var(--bg-hover);
   }
   .drop-title {
-    font-weight: 700;
+    font-weight: 600;
     color: var(--text);
   }
   .drop-sub {
@@ -317,7 +317,6 @@
     height: 7px;
     border-radius: 50%;
     background: var(--ok);
-    box-shadow: 0 0 6px var(--ok);
   }
   /* Short windows: never let the processing queue squeeze the folder list to
      nothing; the queue scrolls instead. */

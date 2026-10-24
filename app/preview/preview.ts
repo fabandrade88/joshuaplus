@@ -59,7 +59,8 @@ const project: SongProject = {
 };
 
 function art(a: string, b: string): string {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient></defs><rect width="100" height="100" fill="url(#g)"/><circle cx="50" cy="50" r="26" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="3"/></svg>`;
+  // A plain printed-sleeve look: flat colour, a band and a dot.
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="${b}"/><rect y="62" width="100" height="14" fill="${a}" fill-opacity=".85"/><circle cx="74" cy="30" r="10" fill="${a}"/></svg>`;
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
 
@@ -72,7 +73,7 @@ const folders: Folder[] = [
 const song = (id: string, title: string, bpm: number, secs: number, sep: string, n: number, t: number, folder: string | null): SongSummary => ({
   id, title, bpm, durationSecs: secs, separator: sep, stems: n, createdUnix: t, folder,
   artist: ["PRESIDENT", "The Beatles", "Tom Jobim", null][t % 4] ?? null,
-  cover: t % 3 === 0 ? null : art(["#ff6b8a", "#8b6cff", "#ffb020", "#3ddc97"][t % 4] ?? "#888", "#11141b"),
+  cover: t % 3 === 0 ? null : art(["#e07a8f", "#9d8be0", "#f0a830", "#6cc085"][t % 4] ?? "#888", "#24211d"),
 });
 
 const songs: SongSummary[] = [
@@ -153,7 +154,7 @@ mockIPC(
       }
       case "get_app_info":
         return {
-          version: "0.5.1",
+          version: "0.5.2",
           locale: lang,
           workspace: state === "welcome" ? null : "/Users/musician/Music/Joshua+",
           inbox: "/Users/musician/Music/Joshua+/inbox",
@@ -167,6 +168,7 @@ mockIPC(
           exportDir: "/Users/musician/Music/Joshua+/Exports",
           exportDirCustom: false,
           updateCheck: true,
+          autoBalance: false,
           suggestedWorkspace: "/Users/musician/Music/Joshua+",
           musicDir: "/Users/musician/Music",
         };
@@ -175,7 +177,7 @@ mockIPC(
       case "list_folders":
         return folders;
       case "load_song":
-        return { project, peaks: stems.map((_, i) => peaks(i)), audioReady: true, cover: art("#ff6b8a", "#4c1d95") };
+        return { project, peaks: stems.map((_, i) => peaks(i)), audioReady: true, cover: art("#e07a8f", "#2b2533") };
       case "list_audio_inputs":
         return [
           { id: "coreaudio:ag06", name: "Yamaha AG06MK2", channels: 2, sampleRate: 48000, isDefault: false },
@@ -200,6 +202,19 @@ mockIPC(
           map: { notes: { "36": "kick", "38": "snare", "40": "snareRim", "37": "snareCrossStick", "42": "hiHatClosed", "46": "hiHatOpen", "44": "hiHatPedal", "48": "tom1", "45": "tom2", "43": "tom3", "41": "tom4", "49": "crash1", "57": "crash2", "51": "ride", "53": "rideBell", "55": "splash", "52": "china" } },
           learning: null,
         };
+      case "reset_mix":
+      case "auto_balance": {
+        const mix = {
+          tracks: project.tracks.map((t) => ({ ...t, gainDb: 0, pan: 0, solo: false, muted: cmd === "auto_balance" && t.stem === "drums" })),
+          takes: (project.takes ?? []).map((t, i) => ({ ...t, gainDb: cmd === "auto_balance" ? [5.5, -2][i % 2] ?? 0 : 0, pan: 0, muted: false, solo: false })),
+          songGainDb: 0,
+          songMuted: false,
+          masterGainDb: cmd === "reset_mix" ? 0 : project.masterGainDb,
+        };
+        if (cmd === "reset_mix") return mix;
+        const result = { mix, takes: mix.takes.map((t, i) => ({ id: t.id, stem: i === 0 ? "drums" : null, gainDb: t.gainDb })) };
+        return new Promise((r) => setTimeout(() => r(result), 1200));
+      }
       case "list_output_devices":
         return [{ id: "coreaudio:speakers", name: "MacBook Pro Speakers", isDefault: true }];
       default:
@@ -260,7 +275,7 @@ if (state === "video") {
   if (params.get("phase") === "overlay") {
     const { drawTitle, loadImage } = await import("../src/lib/video/studio.svelte");
     const { FORMATS } = await import("../src/lib/video/formats");
-    const cover = await loadImage(art("#ff6b8a", "#4c1d95").replace("viewBox", 'width="600" height="600" viewBox'));
+    const cover = await loadImage(art("#e07a8f", "#2b2533").replace("viewBox", 'width="600" height="600" viewBox'));
     app.videoOpen = false;
     const wrap = document.createElement("div");
     wrap.style.cssText = "position:fixed;inset:0;z-index:99;background:#222;display:flex;gap:16px;padding:16px;align-items:flex-start";
@@ -277,7 +292,9 @@ if (state === "video") {
       // ?combo=all|cover|text|artist|title|none picks the overlay parts.
       const combo = params.get("combo") ?? "all";
       const on = (p: string) => combo === "all" || combo === p || (combo === "text" && (p === "title" || p === "artist"));
-      drawTitle(g, f, on("title") ? "Left For Good" : "", on("artist") ? "Bad Omens" : "", on("cover") ? cover : null);
+      // ?title=… tries a long name (it must shrink, never squeeze).
+      const title = params.get("title") ?? "Left For Good";
+      drawTitle(g, f, on("title") ? title : "", on("artist") ? (params.get("artist") ?? "Bad Omens") : "", on("cover") ? cover : null);
       c.style.height = "460px";
       wrap.append(c);
     }

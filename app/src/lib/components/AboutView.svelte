@@ -22,6 +22,8 @@
     { name: "midir", what: "MIDI input", license: "MIT" },
     { name: "rustfft · rubato · hound", what: "DSP, resampling, WAV", license: "MIT / Apache-2.0" },
     { name: "image", what: "Cover art", license: "MIT / Apache-2.0" },
+    { name: "Mediabunny", what: "Video encoding", license: "MPL-2.0" },
+    { name: "JetBrains Mono", what: "Interface font", license: "OFL-1.1" },
   ];
 </script>
 
@@ -117,8 +119,8 @@
     flex-wrap: wrap;
     padding: 10px 16px;
     border-radius: var(--radius);
-    background: color-mix(in srgb, var(--accent) 7%, var(--bg-raised));
-    border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
+    background: var(--bg-panel);
+    border: 1px solid var(--line-strong);
   }
   .hero-text {
     flex: 1;
@@ -127,8 +129,7 @@
   h1 {
     margin: 0;
     font-size: var(--fs-title);
-    letter-spacing: -0.02em;
-    color: var(--accent);
+    color: var(--text);
   }
   .hero p {
     margin: 2px 0 0;
@@ -157,13 +158,6 @@
     flex-direction: column;
     gap: 6px;
   }
-  .card::before {
-    content: "";
-    position: absolute;
-    inset: 0 auto 0 0;
-    width: 3px;
-    background: var(--c);
-  }
   .card-head {
     display: flex;
     align-items: center;
@@ -175,16 +169,14 @@
     place-items: center;
     width: 24px;
     height: 24px;
-    border-radius: 7px;
+    border-radius: var(--radius-s);
     color: var(--c);
-    background: color-mix(in srgb, var(--c) 16%, transparent);
+    background: var(--bg-active);
   }
   h2 {
     margin: 0;
     font-size: var(--fs-label);
-    font-weight: 800;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    font-weight: 600;
     color: color-mix(in srgb, var(--c) 70%, var(--text));
   }
   .card p {
@@ -194,7 +186,7 @@
   }
   .card .big {
     font-size: var(--fs-emph);
-    font-weight: 800;
+    font-weight: 600;
     color: var(--text);
   }
   code {
@@ -249,16 +241,16 @@
     place-items: center;
     width: 28px;
     height: 28px;
-    border-radius: 50%;
+    border-radius: var(--radius-s);
     font-size: var(--fs-label);
-    font-weight: 800;
+    font-weight: 600;
     color: var(--accent-ink);
     background: var(--c);
   }
   .link {
     align-self: flex-start;
     font-size: var(--fs-small);
-    font-weight: 700;
+    font-weight: 600;
     text-align: left;
     color: var(--c);
   }
@@ -286,7 +278,7 @@
     min-width: 0;
   }
   dt {
-    font-weight: 700;
+    font-weight: 600;
   }
   dd {
     color: var(--text-dim);

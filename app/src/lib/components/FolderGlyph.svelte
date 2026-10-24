@@ -25,16 +25,15 @@
     place-items: center;
     width: var(--s);
     height: var(--s);
-    border-radius: calc(var(--s) * 0.3);
+    border-radius: var(--radius-s);
     color: var(--c);
-    background: color-mix(in srgb, var(--c) 18%, transparent);
   }
   .tile.none {
     background: none;
-    border: 1.5px dashed color-mix(in srgb, var(--c) 70%, transparent);
+    border: 1px dashed color-mix(in srgb, var(--c) 70%, transparent);
   }
   svg {
-    width: 62%;
-    height: 62%;
+    width: 78%;
+    height: 78%;
   }
 </style>

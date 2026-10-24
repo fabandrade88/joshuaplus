@@ -283,7 +283,6 @@
     place-items: center;
     padding: 24px;
     background: rgb(5 6 10 / 72%);
-    backdrop-filter: blur(6px);
   }
   .studio {
     width: min(1240px, 100%);
@@ -293,10 +292,9 @@
     gap: 16px;
     padding: 20px;
     overflow: auto;
-    border-radius: 20px;
+    border-radius: var(--radius);
     background: var(--bg-panel);
     border: 1px solid var(--line);
-    box-shadow: 0 30px 80px rgb(0 0 0 / 55%);
   }
   header {
     display: flex;
@@ -320,9 +318,9 @@
     place-items: center;
     width: 38px;
     height: 38px;
-    border-radius: 12px;
+    border-radius: var(--radius);
     color: var(--danger);
-    background: color-mix(in srgb, var(--danger) 14%, transparent);
+    background: var(--bg-active);
   }
   .body {
     display: grid;
@@ -333,7 +331,7 @@
   .live {
     width: 100%;
     aspect-ratio: 16 / 9;
-    border-radius: 14px;
+    border-radius: var(--radius);
     background: #000;
   }
   .live {
@@ -349,7 +347,7 @@
   .guide {
     position: absolute;
     border: 2px dashed rgb(255 255 255 / 55%);
-    border-radius: 6px;
+    border-radius: var(--radius-s);
     pointer-events: none;
   }
   .guide span {
@@ -357,9 +355,9 @@
     top: 6px;
     left: 6px;
     font-size: var(--fs-small);
-    font-weight: 700;
+    font-weight: 600;
     padding: 2px 6px;
-    border-radius: 999px;
+    border-radius: var(--radius);
     background: rgb(0 0 0 / 55%);
   }
   .rec-badge {
@@ -370,10 +368,10 @@
     align-items: center;
     gap: 6px;
     padding: 5px 10px;
-    border-radius: 999px;
+    border-radius: var(--radius);
     font-family: var(--mono);
     font-size: var(--fs-small);
-    font-weight: 800;
+    font-weight: 600;
     color: #fff;
     background: var(--danger);
   }
@@ -406,7 +404,7 @@
     position: absolute;
     inset: auto 16px 16px;
     padding: 10px 12px;
-    border-radius: 10px;
+    border-radius: var(--radius);
     background: rgb(0 0 0 / 65%);
   }
   aside {
@@ -417,9 +415,7 @@
   h3 {
     margin: 4px 0 0;
     font-size: var(--fs-label);
-    font-weight: 800;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
+    font-weight: 600;
     color: var(--accent);
   }
   .hint,
@@ -460,12 +456,11 @@
     justify-content: center;
     gap: 8px;
     height: 48px;
-    border-radius: 999px;
+    border-radius: var(--radius);
     font-size: var(--fs-body);
-    font-weight: 800;
+    font-weight: 600;
     color: #fff;
     background: var(--danger);
-    box-shadow: 0 8px 24px color-mix(in srgb, var(--danger) 35%, transparent);
   }
   .rec.on {
     background: #2a1014;
@@ -480,17 +475,15 @@
     flex-direction: column;
     gap: 6px;
     font-size: var(--fs-label);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
+    font-weight: 600;
     color: var(--text-faint);
   }
   .other-song {
     margin-top: 12px;
     padding: 12px 14px;
     border-radius: var(--radius);
-    border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line));
-    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    border: 1px solid var(--line-strong);
+    background: var(--bg-active);
   }
   .other-song p {
     margin: 0 0 10px;
@@ -524,7 +517,7 @@
     align-items: center;
     min-height: 34px;
     padding: 5px 10px 5px 8px;
-    border-radius: 8px;
+    border-radius: var(--radius);
     cursor: pointer;
     background: var(--bg-active);
     border: 1px solid transparent;
@@ -535,7 +528,7 @@
   }
   .fmt.on {
     border-color: color-mix(in srgb, var(--accent) 60%, transparent);
-    background: color-mix(in srgb, var(--accent) 8%, var(--bg-active));
+    background: var(--bg-active);
   }
   .fmt input {
     position: absolute;
@@ -555,7 +548,7 @@
   .fmt-name {
     min-width: 0;
     font-size: var(--fs-small);
-    font-weight: 700;
+    font-weight: 600;
     line-height: 1.3;
   }
   .fmt-size {
@@ -574,7 +567,7 @@
     gap: 6px;
     min-height: 28px;
     padding: 0 10px 0 8px;
-    border-radius: 999px;
+    border-radius: var(--radius);
     font-size: var(--fs-small);
     font-weight: 600;
     color: var(--text-dim);
@@ -585,7 +578,7 @@
   .opt.on {
     color: var(--accent);
     border-color: color-mix(in srgb, var(--accent) 45%, transparent);
-    background: color-mix(in srgb, var(--accent) 12%, var(--bg-active));
+    background: var(--bg-active);
   }
   .opt input {
     margin: 0;
@@ -611,7 +604,7 @@
     width: 44px;
     height: 44px;
     flex: none;
-    border-radius: 6px;
+    border-radius: var(--radius-s);
     object-fit: cover;
     background: rgb(255 255 255 / 25%);
   }
@@ -620,7 +613,6 @@
     display: flex;
     flex-direction: column;
     color: #fff;
-    text-shadow: 0 1px 4px rgb(0 0 0 / 70%);
   }
   .mock-text i {
     width: 18px;
@@ -729,14 +721,14 @@
   .mini .badge {
     width: 28px;
     height: 28px;
-    border-radius: 9px;
+    border-radius: var(--radius);
   }
   .mini .body {
     grid-template-columns: 1fr;
     gap: 8px;
   }
   .mini .live {
-    border-radius: 10px;
+    border-radius: var(--radius);
   }
   .mini .rec {
     height: 38px;

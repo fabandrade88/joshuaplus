@@ -175,6 +175,14 @@
       </span>
     </label>
 
+    <label class="check">
+      <input type="checkbox" checked={info.autoBalance} onchange={(e) => app.setAutoBalance(e.currentTarget.checked)} />
+      <span>
+        <strong>{i18n.t("mix.autoSetting")}</strong>
+        <span class="note">{i18n.t("mix.autoSettingHint")}</span>
+      </span>
+    </label>
+
     {#if app.desktopEntry?.available}
       <div class="field">
         <span class="section-title">{i18n.t("desktopEntry.title")}</span>
@@ -198,9 +206,9 @@
     gap: 8px;
     margin-top: 8px;
     padding: 12px;
-    border-radius: 12px;
-    background: color-mix(in srgb, var(--accent) 8%, var(--bg-raised));
-    border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+    border-radius: var(--radius);
+    background: var(--bg-panel);
+    border: 1px solid var(--line-strong);
   }
   .choice p {
     margin: 0;
@@ -225,11 +233,9 @@
     border-radius: var(--radius-l);
     background: var(--bg-panel);
     color: var(--text);
-    box-shadow: var(--shadow);
   }
   dialog::backdrop {
     background: rgb(0 0 0 / 55%);
-    backdrop-filter: blur(3px);
   }
   header {
     position: sticky;

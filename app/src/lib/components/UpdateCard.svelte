@@ -29,9 +29,9 @@
     gap: 6px;
     margin: 0 12px 8px;
     padding: 10px 12px;
-    border-radius: 12px;
-    background: color-mix(in srgb, var(--accent) 8%, var(--bg-raised));
-    border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line));
+    border-radius: var(--radius);
+    background: var(--bg-panel);
+    border: 1px solid var(--line-strong);
   }
   .row {
     display: flex;
@@ -45,7 +45,7 @@
   }
   .title {
     font-size: var(--fs-body);
-    font-weight: 700;
+    font-weight: 600;
     line-height: 1.3;
   }
   p {

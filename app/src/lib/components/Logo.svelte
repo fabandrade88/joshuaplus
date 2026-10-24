@@ -29,30 +29,27 @@
     gap: 12px;
   }
   .mark {
-    width: 36px;
-    height: 36px;
+    width: 30px;
+    height: 30px;
     flex: none;
   }
   .word {
     font-size: var(--fs-title);
-    font-weight: 800;
-    letter-spacing: -0.02em;
+    font-weight: 600;
   }
   .word span {
     color: var(--accent);
   }
   .beta {
     margin-left: 6px;
-    padding: 1px 6px;
-    border-radius: 5px;
+    padding: 0 5px;
+    border-radius: var(--radius-s);
     vertical-align: 3px;
     font-size: var(--fs-label);
     font-style: normal;
-    font-weight: 800;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--accent-ink);
-    background: var(--accent);
+    font-weight: 500;
+    color: var(--accent);
+    border: 1px solid var(--accent);
   }
   .tag {
     font-size: var(--fs-small);

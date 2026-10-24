@@ -19,8 +19,8 @@
 
   /** Shows the element being encoded inside this card. If the card goes
    *  away mid-export, the element is parked visibly instead of removed. */
-  function host(node: HTMLElement, video: HTMLVideoElement | null) {
-    const place = (v: HTMLVideoElement | null) => {
+  function host(node: HTMLElement, video: HTMLVideoElement | HTMLCanvasElement | null) {
+    const place = (v: HTMLVideoElement | HTMLCanvasElement | null) => {
       if (v && v.parentElement !== node) {
         v.classList.remove("compose-video-parked");
         node.append(v);
@@ -30,7 +30,7 @@
     return {
       update: place,
       destroy() {
-        const v = node.querySelector("video");
+        const v = node.querySelector("video, canvas");
         if (v && studio.phase === "exporting") {
           v.classList.add("compose-video-parked");
           document.body.append(v);
@@ -90,7 +90,7 @@
     gap: 6px;
     margin: 0 12px 8px;
     padding: 10px 12px;
-    border-radius: 12px;
+    border-radius: var(--radius);
     background: var(--bg-raised);
     border: 1px solid var(--line);
   }
@@ -107,7 +107,7 @@
     flex: 1;
     min-width: 0;
     font-size: var(--fs-body);
-    font-weight: 700;
+    font-weight: 600;
     line-height: 1.3;
     color: var(--text);
     overflow-wrap: break-word;
@@ -116,7 +116,7 @@
     font-size: var(--fs-small);
   }
   .thumb {
-    border-radius: 8px;
+    border-radius: var(--radius);
     overflow: hidden;
     background: #000;
     aspect-ratio: 16 / 9;
@@ -126,7 +126,8 @@
       width: 60%;
     }
   }
-  .thumb :global(video) {
+  .thumb :global(video),
+  .thumb :global(canvas) {
     display: block;
     width: 100%;
     height: 100%;
@@ -171,7 +172,6 @@
     bottom: 12px;
     z-index: 60;
     width: 160px;
-    border-radius: 8px;
-    box-shadow: 0 8px 24px rgb(0 0 0 / 50%);
+    border-radius: var(--radius);
   }
 </style>

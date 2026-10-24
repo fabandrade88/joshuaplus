@@ -22,6 +22,10 @@
       <div class="group" class:collapsed={app.songCollapsed}>
         <header>
           <span class="group-name">{i18n.t("console.song")}</span>
+          <button class="toggle" title={`${i18n.t("mix.reset")} — ${i18n.t("mix.resetHint")}`} aria-label={i18n.t("mix.reset")} onclick={() => app.resetMix()}>
+            <Icon name="reset" size={13} />
+            {#if !app.songCollapsed}<span class="toggle-text">{i18n.t("mix.reset")}</span>{/if}
+          </button>
           <button
             class="toggle"
             title={app.songCollapsed ? i18n.t("console.expand") : i18n.t("console.collapse")}
@@ -111,6 +115,10 @@
         <div class="group takes">
           <header>
             <span class="group-name">{i18n.t("record.takes")}</span>
+            <button class="toggle" title={i18n.t("mix.balanceHint")} disabled={app.balancing} onclick={() => app.autoBalance()}>
+              <Icon name="spark" size={13} />
+              <span class="toggle-text">{app.balancing ? i18n.t("mix.balancing") : i18n.t("mix.balanceShort")}</span>
+            </button>
           </header>
           <div class="strips">
             {#each takes as take, j (take.id)}
@@ -163,9 +171,7 @@
     padding: 12px 12px 14px;
     overflow: hidden;
     border-top: 1px solid var(--line);
-    background:
-      linear-gradient(180deg, rgb(255 255 255 / 2%), transparent 30%),
-      #0d0f15;
+    background: var(--bg);
   }
   .scroller {
     flex: 1;
@@ -192,8 +198,8 @@
     flex-direction: column;
     gap: 8px;
     padding: 8px;
-    border-radius: 16px;
-    background: #12151d;
+    border-radius: var(--radius-s);
+    background: var(--bg-raised);
     border: 1px solid var(--line);
   }
   header {
@@ -209,9 +215,7 @@
   }
   .group-name {
     font-size: var(--fs-label);
-    font-weight: 800;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
+    font-weight: 500;
     color: var(--accent);
   }
   .toggle {
@@ -219,7 +223,6 @@
     align-items: center;
     gap: 4px;
     font-size: var(--fs-small);
-    font-weight: 600;
     color: var(--text-faint);
     white-space: nowrap;
   }

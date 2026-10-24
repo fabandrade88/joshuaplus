@@ -183,13 +183,13 @@
     place-items: center;
     width: 30px;
     height: 30px;
-    border-radius: 8px;
+    border-radius: var(--radius);
     color: var(--accent);
-    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    background: var(--bg-active);
   }
   .kind[data-kind="video"] {
     color: var(--danger);
-    background: color-mix(in srgb, var(--danger) 14%, transparent);
+    background: var(--bg-active);
   }
   .name {
     font-weight: 600;

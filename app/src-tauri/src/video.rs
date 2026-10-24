@@ -5,7 +5,7 @@
 
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::{Cursor, Write};
+use std::io::{Cursor, Seek, SeekFrom, Write};
 use std::path::PathBuf;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
@@ -38,7 +38,29 @@ struct OpenSave {
     file: File,
     part: PathBuf,
     path: PathBuf,
-    written: u64,
+    /// Size of the file so far (writes never leave a hole past it).
+    len: u64,
+}
+
+impl OpenSave {
+    /// Writes `bytes` at `offset` (`None` appends). The muxer goes back to
+    /// fill in box sizes once the media is written, so earlier bytes can be
+    /// rewritten, but never past the end: the file stays dense and bounded.
+    fn write_at(&mut self, offset: Option<u64>, bytes: &[u8]) -> ApiResult<()> {
+        let at = offset.unwrap_or(self.len);
+        if at > self.len {
+            return Err(ApiError::invalid("write past the end"));
+        }
+        let end = at.checked_add(bytes.len() as u64).ok_or_else(|| ApiError::invalid("bad offset"))?;
+        if end > MAX_VIDEO_BYTES {
+            return Err(ApiError::new("too_large", "video too large"));
+        }
+        let io = |e: std::io::Error| ApiError::new("io", e.kind().to_string());
+        self.file.seek(SeekFrom::Start(at)).map_err(io)?;
+        self.file.write_all(bytes).map_err(io)?;
+        self.len = self.len.max(end);
+        Ok(())
+    }
 }
 
 /// Renders `duration_secs` of the open song's mix starting at song time
@@ -136,45 +158,57 @@ pub fn video_save_begin(state: State<'_, AppState>, tag: String, ext: String) ->
         return Err(ApiError::invalid("too many exports at once"));
     }
     let id = state.videos.next.fetch_add(1, Ordering::Relaxed);
-    open.insert(id, OpenSave { file, part, path, written: 0 });
+    open.insert(id, OpenSave { file, part, path, len: 0 });
     Ok(id)
 }
 
-/// Appends one encoded chunk (raw request body; handle in `x-handle`).
+/// Writes one encoded chunk (raw request body; handle in `x-handle`, and
+/// optionally the byte position in `x-offset`, else it is appended).
 #[tauri::command]
 pub fn video_save_chunk(state: State<'_, AppState>, request: Request<'_>) -> ApiResult<()> {
-    let id: u32 = request
-        .headers()
-        .get("x-handle")
-        .and_then(|v| v.to_str().ok())
-        .and_then(|v| v.parse().ok())
-        .ok_or_else(|| ApiError::invalid("missing handle"))?;
+    let header = |name: &str| request.headers().get(name).and_then(|v| v.to_str().ok());
+    let id: u32 = header("x-handle").and_then(|v| v.parse().ok()).ok_or_else(|| ApiError::invalid("missing handle"))?;
+    let offset = match header("x-offset") {
+        Some(v) => Some(v.parse::<u64>().map_err(|_| ApiError::invalid("bad offset"))?),
+        None => None,
+    };
     let InvokeBody::Raw(bytes) = request.body() else {
         return Err(ApiError::invalid("expected binary body"));
     };
     let mut open = lock(&state.videos.open);
     let save = open.get_mut(&id).ok_or_else(|| ApiError::invalid("unknown handle"))?;
-    save.written += bytes.len() as u64;
-    if save.written > MAX_VIDEO_BYTES {
-        let save = open.remove(&id);
-        if let Some(s) = save {
-            let _ = std::fs::remove_file(&s.part);
-        }
-        return Err(ApiError::new("too_large", "video too large"));
+    let result = save.write_at(offset, bytes);
+    if matches!(&result, Err(e) if e.code == "too_large")
+        && let Some(s) = open.remove(&id)
+    {
+        let _ = std::fs::remove_file(&s.part);
     }
-    save.file.write_all(bytes).map_err(|e| ApiError::new("io", e.kind().to_string()))
+    result
 }
 
 /// Finishes (`keep`) or discards a clip. Returns the saved file's path.
+/// `mark_priming`: the clip's muxer skips the AAC priming with an edit list
+/// that Apple's players need marked (see `mp4_priming`).
 #[tauri::command]
-pub fn video_save_end(state: State<'_, AppState>, handle: u32, keep: bool) -> ApiResult<Option<String>> {
+pub fn video_save_end(
+    state: State<'_, AppState>,
+    handle: u32,
+    keep: bool,
+    mark_priming: Option<bool>,
+) -> ApiResult<Option<String>> {
     let save = lock(&state.videos.open).remove(&handle).ok_or_else(|| ApiError::invalid("unknown handle"))?;
-    if !keep || save.written == 0 {
+    if !keep || save.len == 0 {
         let _ = std::fs::remove_file(&save.part);
         return Ok(None);
     }
     save.file.sync_all().map_err(|e| ApiError::new("io", e.kind().to_string()))?;
     drop(save.file);
+    if mark_priming == Some(true) {
+        // Without it the clip still plays, 44 ms early on Apple's players.
+        if let Err(e) = crate::mp4_priming::mark_aac_priming(&save.part) {
+            log::warn!("could not mark AAC priming: {e}");
+        }
+    }
     std::fs::rename(&save.part, &save.path).map_err(|e| ApiError::new("io", e.kind().to_string()))?;
     Ok(Some(save.path.to_string_lossy().into_owned()))
 }
@@ -201,6 +235,23 @@ mod tests {
             assert!(check_clip_name(tag, ext).is_err(), "{tag:?}.{ext:?} accepted");
         }
         assert!(check_clip_name(&"a".repeat(33), "mp4").is_err());
+    }
+
+    #[test]
+    fn chunks_append_or_patch_but_never_leave_holes() {
+        let dir = tempfile::tempdir().unwrap();
+        let part = dir.path().join("clip.mp4.part");
+        let file = File::create(&part).unwrap();
+        let mut save = OpenSave { file, part: part.clone(), path: dir.path().join("clip.mp4"), len: 0 };
+        save.write_at(None, b"headerXXXXmedia").unwrap();
+        save.write_at(Some(6), b"1234").unwrap(); // the muxer fills in a size
+        save.write_at(None, b"!").unwrap();
+        assert!(save.write_at(Some(17), b"gap").is_err());
+        assert!(save.write_at(Some(u64::MAX), b"x").is_err());
+        assert!(save.write_at(Some(MAX_VIDEO_BYTES), b"x").is_err());
+        save.write_at(Some(16), b"?").unwrap(); // exactly at the end: appends
+        assert_eq!(save.len, 17);
+        assert_eq!(std::fs::read(&part).unwrap(), b"header1234media!?");
     }
 
     #[test]

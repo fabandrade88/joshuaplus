@@ -23,25 +23,22 @@
   }
   i {
     flex: 1;
-    border-radius: 1px;
-    background: #1a2a22;
+    border-radius: 0;
+    background: #1d241f;
   }
   i.warn {
-    background: #33290f;
+    background: #2b2518;
   }
   i.hot {
-    background: #3a1517;
+    background: #2e1c1b;
   }
   i.on {
     background: var(--ok);
-    box-shadow: 0 0 4px var(--ok);
   }
   i.on.warn {
     background: var(--accent);
-    box-shadow: 0 0 4px var(--accent);
   }
   i.on.hot {
     background: var(--danger);
-    box-shadow: 0 0 4px var(--danger);
   }
 </style>
