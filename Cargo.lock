@@ -2319,7 +2319,7 @@ dependencies = [
 
 [[package]]
 name = "joshua-ai"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "joshua-core",
  "ort",
@@ -2333,7 +2333,7 @@ dependencies = [
 
 [[package]]
 name = "joshua-app"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "hound",
  "joshua-ai",
@@ -2355,7 +2355,7 @@ dependencies = [
 
 [[package]]
 name = "joshua-core"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "base64 0.23.1",
  "hound",
@@ -2373,7 +2373,7 @@ dependencies = [
 
 [[package]]
 name = "joshua-engine"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "assert_no_alloc",
  "cpal",
@@ -2384,7 +2384,7 @@ dependencies = [
 
 [[package]]
 name = "joshua-midi"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "midir",
  "proptest",
