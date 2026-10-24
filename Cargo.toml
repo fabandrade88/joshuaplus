@@ -1,0 +1,43 @@
+[workspace]
+resolver = "2"
+members = ["crates/joshua-core", "crates/joshua-engine", "crates/joshua-ai", "crates/joshua-midi", "app/src-tauri"]
+
+[workspace.package]
+version = "0.0.1"
+edition = "2024"
+license = "MIT"
+authors = ["Fabricio O. de Andrade"]
+repository = "https://github.com/fabandrade88/joshuaplus"
+rust-version = "1.85"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_debug_implementations = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+unwrap_used = "warn"
+expect_used = "warn"
+panic = "warn"
+dbg_macro = "warn"
+todo = "warn"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
+panic = "unwind"
+
+[profile.dev.package."*"]
+opt-level = 2
+
+# Debug builds are used for `tauri dev`; DSP and inference code is unusably
+# slow unoptimised, so our own crates get full optimisation there too.
+[profile.dev.package.joshua-core]
+opt-level = 3
+
+[profile.dev.package.joshua-ai]
+opt-level = 3
+
+[profile.dev.package.joshua-engine]
+opt-level = 3

@@ -1,0 +1,36 @@
+[package]
+name = "joshua-app"
+description = "Joshua+ desktop application"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+rust-version = "1.90"
+
+[lib]
+name = "joshua_app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.7.4", features = [] }
+
+[dependencies]
+joshua-core = { path = "../../crates/joshua-core" }
+joshua-engine = { path = "../../crates/joshua-engine" }
+joshua-ai = { path = "../../crates/joshua-ai" }
+joshua-midi = { path = "../../crates/joshua-midi" }
+rtrb = "0.4"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+log = "0.4"
+tauri = { version = "2.12.5", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-opener = "2"
+tauri-plugin-log = "2"
+
+[dev-dependencies]
+tempfile = "3"
+
+[lints]
+workspace = true

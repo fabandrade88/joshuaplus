@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability (private)
+    url: https://github.com/fabandrade88/joshuaplus/security/advisories/new
+    about: Please don't report security problems in public issues.
+  - name: How to use Joshua+
+    url: https://github.com/fabandrade88/joshuaplus#how-to-use-it
+    about: The README and the in-app "How to use" page explain every function.

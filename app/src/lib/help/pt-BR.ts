@@ -1,0 +1,145 @@
+import type { HelpSection } from "./types";
+
+export const helpPtBR: HelpSection[] = [
+  {
+    id: "start",
+    title: "Primeiros passos",
+    intro: "O Joshua+ separa uma música em faixas de instrumentos, descobre o andamento e cria um metrônomo alinhado. Tudo roda no seu computador.",
+    items: [
+      { term: "Pasta de trabalho", text: "Na primeira vez, escolha uma pasta. Nela o Joshua+ guarda as músicas separadas e cria a pasta inbox." },
+      { term: "Importar arrastando", text: "Arraste arquivos de música (MP3, WAV, FLAC, OGG, M4A, AIFF) para qualquer lugar da janela. Se uma pasta estiver aberta, a música entra nela." },
+      { term: "Importar pela pasta inbox", text: "Copie arquivos para a pasta inbox (ou inbox/nome-da-pasta) pelo Finder/Explorer. Em poucos segundos eles são importados sozinhos." },
+      { term: "Adicionar músicas", text: "O botão Adicionar músicas abre a janela para escolher arquivos." },
+      { term: "Processando", text: "Na barra lateral aparece o progresso de cada importação. O X cancela. Na primeira música, o motor de estúdio (136 MB) é baixado uma única vez." },
+    ],
+  },
+  {
+    id: "library",
+    title: "Início, pastas e playlist",
+    items: [
+      { term: "Início", text: "Mostra suas pastas, Todas as músicas, Sem pasta e as adicionadas recentemente." },
+      { term: "Nova pasta", text: "Crie pastas como Banda, Igreja ou Estudo e escolha uma cor. O lápis renomeia, a lixeira exclui a pasta (as músicas continuam na biblioteca)." },
+      { term: "Mover para pasta", text: "Na lista, use a coluna Pasta para trocar a música de pasta." },
+      { term: "Tocar pasta", text: "Toca a pasta como playlist, da primeira à última música. Cada música toca com a mixagem que você salvou nela." },
+      { term: "Ordenar a playlist", text: "Dentro da pasta, passe o mouse sobre o número (#) e arraste a alça ⋮⋮ para mudar a posição. Pelo teclado: Alt + ↑/↓. A ordem fica salva." },
+      { term: "Auto", text: "Ligado, a próxima música da pasta começa sozinha quando a atual termina, mesmo se você estiver em outra tela." },
+      { term: "Renomear e excluir música", text: "Passe o mouse sobre a música na lista: o lápis renomeia, a lixeira exclui." },
+    ],
+  },
+  {
+    id: "engines",
+    title: "Separação de instrumentos",
+    items: [
+      { term: "Estúdio (recomendado)", text: "Motor neural embutido, offline. Separa em 6 faixas: voz, bateria, baixo, guitarra, teclas e outros." },
+      { term: "Rápido", text: "Prévia instantânea em 4 faixas (voz, bateria, baixo, outros), com qualidade menor." },
+      { term: "Nuvem (LALAL.AI)", text: "Opcional. Usa a sua conta LALAL.AI e separa também violão e guitarra. A música é enviada ao serviço e apagada depois. Configure a chave em Configurações." },
+      { term: "Limite da separação", text: "Nenhum sistema separa 100%: pode sobrar um pouco de um instrumento na faixa de outro." },
+    ],
+  },
+  {
+    id: "song",
+    title: "Tela da música",
+    items: [
+      { term: "▶ / ⏸", text: "Toca e pausa. Com contagem ligada, os clicks da contagem soam antes da música." },
+      { term: "⏮ / ⏭", text: "Música anterior e próxima da playlist." },
+      { term: "Voltar ao início", text: "Vai para o começo da música (ou do loop, se houver)." },
+      { term: "Botão de loop", text: "Liga e desliga a repetição do trecho selecionado." },
+      { term: "Visor", text: "Mostra compasso, tempo e o tempo decorrido da música." },
+      { term: "Continuar tocando", text: "Você pode ir para o Início ou outra tela: a música continua. Clique nela de novo ou no mini-player da barra lateral para voltar sem recomeçar." },
+    ],
+  },
+  {
+    id: "bars",
+    title: "Mapa de compassos e repetição",
+    items: [
+      { term: "Clique", text: "Vai para o compasso clicado." },
+      { term: "Duplo clique", text: "Repete aquele compasso sem parar até você desligar." },
+      { term: "Arrastar", text: "Arraste sobre vários compassos para repetir o trecho." },
+      { term: "Shift + clique", text: "Com um loop ativo, estende o loop até o compasso clicado." },
+      { term: "Repetir 1 · 2 · 4 · 8", text: "Repete esse número de compassos a partir do compasso atual." },
+      { term: "Desl.", text: "Desliga a repetição." },
+      { term: "Rolagem automática", text: "O compasso que está tocando fica sempre visível. Se você rolar o mapa, a rolagem automática pausa por alguns segundos." },
+    ],
+  },
+  {
+    id: "mixer",
+    title: "Mesa de som",
+    items: [
+      { term: "Fader", text: "Arraste para cima/baixo para o volume da faixa. Duplo clique volta a 0 dB. Setas do teclado ajustam fino." },
+      { term: "Knob de pan", text: "Arraste para cima/baixo para mandar o som para a esquerda ou direita. Duplo clique centraliza. Shift deixa o ajuste fino." },
+      { term: "M (mudo)", text: "Silencia a faixa." },
+      { term: "S (solo)", text: "Toca só as faixas em solo. Pode haver mais de uma." },
+      { term: "Grupo Música", text: "Controla todas as faixas da música juntas. Recolher em uma faixa deixa só um canal, abrindo espaço na mesa." },
+      { term: "Entradas", text: "Quando você tem entradas configuradas, elas aparecem aqui com nível e volume do retorno." },
+      { term: "Master", text: "Volume geral de saída." },
+      { term: "Salvamento", text: "Tudo que você ajusta na música é salvo sozinho e volta quando você a abre de novo." },
+    ],
+  },
+  {
+    id: "metronome",
+    title: "Metrônomo",
+    items: [
+      { term: "BPM", text: "Clique no número para digitar o andamento exato e tecle Enter." },
+      { term: "÷2 e ×2", text: "Corrigem quando o andamento foi detectado pela metade ou em dobro." },
+      { term: "◀ ▶", text: "Adiantam ou atrasam o click em 10 ms." },
+      { term: "Tempo 1 aqui", text: "Faz do tempo na posição atual o primeiro tempo do compasso." },
+      { term: "TAP", text: "Com a música tocando, bata no ritmo 4 vezes ou mais. O click se alinha às suas batidas." },
+      { term: "Constante / Variável", text: "Constante mantém um andamento só (o normal). Variável faz o click acompanhar a banda." },
+      { term: "↻", text: "Detecta o andamento de novo." },
+      { term: "Som", text: "Escolha o timbre: clássico, bloco de madeira, bipe, cowbell, baquetas ou bumbo e chimbal." },
+      { term: "Compasso", text: "Fórmula de compasso (2/4 a 7/4)." },
+      { term: "Contagem", text: "Quantos compassos de click antes de a música entrar (Desl., 1, 2 ou 4). A contagem cai exatamente no tempo da música." },
+      { term: "Knob e botão redondo", text: "O knob ajusta o volume do click; o botão redondo liga e desliga o click." },
+    ],
+  },
+  {
+    id: "info",
+    title: "Informações da música",
+    items: [
+      { term: "Capa", text: "Lida do próprio arquivo e mostrada na lista e no topo da música." },
+      { term: "Botão i", text: "Mostra artista, álbum/EP, ano, gênero, faixa, compositor e gravadora, quando o arquivo tiver essas informações." },
+      { term: "Renomear", text: "Clique no título no topo da música para editar o nome." },
+    ],
+  },
+  {
+    id: "gear",
+    title: "Instrumentos e entradas",
+    items: [
+      { term: "Adicionar entrada", text: "Escolha uma interface de áudio, microfone ou o áudio USB da bateria. Pode ter várias entradas ativas ao mesmo tempo." },
+      { term: "Canal", text: "Escolha o canal da interface (Canal 1, 2…) ou um par estéreo (1+2…)." },
+      { term: "Ouvir (retorno)", text: "Você ouve o seu instrumento junto com a música. Exige a mesma taxa de amostragem da saída de áudio." },
+      { term: "Bateria eletrônica", text: "Conecte o módulo por USB, escolha a porta MIDI e a marca. Os pads da tela acendem quando você toca." },
+      { term: "Aprender", text: "Se um pad não acender, clique nele, aperte Aprender e toque aquela peça. O mapa fica salvo." },
+      { term: "Gravação", text: "A gravação ainda vai chegar. As entradas já estão prontas para ela." },
+    ],
+  },
+  {
+    id: "settings",
+    title: "Configurações",
+    items: [
+      { term: "Idioma", text: "Português, inglês ou alemão." },
+      { term: "Motor de separação", text: "Estúdio, Rápido ou Nuvem para as próximas importações." },
+      { term: "Saída de áudio", text: "Escolha os fones, caixas ou a interface onde você ouve." },
+      { term: "Pasta de trabalho", text: "Troque a pasta onde as músicas ficam." },
+    ],
+  },
+  {
+    id: "keys",
+    title: "Atalhos de teclado",
+    items: [
+      { term: "Espaço", text: "Tocar / pausar." },
+      { term: "Home ou Enter", text: "Voltar ao início (ou do loop)." },
+      { term: "L", text: "Liga/desliga o loop." },
+      { term: "Alt + ↑/↓", text: "Move a música na playlist (com a alça selecionada)." },
+      { term: "Esc", text: "Cancela edições e fecha janelas." },
+    ],
+  },
+  {
+    id: "privacy",
+    title: "Privacidade e segurança",
+    items: [
+      { term: "Tudo local", text: "As músicas ficam no seu computador. Nada é enviado, exceto se você escolher o motor Nuvem." },
+      { term: "Arquivos verificados", text: "O Joshua+ confere se cada arquivo é áudio de verdade antes de abrir e recusa atalhos e arquivos suspeitos." },
+    ],
+  },
+];

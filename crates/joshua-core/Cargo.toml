@@ -1,0 +1,29 @@
+[package]
+name = "joshua-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Joshua+ core: audio decoding, stem separation, tempo detection and real-time mixing logic"
+
+[dependencies]
+base64 = "0.23.1"
+hound = "3.5.1"
+image = { version = "0.25.9", default-features = false, features = ["jpeg", "png"] }
+rubato = "5.0.1"
+rustfft = "6.4.1"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+symphonia = { version = "0.6.1", default-features = false, features = ["mp3", "aac", "flac", "wav", "pcm", "vorbis", "ogg", "isomp4", "alac", "aiff", "adpcm", "id3v1", "id3v2", "ape"] }
+thiserror = "2.0.21"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[dev-dependencies]
+image = { version = "0.25.9", default-features = false, features = ["jpeg", "png"] }
+proptest = "1.12.0"
+tempfile = "3.27.0"
+
+[lints]
+workspace = true

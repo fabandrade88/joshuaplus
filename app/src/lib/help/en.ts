@@ -1,0 +1,145 @@
+import type { HelpSection } from "./types";
+
+export const helpEn: HelpSection[] = [
+  {
+    id: "start",
+    title: "Getting started",
+    intro: "Joshua+ splits a song into instrument tracks, finds the tempo and builds a matching click track. Everything runs on your computer.",
+    items: [
+      { term: "Workspace folder", text: "The first time, choose a folder. Joshua+ keeps the separated songs there and creates the inbox folder." },
+      { term: "Import by dragging", text: "Drag music files (MP3, WAV, FLAC, OGG, M4A, AIFF) anywhere onto the window. If a folder is open, the song goes into it." },
+      { term: "Import via the inbox folder", text: "Copy files into inbox (or inbox/folder-name) with Finder/Explorer. They are imported automatically within seconds." },
+      { term: "Add songs", text: "The Add songs button opens a file picker." },
+      { term: "Processing", text: "The sidebar shows the progress of each import. The X cancels. With the first song, the studio engine (136 MB) downloads once." },
+    ],
+  },
+  {
+    id: "library",
+    title: "Home, folders and playlist",
+    items: [
+      { term: "Home", text: "Shows your folders, All songs, Not in a folder and recently added songs." },
+      { term: "New folder", text: "Create folders like Band, Church or Practice and pick a colour. The pencil renames, the bin deletes the folder (songs stay in the library)." },
+      { term: "Move to folder", text: "In the list, use the Folder column to move a song." },
+      { term: "Play folder", text: "Plays the folder as a playlist, first to last. Each song plays with the mix you saved in it." },
+      { term: "Order the playlist", text: "Inside a folder, hover the number (#) and drag the ⋮⋮ handle. With the keyboard: Alt + ↑/↓. The order is saved." },
+      { term: "Auto", text: "When on, the next song of the folder starts by itself when the current one ends, even on another screen." },
+      { term: "Rename and delete a song", text: "Hover the song in the list: the pencil renames, the bin deletes." },
+    ],
+  },
+  {
+    id: "engines",
+    title: "Instrument separation",
+    items: [
+      { term: "Studio (recommended)", text: "Built-in neural engine, offline. Splits into 6 tracks: vocals, drums, bass, guitar, keys and other." },
+      { term: "Quick", text: "Instant preview in 4 tracks (vocals, drums, bass, other), lower quality." },
+      { term: "Cloud (LALAL.AI)", text: "Optional. Uses your own LALAL.AI account and also separates acoustic and electric guitar. The song is uploaded and deleted afterwards. Set the key in Settings." },
+      { term: "Separation limits", text: "No system separates 100%: a little of one instrument may remain in another track." },
+    ],
+  },
+  {
+    id: "song",
+    title: "Song screen",
+    items: [
+      { term: "▶ / ⏸", text: "Play and pause. With count-in on, the count-in clicks sound before the music." },
+      { term: "⏮ / ⏭", text: "Previous and next song of the playlist." },
+      { term: "Back to start", text: "Goes to the start of the song (or of the loop)." },
+      { term: "Loop button", text: "Turns repeating the selected section on and off." },
+      { term: "Display", text: "Shows bar, beat and elapsed time." },
+      { term: "Keep playing", text: "You can go Home or to another screen: the song keeps playing. Click it again, or the sidebar mini-player, to return without restarting." },
+    ],
+  },
+  {
+    id: "bars",
+    title: "Bar map and looping",
+    items: [
+      { term: "Click", text: "Jumps to that bar." },
+      { term: "Double-click", text: "Repeats that bar until you switch it off." },
+      { term: "Drag", text: "Drag across bars to loop the section." },
+      { term: "Shift + click", text: "With a loop active, extends it to the clicked bar." },
+      { term: "Repeat 1 · 2 · 4 · 8", text: "Loops that many bars starting at the current bar." },
+      { term: "Off", text: "Stops looping." },
+      { term: "Auto-scroll", text: "The playing bar stays in view. Scrolling the map yourself pauses auto-scroll for a few seconds." },
+    ],
+  },
+  {
+    id: "mixer",
+    title: "Mixing desk",
+    items: [
+      { term: "Fader", text: "Drag up/down to set the track volume. Double-click resets to 0 dB. Arrow keys fine-tune." },
+      { term: "Pan knob", text: "Drag up/down to move the sound left or right. Double-click centres. Hold Shift for fine control." },
+      { term: "M (mute)", text: "Silences the track." },
+      { term: "S (solo)", text: "Plays only the soloed tracks. Several can be soloed." },
+      { term: "Song group", text: "Controls all song tracks together. Collapse into one track to leave a single strip and free space." },
+      { term: "Inputs", text: "Configured inputs appear here with their level and monitor volume." },
+      { term: "Master", text: "Overall output volume." },
+      { term: "Saving", text: "Everything you adjust in a song is saved automatically and restored when you open it again." },
+    ],
+  },
+  {
+    id: "metronome",
+    title: "Metronome",
+    items: [
+      { term: "BPM", text: "Click the number to type the exact tempo and press Enter." },
+      { term: "÷2 and ×2", text: "Fix a tempo detected at half or double speed." },
+      { term: "◀ ▶", text: "Move the click 10 ms earlier or later." },
+      { term: "Beat 1 here", text: "Makes the beat at the playhead the first beat of the bar." },
+      { term: "TAP", text: "While the song plays, tap along 4 or more times. The click aligns to your taps." },
+      { term: "Steady / Follow band", text: "Steady keeps one tempo (normal). Follow band makes the click follow the musicians." },
+      { term: "↻", text: "Detects the tempo again." },
+      { term: "Sound", text: "Pick the voice: classic, woodblock, beep, cowbell, sticks or kick & hi-hat." },
+      { term: "Bar", text: "Time signature (2/4 to 7/4)." },
+      { term: "Count-in", text: "How many bars of click before the music (Off, 1, 2 or 4). The count-in lands exactly on the song's beat." },
+      { term: "Knob and round button", text: "The knob sets the click volume; the round button turns the click on and off." },
+    ],
+  },
+  {
+    id: "info",
+    title: "Song info",
+    items: [
+      { term: "Cover", text: "Read from the file itself and shown in the list and at the top of the song." },
+      { term: "i button", text: "Shows artist, album/EP, year, genre, track, composer and label when the file has them." },
+      { term: "Rename", text: "Click the title at the top of the song to edit it." },
+    ],
+  },
+  {
+    id: "gear",
+    title: "Instruments & inputs",
+    items: [
+      { term: "Add input", text: "Choose an audio interface, microphone or the drum module's USB audio. Several inputs can be active at once." },
+      { term: "Channel", text: "Pick the interface channel (Channel 1, 2…) or a stereo pair (1+2…)." },
+      { term: "Hear (monitor)", text: "You hear your instrument along with the song. Needs the same sample rate as the audio output." },
+      { term: "Electronic drums", text: "Connect the module by USB, pick the MIDI port and the brand. The pads on screen light up as you play." },
+      { term: "Learn", text: "If a pad stays dark, click it, press Learn and hit that drum. The map is saved." },
+      { term: "Recording", text: "Recording is coming. The inputs are already prepared for it." },
+    ],
+  },
+  {
+    id: "settings",
+    title: "Settings",
+    items: [
+      { term: "Language", text: "Portuguese, English or German." },
+      { term: "Separation engine", text: "Studio, Quick or Cloud for the next imports." },
+      { term: "Audio output", text: "Choose the headphones, speakers or interface you listen on." },
+      { term: "Workspace folder", text: "Change the folder where songs are kept." },
+    ],
+  },
+  {
+    id: "keys",
+    title: "Keyboard shortcuts",
+    items: [
+      { term: "Space", text: "Play / pause." },
+      { term: "Home or Enter", text: "Back to the start (or of the loop)." },
+      { term: "L", text: "Loop on/off." },
+      { term: "Alt + ↑/↓", text: "Move a song in the playlist (handle focused)." },
+      { term: "Esc", text: "Cancels edits and closes windows." },
+    ],
+  },
+  {
+    id: "privacy",
+    title: "Privacy & security",
+    items: [
+      { term: "All local", text: "Songs stay on your computer. Nothing is uploaded unless you choose the Cloud engine." },
+      { term: "Checked files", text: "Joshua+ verifies that each file is real audio before opening it and refuses shortcuts and suspicious files." },
+    ],
+  },
+];

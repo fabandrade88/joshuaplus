@@ -1,0 +1,20 @@
+# Build output
+/target/
+app/dist/
+node_modules/
+app/src-tauri/gen/
+app/src-tauri/target/
+
+# Partial downloads / renders
+*.part
+
+# Editors and OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Local secrets
+.env
+.env.*

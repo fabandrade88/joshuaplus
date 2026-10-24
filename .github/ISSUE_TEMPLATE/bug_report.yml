@@ -1,0 +1,61 @@
+name: Bug report
+description: Something doesn't work as expected
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! **Security problems:** please use the private [vulnerability form](https://github.com/fabandrade88/joshuaplus/security/advisories/new) instead.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: And what did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Import song …
+        2. Click …
+        3. …
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [Import / folders, Separation, Tempo / metronome, Mixer / playback, Inputs / MIDI / e-drums, Interface / translation, Install, Other]
+    validations:
+      required: true
+  - type: input
+    id: song
+    attributes:
+      label: Song (tempo/separation issues)
+      description: Artist and title, and the BPM you expected. Please don't upload copyrighted audio.
+  - type: input
+    id: version
+    attributes:
+      label: Joshua+ version
+      description: Shown on the About page
+      placeholder: 0.0.1 beta
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options: [macOS (Apple Silicon), macOS (Intel), Windows 11, Windows 10, Linux (Ubuntu/Debian), Linux (other)]
+    validations:
+      required: true
+  - type: textarea
+    id: hardware
+    attributes:
+      label: Audio interface / e-drum / MIDI device (if relevant)
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      render: text
