@@ -1,12 +1,16 @@
-# Quality gate. Every push to test-branch and every pull request into main
-# must pass all of these jobs before anything can be merged into main
-# (main is protected and requires them).
+# Quality gate. Every pull request into main must pass all of these jobs
+# before it can be merged (a ruleset on main requires them). Runs once per
+# change: on the pull request (not again on the push to test-branch), and
+# after the merge on main, which also keeps the build caches warm for the
+# next pull requests (caches made on main are shared with every PR).
+# A change that only touches documentation skips the build jobs; skipped
+# jobs count as passed for the required checks.
 name: CI
 
 on:
-  push:
-    branches: [test-branch]
   pull_request:
+    branches: [main]
+  push:
     branches: [main]
   workflow_dispatch:
 
@@ -21,10 +25,50 @@ env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
   RUST_BACKTRACE: 1
+  # No debug info in CI builds: much faster linking (Windows above all) and
+  # smaller caches; test failures still print file and line.
+  CARGO_PROFILE_DEV_DEBUG: 0
+  CARGO_PROFILE_TEST_DEBUG: 0
 
 jobs:
+  changes:
+    name: Changed files
+    runs-on: ubuntu-24.04
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+        run: |
+          case "$EVENT" in
+            pull_request) range="$PR_BASE...$PR_HEAD" ;;
+            push) range="$BEFORE..$AFTER" ;;
+            *) range="" ;;
+          esac
+          # Unknown range (manual run, first push): build everything.
+          if [ -z "$range" ] || ! files=$(git diff --name-only "$range" 2>/dev/null); then
+            echo "code=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          printf '%s\n' "$files"
+          # Documentation only: Markdown, docs/, issue templates, LICENSE.
+          if [ -n "$files" ] && ! printf '%s\n' "$files" | grep -qvE '(\.md$|^docs/|^\.github/ISSUE_TEMPLATE/|^LICENSE$)'; then
+            echo "code=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          fi
+
   frontend:
     name: Frontend (types, tests, build, audit)
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
     defaults:
       run:
@@ -51,6 +95,8 @@ jobs:
 
   rust:
     name: Rust (${{ matrix.os }})
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -91,6 +137,8 @@ jobs:
 
   performance:
     name: Performance (release)
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
@@ -104,6 +152,8 @@ jobs:
 
   security:
     name: Security (attacks + advisories)
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
