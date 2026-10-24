@@ -111,6 +111,10 @@ const renders = { n: 0 };
 mockIPC(
   (cmd, args) => {
     switch (cmd) {
+      case "check_for_update":
+        return params.get("update") === "1"
+          ? { version: "0.6.0", url: "https://github.com/fabandrade88/joshuaplus/releases/tag/v0.6.0" }
+          : null;
       case "list_exports": {
         const dir = "/Users/musician/Music/Joshua+/Exports";
         const now = Math.floor(Date.now() / 1000);
@@ -162,6 +166,7 @@ mockIPC(
           outputDevice: null,
           exportDir: "/Users/musician/Music/Joshua+/Exports",
           exportDirCustom: false,
+          updateCheck: true,
           suggestedWorkspace: "/Users/musician/Music/Joshua+",
           musicDir: "/Users/musician/Music",
         };

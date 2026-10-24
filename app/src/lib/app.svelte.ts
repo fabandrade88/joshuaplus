@@ -10,6 +10,8 @@ import type {
   AppInfo,
   BeatAnalysis,
   DrumPad,
+  DesktopEntryStatus,
+  UpdateInfo,
   DrumState,
   ExportList,
   InputPatch,
@@ -29,6 +31,7 @@ import type {
 } from "./types";
 
 const DONE_JOB_TTL_MS = 6000;
+const UPDATE_EVERY_MS = 6 * 60 * 60 * 1000;
 
 function readFlag(key: string): boolean {
   try {
@@ -111,6 +114,11 @@ class AppStore {
   exports = $state<ExportList | null>(null);
   /** The "Export audio" dialog is open. */
   exportDialogOpen = $state(false);
+  /** Linux AppImage: application-menu entry. */
+  desktopEntry = $state<DesktopEntryStatus | null>(null);
+  /** A newer release is out (sidebar notice). */
+  update = $state<UpdateInfo | null>(null);
+  private updateTimer: ReturnType<typeof setInterval> | undefined;
   /** The video studio overlay is open. */
   videoOpen = $state(false);
   toast = $state<string | null>(null);
@@ -210,6 +218,45 @@ class AppStore {
     i18n.locale = this.info?.locale ? matchLocale(this.info.locale) : i18n.locale;
     await this.refreshLibrary();
     void this.refreshExports();
+    void this.offerDesktopEntry();
+    // New versions: shortly after start, then a few times a day.
+    setTimeout(() => void this.checkForUpdate(), 4000);
+    clearInterval(this.updateTimer);
+    this.updateTimer = setInterval(() => void this.checkForUpdate(), UPDATE_EVERY_MS);
+  }
+
+  async checkForUpdate(): Promise<void> {
+    this.update = await api.checkForUpdate().catch(() => null);
+  }
+
+  /** "Not now": hide the notice until an even newer version is out. */
+  async skipUpdate(): Promise<void> {
+    const version = this.update?.version;
+    this.update = null;
+    if (version) await this.guard(() => api.skipUpdate(version));
+  }
+
+  async setUpdateCheck(enabled: boolean): Promise<void> {
+    if ((await this.guard(() => api.setUpdateCheck(enabled))) === undefined) return;
+    if (this.info) this.info.updateCheck = enabled;
+    if (enabled) void this.checkForUpdate();
+    else this.update = null;
+  }
+
+  /** Linux AppImage: ask once whether to add Joshua+ to the application
+   *  menu (the AppImage cannot be found there otherwise). */
+  private async offerDesktopEntry(): Promise<void> {
+    const status = await api.desktopEntryStatus().catch(() => null);
+    this.desktopEntry = status;
+    if (!status?.available || status.asked || status.installed) return;
+    const yes = window.confirm(i18n.t("desktopEntry.ask"));
+    await this.setDesktopEntry(yes);
+    if (yes) this.notify(i18n.t("desktopEntry.added"));
+  }
+
+  async setDesktopEntry(install: boolean): Promise<void> {
+    const status = await this.guard(() => api.setDesktopEntry(install));
+    if (status) this.desktopEntry = status;
   }
 
   async refreshInfo(): Promise<void> {

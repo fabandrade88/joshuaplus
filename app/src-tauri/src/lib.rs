@@ -5,6 +5,7 @@
 
 mod backfill;
 mod commands;
+mod desktop_entry;
 mod devices;
 mod error;
 mod inbox;
@@ -14,6 +15,7 @@ mod recorder;
 mod settings;
 mod state;
 mod ticker;
+mod updates;
 mod video;
 mod watchdog;
 
@@ -37,6 +39,13 @@ pub fn run() {
             app.manage(AppState::new(config_dir.join("settings.json"), models_dir, JobQueue::default()));
             let handle = app.handle().clone();
             let state = app.state::<AppState>();
+            // An AppImage that was moved keeps a working menu entry.
+            if let (Some(dirs), Some((image, appdir))) =
+                (desktop_entry::Dirs::for_user(), desktop_entry::running_appimage())
+                && let Err(e) = desktop_entry::follow_move(&dirs, &image, appdir.as_deref())
+            {
+                log::warn!("could not update the menu entry: {e}");
+            }
             state.start_engine();
             devices::restart_inputs(&state);
             devices::connect_midi(&handle);
@@ -109,6 +118,11 @@ pub fn run() {
             commands::list_exports,
             commands::open_export,
             commands::open_export_dir,
+            commands::desktop_entry_status,
+            commands::set_desktop_entry,
+            commands::check_for_update,
+            commands::skip_update,
+            commands::set_update_check,
             commands::set_export_dir,
             video::render_clip_audio,
             video::video_save_begin,

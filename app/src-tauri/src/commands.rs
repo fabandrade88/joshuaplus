@@ -53,6 +53,8 @@ pub struct AppInfo {
     /// Recommended library location (`<Music>/Joshua+`) and the Music folder.
     pub suggested_workspace: Option<String>,
     pub music_dir: Option<String>,
+    /// The user is told about new releases.
+    pub update_check: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -145,6 +147,7 @@ pub fn get_app_info(app: AppHandle, state: State<'_, AppState>) -> AppInfo {
         export_dir_custom: settings.export_dir.is_some(),
         suggested_workspace: music.as_ref().map(|m| m.join("Joshua+").display().to_string()),
         music_dir: music.map(|m| m.display().to_string()),
+        update_check: settings.update_check,
     }
 }
 
@@ -952,4 +955,95 @@ mod tests {
         assert_eq!(export_kind(Path::new("/x/notes.txt")), None);
         assert_eq!(export_kind(Path::new("/x/no-extension")), None);
     }
+}
+
+// ── Linux application menu (AppImage) ───────────────────────────────────────
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DesktopEntryStatus {
+    /// Running as a Linux AppImage, so a menu entry can be added.
+    pub available: bool,
+    pub installed: bool,
+    /// The user already answered the "add to the menu" question.
+    pub asked: bool,
+}
+
+#[tauri::command]
+pub fn desktop_entry_status(state: State<'_, AppState>) -> DesktopEntryStatus {
+    let asked = lock(&state.settings).desktop_entry.is_some();
+    let installed = crate::desktop_entry::Dirs::for_user().is_some_and(|d| crate::desktop_entry::is_installed(&d));
+    DesktopEntryStatus { available: crate::desktop_entry::running_appimage().is_some(), installed, asked }
+}
+
+/// Adds Joshua+ to (or removes it from) the application menu, and remembers
+/// the answer so the question is not asked again.
+#[tauri::command]
+pub fn set_desktop_entry(state: State<'_, AppState>, install: bool) -> ApiResult<DesktopEntryStatus> {
+    let dirs = crate::desktop_entry::Dirs::for_user().ok_or_else(|| ApiError::new("io", "no home folder"))?;
+    if install {
+        let (image, appdir) =
+            crate::desktop_entry::running_appimage().ok_or_else(|| ApiError::invalid("not running as an AppImage"))?;
+        crate::desktop_entry::install(&dirs, &image, appdir.as_deref())
+            .map_err(|e| ApiError::new("io", e.to_string()))?;
+    } else {
+        crate::desktop_entry::remove(&dirs).map_err(|e| ApiError::new("io", e.to_string()))?;
+    }
+    lock(&state.settings).desktop_entry = Some(install);
+    state.save_settings()?;
+    Ok(desktop_entry_status(state))
+}
+
+// ── New version notice ──────────────────────────────────────────────────────
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateInfo {
+    /// e.g. "0.6.0"
+    pub version: String,
+    /// The release page (notes and downloads).
+    pub url: String,
+}
+
+/// A newer published release, unless checks are off or the user skipped it.
+/// Network problems are not errors: there is simply nothing to show.
+#[tauri::command]
+pub async fn check_for_update(app: AppHandle) -> ApiResult<Option<UpdateInfo>> {
+    let (enabled, skipped) = {
+        let state = app.state::<AppState>();
+        let s = lock(&state.settings);
+        (s.update_check, s.skipped_version.clone())
+    };
+    if !enabled {
+        return Ok(None);
+    }
+    let tag = match tauri::async_runtime::spawn_blocking(crate::updates::latest_tag).await {
+        Ok(Ok(tag)) => tag,
+        Ok(Err(e)) => {
+            log::info!("update check: {e}");
+            return Ok(None);
+        }
+        Err(_) => return Ok(None),
+    };
+    let version = tag.trim_start_matches('v').to_owned();
+    if skipped.as_deref() == Some(version.as_str()) || !crate::updates::is_newer(&tag, env!("CARGO_PKG_VERSION")) {
+        return Ok(None);
+    }
+    Ok(Some(UpdateInfo { url: format!("{}/tag/{tag}", crate::updates::RELEASES_URL), version }))
+}
+
+/// "Not now" for this version: no notice until a newer one comes out.
+#[tauri::command]
+pub fn skip_update(state: State<'_, AppState>, version: String) -> ApiResult<()> {
+    if crate::updates::parse_version(&version).is_none() {
+        return Err(ApiError::invalid("not a version"));
+    }
+    lock(&state.settings).skipped_version = Some(version);
+    state.save_settings()
+}
+
+#[tauri::command]
+pub fn set_update_check(state: State<'_, AppState>, enabled: bool) -> ApiResult<()> {
+    lock(&state.settings).update_check = enabled;
+    state.save_settings()
 }

@@ -2350,6 +2350,7 @@ dependencies = [
  "tauri-plugin-log",
  "tauri-plugin-opener",
  "tempfile",
+ "ureq",
 ]
 
 [[package]]

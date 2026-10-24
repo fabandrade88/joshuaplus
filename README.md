@@ -49,7 +49,9 @@ The scripts download the newest release, **check its SHA-256 against the release
 
 **Prefer to download by hand?** Get the `.dmg` (macOS), `-setup.exe` or `.msi` (Windows), or `.deb`, `.rpm` or `.AppImage` (Linux) from [Releases](https://github.com/fabandrade88/joshuaplus/releases/latest). The builds are not code-signed yet: on macOS right-click the app and choose **Open** the first time; on Windows choose **More info → Run anyway**.
 
-Every installer is installed and started on clean Windows, macOS and Linux machines by the release pipeline before a release is published.
+**Tested on:** Ubuntu 26.04 LTS, Omarchy (Arch Linux, Hyprland), Windows 11 and a MacBook Pro with M4 Pro (macOS 27). On Arch-based systems such as Omarchy the script installs the AppImage and adds Joshua+ to the application menu.
+
+Every installer is also installed and started on clean Windows, macOS and Linux machines by the release pipeline before a release is published.
 
 ## What you get
 

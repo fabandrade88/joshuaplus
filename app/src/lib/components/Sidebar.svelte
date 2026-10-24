@@ -1,5 +1,6 @@
 <script lang="ts">
   import ExportsCard from "./ExportsCard.svelte";
+  import UpdateCard from "./UpdateCard.svelte";
   import FolderGlyph from "./FolderGlyph.svelte";
   import { glyphsFor } from "../folderGlyph";
   import { app, type FolderKey } from "../app.svelte";
@@ -78,6 +79,7 @@
     </div>
   </section>
 
+  <UpdateCard />
   <ExportsCard />
   {#if app.jobs.length > 0}
     <section class="block">

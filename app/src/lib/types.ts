@@ -26,6 +26,14 @@ export interface AppInfo {
   exportDirCustom: boolean;
   suggestedWorkspace: string | null;
   musicDir: string | null;
+  /** Tell the user about new releases. */
+  updateCheck: boolean;
+}
+
+/** A newer published release. */
+export interface UpdateInfo {
+  version: string;
+  url: string;
 }
 
 /** An audio interface was plugged in or out (see the device watchdog). */
@@ -34,6 +42,13 @@ export interface DevicesChanged {
   output: string | null;
   restored: boolean;
   inputsChanged: boolean;
+}
+
+/** Linux AppImage application-menu entry. */
+export interface DesktopEntryStatus {
+  available: boolean;
+  installed: boolean;
+  asked: boolean;
 }
 
 export interface ExportFile {
