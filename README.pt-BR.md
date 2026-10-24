@@ -4,6 +4,7 @@
 
 <h1 align="center">Joshua+ <sup><code>beta</code></sup></h1>
 <p align="center"><b>Fazendo música em casa.</b> Separe qualquer música em faixas de instrumentos, tenha um metrônomo que acompanha a música e toque junto.</p>
+<p align="center"><i>"Moises led the way. Joshua takes you home"</i></p>
 
 <p align="center"><a href="README.md">English</a> · Português (Brasil)</p>
 

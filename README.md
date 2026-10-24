@@ -4,6 +4,7 @@
 
 <h1 align="center">Joshua+ <sup><code>beta</code></sup></h1>
 <p align="center"><b>Making music at home.</b> Split any song into instrument tracks, get a click that follows the song, and play along.</p>
+<p align="center"><i>"Moises led the way. Joshua takes you home"</i></p>
 
 <p align="center">
   <a href="https://github.com/fabandrade88/joshuaplus/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/fabandrade88/joshuaplus/actions/workflows/ci.yml/badge.svg?branch=test-branch"></a>
