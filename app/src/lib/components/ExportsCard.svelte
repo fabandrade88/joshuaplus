@@ -76,6 +76,7 @@
       <span class="stage ok">✓ {i18n.t("video.exported", { n: studio.saved.length })}</span>
       <div class="links">
         <button class="link" onclick={() => app.revealExport(studio.saved[0])}>{i18n.t("export.show")}</button>
+        <button class="link" onclick={() => app.openExports()}>{i18n.t("nav.exports")}</button>
         <button class="link" onclick={() => (app.videoOpen = true)}>{i18n.t("video.openStudio")}</button>
       </div>
     {/if}

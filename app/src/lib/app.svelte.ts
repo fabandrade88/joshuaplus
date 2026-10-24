@@ -11,6 +11,7 @@ import type {
   BeatAnalysis,
   DrumPad,
   DrumState,
+  ExportList,
   InputPatch,
   InputView,
   Folder,
@@ -49,7 +50,7 @@ const METER_DECAY = 0.82;
 /** `all` = every song, `null` = songs without a folder, otherwise a folder id. */
 export type FolderKey = string | null | "all";
 
-export type View = { kind: "home" } | { kind: "folder"; folder: FolderKey } | { kind: "song" } | { kind: "gear" } | { kind: "help" } | { kind: "about" };
+export type View = { kind: "home" } | { kind: "folder"; folder: FolderKey } | { kind: "song" } | { kind: "gear" } | { kind: "help" } | { kind: "about" } | { kind: "exports" };
 
 function idleTransport(): TransportTick {
   return {
@@ -106,6 +107,10 @@ class AppStore {
   exportProgress = $state<number | null>(null);
   /** Last exported file (for "show in folder"). */
   lastExport = $state<string | null>(null);
+  /** Files in the export folder (Exports view), newest first. */
+  exports = $state<ExportList | null>(null);
+  /** The "Export audio" dialog is open. */
+  exportDialogOpen = $state(false);
   /** The video studio overlay is open. */
   videoOpen = $state(false);
   toast = $state<string | null>(null);
@@ -193,6 +198,7 @@ class AppStore {
     void this.refreshDrums();
     i18n.locale = this.info?.locale ? matchLocale(this.info.locale) : i18n.locale;
     await this.refreshLibrary();
+    void this.refreshExports();
   }
 
   async refreshInfo(): Promise<void> {
@@ -411,17 +417,24 @@ class AppStore {
     this.goHome();
     await this.refreshInfo();
     await this.refreshLibrary();
+    this.exports = null;
+    void this.refreshExports();
     if (move) this.notify(i18n.t("workspace.moved"));
   }
 
   async chooseExportDir(): Promise<void> {
     const dir = await this.pickFolder(this.info?.exportDir ?? this.info?.musicDir);
     if (!dir) return;
-    if ((await this.guard(() => api.setExportDir(dir))) !== undefined) await this.refreshInfo();
+    if ((await this.guard(() => api.setExportDir(dir))) !== undefined) await this.afterExportDirChange();
   }
 
   async resetExportDir(): Promise<void> {
-    if ((await this.guard(() => api.setExportDir(null))) !== undefined) await this.refreshInfo();
+    if ((await this.guard(() => api.setExportDir(null))) !== undefined) await this.afterExportDirChange();
+  }
+
+  private async afterExportDirChange(): Promise<void> {
+    await this.refreshInfo();
+    if (this.exports) await this.refreshExports();
   }
 
   // ── Import jobs ──────────────────────────────────────────────────────────
@@ -650,18 +663,39 @@ class AppStore {
     this.meters = [...view.project.tracks, ...(view.project.takes ?? [])].map(() => 0);
   }
 
-  async exportMix(): Promise<void> {
+  async exportMix(includeClick: boolean): Promise<void> {
     if (!this.song || this.exportProgress !== null) return;
+    this.exportDialogOpen = false;
     this.exportProgress = 0;
-    const path = await this.guard(() => api.exportMix());
+    const path = await this.guard(() => api.exportMix(includeClick));
     this.exportProgress = null;
     if (!path) return;
     this.lastExport = path;
     this.notify(i18n.t("export.done"));
+    void this.refreshExports();
   }
 
   async revealExport(path = this.lastExport): Promise<void> {
     if (path) await this.guard(() => api.revealExport(path));
+  }
+
+  openExports(): void {
+    this.view = { kind: "exports" };
+    void this.refreshExports();
+  }
+
+  async refreshExports(): Promise<void> {
+    if (!this.hasWorkspace) return;
+    const list = await this.guard(() => api.listExports());
+    if (list) this.exports = list;
+  }
+
+  async openExport(path: string): Promise<void> {
+    await this.guard(() => api.openExport(path));
+  }
+
+  async openExportDir(): Promise<void> {
+    await this.guard(() => api.openExportDir());
   }
 
   async updateMetronome(patch: MetronomePatch): Promise<void> {
