@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Existing tag to build (e.g. v0.0.1-beta)'
+        description: 'Existing tag to build (e.g. v0.5.0)'
         required: true
 
 permissions:
@@ -98,10 +98,116 @@ jobs:
           releaseId: ${{ needs.create.outputs.id }}
           args: --target ${{ matrix.target }}
 
+  # Every installer is installed and started on a clean machine before the
+  # release goes public. The app must stay up for 20 s (no device, no
+  # workspace: it shows its welcome screen and keeps running).
+  verify:
+    name: Install and start (${{ matrix.name }})
+    needs: [create, build]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux .deb
+            os: ubuntu-24.04
+            kind: deb
+          - name: Linux AppImage
+            os: ubuntu-24.04
+            kind: appimage
+          - name: Linux .rpm (contents)
+            os: ubuntu-24.04
+            kind: rpm
+          - name: Windows setup.exe
+            os: windows-latest
+            kind: nsis
+          - name: Windows .msi
+            os: windows-latest
+            kind: msi
+          - name: macOS .dmg
+            os: macos-latest
+            kind: dmg
+    runs-on: ${{ matrix.os }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Linux runtime (WebKitGTK, ALSA, virtual display)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libwebkit2gtk-4.1-0 libasound2t64 rpm2cpio cpio libfuse2t64
+      - name: Download
+        shell: bash
+        run: |
+          case "${{ matrix.kind }}" in
+            deb) pat='*.deb' ;; appimage) pat='*.AppImage' ;; rpm) pat='*.rpm' ;;
+            nsis) pat='*-setup.exe' ;; msi) pat='*.msi' ;; dmg) pat='*.dmg' ;;
+          esac
+          mkdir pkg
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "$pat" --dir pkg
+          ls -la pkg
+      - name: Install and start (.deb)
+        if: matrix.kind == 'deb'
+        run: |
+          deb=$(ls pkg/*.deb)
+          sudo apt-get install -y "./$deb"
+          name=$(dpkg-deb -f "$deb" Package)
+          bin=$(dpkg -L "$name" | grep '^/usr/bin/' | head -n1)
+          echo "installed $name -> $bin"
+          set +e; timeout 20 xvfb-run -a "$bin"; code=$?; set -e
+          echo "exit code $code"; [ "$code" -eq 124 ]
+      - name: Start (AppImage)
+        if: matrix.kind == 'appimage'
+        run: |
+          app=$(ls pkg/*.AppImage); chmod +x "$app"
+          set +e; timeout 20 xvfb-run -a "$app"; code=$?; set -e
+          echo "exit code $code"; [ "$code" -eq 124 ]
+      - name: Unpack and start (.rpm)
+        if: matrix.kind == 'rpm'
+        run: |
+          mkdir root && cd root
+          rpm2cpio ../pkg/*.rpm | cpio -idm --quiet
+          bin=$(ls usr/bin/* | head -n1); echo "binary $bin"
+          set +e; timeout 20 xvfb-run -a "./$bin"; code=$?; set -e
+          echo "exit code $code"; [ "$code" -eq 124 ]
+      - name: Install and start (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $pkg = Get-ChildItem pkg | Select-Object -First 1
+          if ("${{ matrix.kind }}" -eq "nsis") {
+            Start-Process -Wait -FilePath $pkg.FullName -ArgumentList '/S'
+          } else {
+            Start-Process -Wait -FilePath msiexec -ArgumentList '/i', "`"$($pkg.FullName)`"", '/qn', '/norestart'
+          }
+          $exe = Get-ChildItem -Path "$env:LOCALAPPDATA", "$env:ProgramFiles" -Recurse -Filter *.exe -ErrorAction SilentlyContinue |
+            Where-Object { $_.DirectoryName -match 'Joshua' -and $_.Name -notmatch 'uninstall' } | Select-Object -First 1
+          if (-not $exe) { throw "installed executable not found" }
+          Write-Host "installed: $($exe.FullName)"
+          $p = Start-Process -FilePath $exe.FullName -PassThru
+          Start-Sleep -Seconds 20
+          if ($p.HasExited) { throw "app exited early with code $($p.ExitCode)" }
+          Stop-Process -Id $p.Id -Force
+          Write-Host "app ran for 20 s"
+      - name: Install and start (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          mnt=$(mktemp -d)
+          hdiutil attach -nobrowse -readonly -mountpoint "$mnt" pkg/*.dmg
+          app=$(find "$mnt" -maxdepth 1 -name '*.app' | head -n1)
+          cp -R "$app" "$HOME/Applications/" 2>/dev/null || { mkdir -p "$HOME/Applications"; cp -R "$app" "$HOME/Applications/"; }
+          hdiutil detach "$mnt"
+          installed="$HOME/Applications/$(basename "$app")"
+          exe=$(defaults read "$installed/Contents/Info" CFBundleExecutable)
+          echo "installed $installed ($exe), arch: $(lipo -archs "$installed/Contents/MacOS/$exe")"
+          "$installed/Contents/MacOS/$exe" & pid=$!
+          sleep 20
+          kill -0 "$pid" || { echo "app exited early"; exit 1; }
+          kill "$pid"; echo "app ran for 20 s"
+
   publish:
     name: Checksums and publish
-    needs: [create, build]
-    if: ${{ !cancelled() && needs.create.result == 'success' }}
+    needs: [create, build, verify]
+    if: ${{ !cancelled() && needs.create.result == 'success' && needs.build.result == 'success' && needs.verify.result == 'success' }}
     runs-on: ubuntu-24.04
     steps:
       - name: SHA256SUMS
@@ -118,3 +224,29 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release edit "$TAG" --draft=false --repo "$GITHUB_REPOSITORY"
+
+  # The one-line install commands from the README, against the published
+  # release (checksum check included).
+  install-scripts:
+    name: Install script (${{ matrix.os }})
+    needs: publish
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG }}
+      - name: install.sh
+        if: runner.os != 'Windows'
+        env:
+          JOSHUA_VERSION: ${{ env.TAG }}
+        run: sh scripts/install.sh
+      - name: install.ps1
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          JOSHUA_VERSION: ${{ env.TAG }}
+        run: ./scripts/install.ps1
