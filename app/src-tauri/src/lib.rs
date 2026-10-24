@@ -10,6 +10,7 @@ mod devices;
 mod error;
 mod inbox;
 mod jobs;
+mod mp4_priming;
 mod player;
 mod recorder;
 mod settings;

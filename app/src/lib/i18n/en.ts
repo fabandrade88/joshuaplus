@@ -210,7 +210,7 @@ export const en = {
   "video.overlay.title": "Song name",
   "video.overlay.artist": "Band / artist",
   "video.export": "Export {n} {n:video|videos}",
-  "video.exporting": "Exporting in real time — this takes as long as the clip.",
+  "video.exporting": "Encoding every frame at full quality — this takes about as long as the clip.",
   "video.again": "Discard and record again",
   "video.exported": "{n} {n:video|videos} saved. Find them under Exports in the sidebar.",
   "video.exportFailed": "The video could not be exported.",

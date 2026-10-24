@@ -19,6 +19,7 @@ import {
   type SyncSample,
   type VideoFormat,
 } from "./formats";
+import { ComposeCancelled, canComposeOffline, composeOffline } from "./compose";
 
 /** Longest take the studio films (the backend renders audio up to 30 min). */
 const MAX_TAKE_SECS = 20 * 60;
@@ -97,8 +98,9 @@ class VideoStudio {
   exportStage = $state<"audio" | "encoding" | "saving" | null>(null);
   exportError = $state<string | null>(null);
   exportFormats = $state<FormatId[]>([]);
-  /** The element being encoded; the sidebar card displays it. */
-  composeVideo = $state<HTMLVideoElement | null>(null);
+  /** The element being encoded (the clip playing, or the first format's
+   *  frame); the sidebar card displays it. */
+  composeVideo = $state<HTMLVideoElement | HTMLCanvasElement | null>(null);
   clipUrl = $state<string | null>(null);
   readonly container: Container | null =
     typeof MediaRecorder === "undefined" ? null : pickContainer((m) => MediaRecorder.isTypeSupported(m));
@@ -229,7 +231,8 @@ class VideoStudio {
     this.samples = [];
     const recorder = new MediaRecorder(this.stream, {
       mimeType: videoOnly(this.container),
-      videoBitsPerSecond: 12_000_000,
+      // The source of every export: keep it well above the export bitrates.
+      videoBitsPerSecond: 24_000_000,
     });
     recorder.ondataavailable = (e) => {
       if (e.data.size > 0) this.chunks.push(e.data);
@@ -497,139 +500,39 @@ class VideoStudio {
     this.exportFormats = formats.map((f) => f.id);
     // Created inside the click, so the browser lets it play sound.
     const ctx = new AudioContext();
-    const video = document.createElement("video");
-    video.muted = true;
-    video.playsInline = true;
-    video.preload = "auto";
-    video.className = "compose-video";
-    // WebKit pauses (and may not even load) muted videos that are not in
-    // the page and visible: the sidebar card shows this element as a live
-    // thumbnail. Put it in the page first, then load it.
-    this.composeVideo = video;
     const handles: number[] = [];
     const t0 = performance.now();
     const step = (what: string) => trace(`${what} (+${Math.round(performance.now() - t0)} ms)`);
+    let video: HTMLVideoElement | null = null;
     try {
-      await ensureInDocument(video);
-      video.src = this.clipUrl!;
-      video.load();
-      step(`video loading, in page: ${video.isConnected}`);
+      const offline = await canComposeOffline();
+      if (!offline) {
+        // Real time: start loading the picture while the sound renders.
+        video = this.composeElement();
+        await ensureInDocument(video);
+        video.src = this.clipUrl!;
+        video.load();
+        step(`video loading, in page: ${video.isConnected}`);
+      }
       await ctx.resume();
       const buffer = await this.audioFor(ctx);
       step(`sound ready: ${buffer.duration.toFixed(1)} s`);
       if (this.cancelExport) throw new Cancelled();
-      await whenReady(video);
-      step(`video ready ${video.videoWidth}x${video.videoHeight}`);
-      this.exportStage = "encoding";
-      const dest = ctx.createMediaStreamDestination();
-      const src = ctx.createBufferSource();
-      src.buffer = buffer;
-      src.connect(dest);
       const ov = { ...this.overlay };
       // Always the song the clip was filmed on.
       const title = ov.title ? clip.song.title : "";
       const artist = ov.artist ? clip.song.artist : "";
       const cover = ov.cover ? await loadImage(clip.song.cover) : null;
       const withOverlay = !!(title || artist || cover);
-
-      const outputs = await Promise.all(
-        formats.map(async (f) => {
-          const canvas = document.createElement("canvas");
-          canvas.width = f.width;
-          canvas.height = f.height;
-          const g = canvas.getContext("2d")!;
-          const stream = canvas.captureStream(FPS);
-          for (const t of dest.stream.getAudioTracks()) stream.addTrack(t.clone());
-          const rec = new MediaRecorder(stream, {
-            mimeType: container.mime,
-            videoBitsPerSecond: videoBitrate(f),
-            audioBitsPerSecond: 256_000,
-          });
-          const handle = await api.videoSaveBegin(f.id, container.ext);
-          handles.push(handle);
-          let queue = Promise.resolve();
-          let failed: unknown = null;
-          rec.ondataavailable = (e) => {
-            if (e.data.size === 0) return;
-            queue = queue
-              .then(async () => api.videoSaveChunk(handle, new Uint8Array(await e.data.arrayBuffer())))
-              .catch((err: unknown) => {
-                failed = err;
-              });
-          };
-          const finished = new Promise<void>((resolve) => (rec.onstop = () => resolve()));
-          return { f, g, rec, handle, finished, flush: () => queue, failed: () => failed };
-        }),
-      );
-
-      const draw = () => {
-        const vw = video.videoWidth;
-        const vh = video.videoHeight;
-        for (const o of outputs) {
-          const { sx, sy, sw, sh } = coverCrop(vw, vh, o.f.width, o.f.height);
-          o.g.drawImage(video, sx, sy, sw, sh, 0, 0, o.f.width, o.f.height);
-          if (withOverlay) drawTitle(o.g, o.f, title, artist, cover);
-        }
-        this.progress = Math.min(1, video.currentTime / Math.max(clip.durationSecs, 0.1));
+      const overlay = (g: CanvasRenderingContext2D, f: VideoFormat) => {
+        if (withOverlay) drawTitle(g, f, title, artist, cover);
       };
-      let frameLoop: number | undefined;
-      const tick = () => {
-        draw();
-        if (!video.ended) frameLoop = requestAnimationFrame(tick);
-      };
-
-      for (const o of outputs) o.rec.start(1000);
-      draw();
-      step(`encoding ${outputs.length} format(s) as ${container.mime}`);
-      await new Promise<void>((resolve, reject) => {
-        let lastTime = -1;
-        let lastMove = performance.now();
-        const watchdog = setInterval(() => {
-          if (this.cancelExport) {
-            clearInterval(watchdog);
-            video.pause();
-            resolve();
-            return;
-          }
-          if (video.currentTime !== lastTime) {
-            lastTime = video.currentTime;
-            lastMove = performance.now();
-          } else if (performance.now() - lastMove > STALL_MS) {
-            clearInterval(watchdog);
-            video.pause();
-            reject(new Error("stalled"));
-          } else if (video.paused && !video.ended) {
-            void video.play().catch(() => undefined); // paused by the system: resume
-          }
-        }, 500);
-        video.onplaying = () => {
-          video.onplaying = null;
-          src.start(ctx.currentTime, video.currentTime);
-          tick();
-        };
-        video.onended = () => {
-          clearInterval(watchdog);
-          resolve();
-        };
-        video.play().catch(() => {
-          clearInterval(watchdog);
-          reject(new Error("play"));
-        });
-      });
-      if (frameLoop !== undefined) cancelAnimationFrame(frameLoop);
-      try {
-        src.stop();
-      } catch {
-        /* already stopped */
-      }
-      this.exportStage = "saving";
-      step(`picture done at ${video.currentTime.toFixed(1)} s`);
-      for (const o of outputs) o.rec.stop();
-      await Promise.all(outputs.map((o) => o.finished));
-      await Promise.all(outputs.map((o) => o.flush()));
-      const keep = !this.cancelExport && outputs.every((o) => o.failed() === null);
-      for (const o of outputs) {
-        const path = await api.videoSaveEnd(o.handle, keep);
+      this.exportStage = "encoding";
+      const keep = offline
+        ? await this.composeFrames(clip, formats, buffer, overlay, handles, step)
+        : await this.composeRealtime(video!, ctx, clip, container, formats, buffer, overlay, handles, step);
+      for (const h of handles) {
+        const path = await api.videoSaveEnd(h, keep, offline);
         if (path) this.saved = [...this.saved, path];
       }
       handles.length = 0;
@@ -639,24 +542,196 @@ class VideoStudio {
       else app.notify(i18n.t("video.exported", { n: this.saved.length }));
       void app.refreshExports();
     } catch (e) {
-      if (!(e instanceof Cancelled)) {
+      if (!(e instanceof Cancelled) && !(e instanceof ComposeCancelled)) {
         const why = e instanceof Error ? e.message : isApiError(e) ? e.code : String(e);
-        trace(`failed: ${why}; video readyState=${video.readyState} networkState=${video.networkState} error=${video.error?.code ?? "-"}`);
+        trace(
+          `failed: ${why}` +
+            (video ? `; video readyState=${video.readyState} networkState=${video.networkState} error=${video.error?.code ?? "-"}` : ""),
+        );
         this.exportError = `${i18n.t("video.exportFailed")} (${why})`;
         app.notify(this.exportError);
+      } else {
+        app.notify(i18n.t("video.exportCancelled"));
       }
     } finally {
       for (const h of handles) void api.videoSaveEnd(h, false).catch(() => undefined);
-      video.pause();
-      video.removeAttribute("src");
-      video.load();
-      video.remove();
+      if (video) {
+        video.pause();
+        video.removeAttribute("src");
+        video.load();
+      }
+      this.composeVideo?.remove();
       this.composeVideo = null;
       this.exportStage = null;
       void ctx.close();
       this.exportRunning = false;
       this.phase = "review";
     }
+  }
+
+  /** The hidden player the real-time path encodes from (shown as the
+   *  sidebar thumbnail). */
+  private composeElement(): HTMLVideoElement {
+    const video = document.createElement("video");
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = "auto";
+    video.className = "compose-video";
+    // WebKit pauses (and may not even load) muted videos that are not in
+    // the page and visible: the sidebar card shows this element as a live
+    // thumbnail. Put it in the page first, then load it.
+    this.composeVideo = video;
+    return video;
+  }
+
+  /** Frame-by-frame export (WebCodecs). Returns whether to keep the files. */
+  private async composeFrames(
+    clip: Clip,
+    formats: VideoFormat[],
+    audio: AudioBuffer,
+    overlay: (g: CanvasRenderingContext2D, f: VideoFormat) => void,
+    handles: number[],
+    step: (what: string) => void,
+  ): Promise<boolean> {
+    step(`composing ${formats.length} format(s) frame by frame`);
+    const length = await composeOffline({
+      clip: clip.blob,
+      formats,
+      audio,
+      overlay,
+      open: async (f) => {
+        const handle = await api.videoSaveBegin(f.id, "mp4");
+        handles.push(handle);
+        return { write: (data, position) => api.videoSaveChunk(handle, data, position) };
+      },
+      onProgress: (p) => (this.progress = p),
+      onCanvas: (canvas) => {
+        canvas.className = "compose-video";
+        this.composeVideo = canvas;
+      },
+      cancelled: () => this.cancelExport,
+    });
+    this.exportStage = "saving";
+    step(`picture done: ${length.toFixed(1)} s`);
+    return true;
+  }
+
+  /** Real-time export (MediaRecorder on a canvas while the clip plays), for
+   *  engines without WebCodecs. Returns whether to keep the files. */
+  private async composeRealtime(
+    video: HTMLVideoElement,
+    ctx: AudioContext,
+    clip: Clip,
+    container: Container,
+    formats: VideoFormat[],
+    buffer: AudioBuffer,
+    overlay: (g: CanvasRenderingContext2D, f: VideoFormat) => void,
+    handles: number[],
+    step: (what: string) => void,
+  ): Promise<boolean> {
+    await whenReady(video);
+    step(`video ready ${video.videoWidth}x${video.videoHeight}`);
+    const dest = ctx.createMediaStreamDestination();
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    src.connect(dest);
+
+    const outputs = await Promise.all(
+      formats.map(async (f) => {
+        const canvas = document.createElement("canvas");
+        canvas.width = f.width;
+        canvas.height = f.height;
+        const g = canvas.getContext("2d")!;
+        const stream = canvas.captureStream(FPS);
+        for (const t of dest.stream.getAudioTracks()) stream.addTrack(t.clone());
+        const rec = new MediaRecorder(stream, {
+          mimeType: container.mime,
+          videoBitsPerSecond: videoBitrate(f),
+          audioBitsPerSecond: 256_000,
+        });
+        const handle = await api.videoSaveBegin(f.id, container.ext);
+        handles.push(handle);
+        let queue = Promise.resolve();
+        let failed: unknown = null;
+        rec.ondataavailable = (e) => {
+          if (e.data.size === 0) return;
+          queue = queue
+            .then(async () => api.videoSaveChunk(handle, new Uint8Array(await e.data.arrayBuffer())))
+            .catch((err: unknown) => {
+              failed = err;
+            });
+        };
+        const finished = new Promise<void>((resolve) => (rec.onstop = () => resolve()));
+        return { f, g, rec, finished, flush: () => queue, failed: () => failed };
+      }),
+    );
+
+    const draw = () => {
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+      for (const o of outputs) {
+        const { sx, sy, sw, sh } = coverCrop(vw, vh, o.f.width, o.f.height);
+        o.g.drawImage(video, sx, sy, sw, sh, 0, 0, o.f.width, o.f.height);
+        overlay(o.g, o.f);
+      }
+      this.progress = Math.min(1, video.currentTime / Math.max(clip.durationSecs, 0.1));
+    };
+    let frameLoop: number | undefined;
+    const tick = () => {
+      draw();
+      if (!video.ended) frameLoop = requestAnimationFrame(tick);
+    };
+
+    for (const o of outputs) o.rec.start(1000);
+    draw();
+    step(`encoding ${outputs.length} format(s) as ${container.mime}`);
+    await new Promise<void>((resolve, reject) => {
+      let lastTime = -1;
+      let lastMove = performance.now();
+      const watchdog = setInterval(() => {
+        if (this.cancelExport) {
+          clearInterval(watchdog);
+          video.pause();
+          resolve();
+          return;
+        }
+        if (video.currentTime !== lastTime) {
+          lastTime = video.currentTime;
+          lastMove = performance.now();
+        } else if (performance.now() - lastMove > STALL_MS) {
+          clearInterval(watchdog);
+          video.pause();
+          reject(new Error("stalled"));
+        } else if (video.paused && !video.ended) {
+          void video.play().catch(() => undefined); // paused by the system: resume
+        }
+      }, 500);
+      video.onplaying = () => {
+        video.onplaying = null;
+        src.start(ctx.currentTime, video.currentTime);
+        tick();
+      };
+      video.onended = () => {
+        clearInterval(watchdog);
+        resolve();
+      };
+      video.play().catch(() => {
+        clearInterval(watchdog);
+        reject(new Error("play"));
+      });
+    });
+    if (frameLoop !== undefined) cancelAnimationFrame(frameLoop);
+    try {
+      src.stop();
+    } catch {
+      /* already stopped */
+    }
+    this.exportStage = "saving";
+    step(`picture done at ${video.currentTime.toFixed(1)} s`);
+    for (const o of outputs) o.rec.stop();
+    await Promise.all(outputs.map((o) => o.finished));
+    await Promise.all(outputs.map((o) => o.flush()));
+    return !this.cancelExport && outputs.every((o) => o.failed() === null);
   }
 
   /** Closes the studio window. While exporting, the export keeps running in

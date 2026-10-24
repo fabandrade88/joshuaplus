@@ -126,7 +126,7 @@ export const helpPtBR: HelpSection[] = [
       { term: "Exportações", text: "Na barra lateral: todas as mixagens e vídeos exportados, com botões para tocar ou mostrar na pasta. Os takes gravados ficam dentro da própria música (grupo Takes do mixer)." },
       { term: "Estúdio de vídeo", text: "Escolha o modo câmera ao lado do REC e aperte. Escolha os formatos (YouTube 16:9, Shorts/Reels/TikTok 9:16, Instagram 1:1 ou 4:5); as guias tracejadas mostram o corte. Aperte Gravar vídeo." },
       { term: "Som do vídeo", text: "O vídeo leva a mixagem da música e as entradas armadas — nunca o click. Depois de gravar, aperte Prévia e ajuste a sincronia se o som vier adiantado ou atrasado." },
-      { term: "Exportar vídeos", text: "Exporta um arquivo por formato escolhido na pasta Exports (MP4 quando o sistema suporta). A exportação é em tempo real, dura o mesmo que o vídeo. Depois os vídeos aparecem em Exportações, na barra lateral." },
+      { term: "Exportar vídeos", text: "Exporta um arquivo por formato escolhido na pasta Exports (MP4 quando o sistema suporta). Cada quadro é codificado em qualidade máxima, sem travar mesmo com o computador ocupado; leva mais ou menos o tempo do vídeo. Depois os vídeos aparecem em Exportações, na barra lateral." },
     ],
   },
   {

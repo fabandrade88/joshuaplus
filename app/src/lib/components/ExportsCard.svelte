@@ -19,8 +19,8 @@
 
   /** Shows the element being encoded inside this card. If the card goes
    *  away mid-export, the element is parked visibly instead of removed. */
-  function host(node: HTMLElement, video: HTMLVideoElement | null) {
-    const place = (v: HTMLVideoElement | null) => {
+  function host(node: HTMLElement, video: HTMLVideoElement | HTMLCanvasElement | null) {
+    const place = (v: HTMLVideoElement | HTMLCanvasElement | null) => {
       if (v && v.parentElement !== node) {
         v.classList.remove("compose-video-parked");
         node.append(v);
@@ -30,7 +30,7 @@
     return {
       update: place,
       destroy() {
-        const v = node.querySelector("video");
+        const v = node.querySelector("video, canvas");
         if (v && studio.phase === "exporting") {
           v.classList.add("compose-video-parked");
           document.body.append(v);
@@ -126,7 +126,8 @@
       width: 60%;
     }
   }
-  .thumb :global(video) {
+  .thumb :global(video),
+  .thumb :global(canvas) {
     display: block;
     width: 100%;
     height: 100%;

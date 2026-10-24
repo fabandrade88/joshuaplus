@@ -126,7 +126,7 @@ export const helpDe: HelpSection[] = [
       { term: "Exporte", text: "In der Seitenleiste: alle exportierten Mixe und Videos, mit Knöpfen zum Abspielen oder Zeigen im Ordner. Aufgenommene Takes bleiben im Song (Gruppe Takes im Mixer)." },
       { term: "Video-Studio", text: "Wähle neben REC den Kamera-Modus und drück ihn. Wähle Formate (YouTube 16:9, Shorts/Reels/TikTok 9:16, Instagram 1:1 oder 4:5); gestrichelte Hilfslinien zeigen den Ausschnitt. Drück Video aufnehmen." },
       { term: "Ton im Video", text: "Das Video bekommt den Mix des Songs und deine scharfen Eingänge — nie den Klick. Nach dem Filmen Vorschau drücken und die Synchronität anpassen, falls der Ton zu früh oder zu spät ist." },
-      { term: "Videos exportieren", text: "Exportiert eine Datei pro Format in den Ordner Exports (MP4, wenn das System es kann). Der Export läuft in Echtzeit, so lange wie der Clip. Danach findest du die Videos unter Exporte in der Seitenleiste." },
+      { term: "Videos exportieren", text: "Exportiert eine Datei pro Format in den Ordner Exports (MP4, wenn das System es kann). Jedes Bild wird in voller Qualität kodiert, damit nichts ruckelt, auch wenn der Computer beschäftigt ist; das dauert etwa so lange wie der Clip. Danach findest du die Videos unter Exporte in der Seitenleiste." },
     ],
   },
   {

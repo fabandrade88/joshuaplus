@@ -96,9 +96,14 @@ export const api = {
   renderClipAudio: (startSecs: number, durationSecs: number) =>
     invoke<ArrayBuffer>("render_clip_audio", { startSecs, durationSecs }),
   videoSaveBegin: (tag: string, ext: string) => invoke<number>("video_save_begin", { tag, ext }),
-  videoSaveChunk: (handle: number, bytes: Uint8Array) =>
-    invoke<void>("video_save_chunk", bytes, { headers: { "x-handle": String(handle) } }),
-  videoSaveEnd: (handle: number, keep: boolean) => invoke<string | null>("video_save_end", { handle, keep }),
+  /** Appends `bytes`, or writes them at `position` (the muxer patches sizes). */
+  videoSaveChunk: (handle: number, bytes: Uint8Array, position?: number) =>
+    invoke<void>("video_save_chunk", bytes, {
+      headers: { "x-handle": String(handle), ...(position === undefined ? {} : { "x-offset": String(position) }) },
+    }),
+  /** `markPriming`: the file comes from the frame-by-frame exporter. */
+  videoSaveEnd: (handle: number, keep: boolean, markPriming = false) =>
+    invoke<string | null>("video_save_end", { handle, keep, markPriming }),
 };
 
 export const events = {

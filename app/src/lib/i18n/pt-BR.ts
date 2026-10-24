@@ -212,7 +212,7 @@ export const ptBR: Messages = {
   "video.overlay.title": "Nome da música",
   "video.overlay.artist": "Banda / artista",
   "video.export": "Exportar {n} {n:vídeo|vídeos}",
-  "video.exporting": "Exportando em tempo real — demora o mesmo tempo do vídeo.",
+  "video.exporting": "Codificando cada quadro em qualidade máxima — leva mais ou menos o tempo do vídeo.",
   "video.again": "Descartar e gravar de novo",
   "video.exported": "{n} {n:vídeo salvo|vídeos salvos}. Veja em Exportações, na barra lateral.",
   "video.exportFailed": "Não foi possível exportar o vídeo.",

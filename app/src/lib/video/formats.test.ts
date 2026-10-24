@@ -50,8 +50,8 @@ describe("formats", () => {
     expect(FORMATS.map((f) => `${f.width}x${f.height}`)).toEqual(["1920x1080", "1080x1920", "1080x1080", "1080x1350"]);
     for (const f of FORMATS) {
       const b = videoBitrate(f);
-      expect(b).toBeGreaterThanOrEqual(4_000_000);
-      expect(b).toBeLessThanOrEqual(16_000_000);
+      expect(b).toBeGreaterThanOrEqual(6_000_000);
+      expect(b).toBeLessThanOrEqual(20_000_000);
     }
   });
 });

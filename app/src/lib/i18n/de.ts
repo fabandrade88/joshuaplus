@@ -212,7 +212,7 @@ export const de: Messages = {
   "video.overlay.title": "Songtitel",
   "video.overlay.artist": "Band / Künstler",
   "video.export": "{n} {n:Video|Videos} exportieren",
-  "video.exporting": "Export in Echtzeit — dauert so lange wie der Clip.",
+  "video.exporting": "Jedes Bild wird in voller Qualität kodiert — dauert etwa so lange wie der Clip.",
   "video.again": "Verwerfen und neu aufnehmen",
   "video.exported": "{n} {n:Video|Videos} gespeichert. Du findest sie unter Exporte in der Seitenleiste.",
   "video.exportFailed": "Das Video konnte nicht exportiert werden.",
