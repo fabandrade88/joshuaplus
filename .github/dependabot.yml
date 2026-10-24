@@ -1,16 +1,14 @@
 version: 2
+# Pull requests go to main, where CI runs and the ruleset requires it.
 updates:
   - package-ecosystem: cargo
     directory: /
     schedule: { interval: weekly }
-    target-branch: test-branch
     open-pull-requests-limit: 5
   - package-ecosystem: npm
     directory: /app
     schedule: { interval: weekly }
-    target-branch: test-branch
     open-pull-requests-limit: 5
   - package-ecosystem: github-actions
     directory: /
     schedule: { interval: monthly }
-    target-branch: test-branch
