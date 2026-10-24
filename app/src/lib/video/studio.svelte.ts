@@ -829,9 +829,6 @@ export function loadImage(src: string | null): Promise<HTMLImageElement | null> 
   });
 }
 
-/** Album cover, song title and artist in the lower left, over a soft shade.
- *  Any part may be missing (empty text / null cover); with nothing to show it
- *  draws nothing at all. */
 const CAMERA_KEY = "joshua.video.camera";
 
 function readCameraLabel(): string | null {
@@ -850,6 +847,9 @@ function writeCameraLabel(label: string): void {
   }
 }
 
+/** Album cover, song title and artist in the lower left, over a soft shade.
+ *  Any part may be missing (empty text / null cover); with nothing to show it
+ *  draws nothing at all. */
 export function drawTitle(
   g: CanvasRenderingContext2D,
   f: VideoFormat,
@@ -858,41 +858,40 @@ export function drawTitle(
   cover: HTMLImageElement | null,
 ): void {
   if (!title && !artist && !cover) return;
-  // Bottom-left corner in every format; a little larger on tall frames,
-  // where the same pixel size reads smaller on a phone.
+  // Bottom-left corner in every format, small enough to leave the picture
+  // to the musician; a touch larger on tall frames, which phones show small.
   const tall = f.height > f.width * 1.2;
-  const unit = (Math.min(f.width, f.height) / 1080) * (tall ? 1.3 : 1);
-  const pad = 48 * unit;
-  const bottom = 0;
-  const shadeTop = f.height * (tall ? 0.78 : 0.7);
+  const unit = (Math.min(f.width, f.height) / 1080) * (tall ? 1.1 : 1);
+  const pad = 40 * unit;
+  const shadeTop = f.height * (tall ? 0.84 : 0.76);
   const shade = g.createLinearGradient(0, shadeTop, 0, f.height);
   shade.addColorStop(0, "rgba(0,0,0,0)");
-  shade.addColorStop(1, "rgba(0,0,0,0.6)");
+  shade.addColorStop(1, "rgba(0,0,0,0.55)");
   g.fillStyle = shade;
   g.fillRect(0, shadeTop, f.width, f.height - shadeTop);
-  const base = f.height - bottom; // text baseline area ends here
+  const base = f.height;
 
   // Cover: a rounded square whose bottom lines up with the last text line.
-  const size = 132 * unit;
+  const size = 92 * unit;
   let textX = pad;
   if (cover) {
     const x = pad;
-    const y = base - pad - size + 8 * unit;
+    const y = base - pad - size + 6 * unit;
     const side = Math.min(cover.naturalWidth, cover.naturalHeight);
     const sx = (cover.naturalWidth - side) / 2;
     const sy = (cover.naturalHeight - side) / 2;
     g.save();
-    g.shadowColor = "rgba(0,0,0,0.45)";
-    g.shadowBlur = 24 * unit;
+    g.shadowColor = "rgba(0,0,0,0.4)";
+    g.shadowBlur = 16 * unit;
     g.beginPath();
-    g.roundRect(x, y, size, size, 14 * unit);
+    g.roundRect(x, y, size, size, 8 * unit);
     g.fillStyle = "#000";
     g.fill();
     g.shadowColor = "transparent";
     g.clip();
     g.drawImage(cover, sx, sy, side, side, x, y, size, size);
     g.restore();
-    textX = pad + size + 26 * unit;
+    textX = pad + size + 18 * unit;
   }
   if (!title && !artist) return;
 
@@ -903,18 +902,31 @@ export function drawTitle(
   let top = base - pad;
   if (artist) {
     g.fillStyle = "rgba(255,255,255,0.75)";
-    g.font = `600 ${Math.round(30 * unit)}px ${font}`;
-    g.fillText(artist, textX, top, maxW);
+    fitText(g, artist, textX, top, maxW, 22 * unit, `500 {size}px ${font}`);
   }
   if (title) {
-    if (artist) top -= 40 * unit;
+    if (artist) top -= 30 * unit;
     g.fillStyle = "#ffffff";
-    g.font = `800 ${Math.round(46 * unit)}px ${font}`;
-    g.fillText(title, textX, top, maxW);
+    fitText(g, title, textX, top, maxW, 32 * unit, `700 {size}px ${font}`);
   }
   // Accent bar above the first line of text.
   g.fillStyle = "#ffb000";
-  g.fillRect(textX, top - (title ? 62 : 48) * unit, 56 * unit, 6 * unit);
+  g.fillRect(textX, top - (title ? 44 : 34) * unit, 40 * unit, 4 * unit);
+}
+
+/** Draws `text` at up to `size` px: smaller (down to 75%) when it does not
+ *  fit `maxW`, then cut with an ellipsis. Never squeezes the letters. */
+function fitText(g: CanvasRenderingContext2D, text: string, x: number, y: number, maxW: number, size: number, font: string): void {
+  let px = size;
+  g.font = font.replace("{size}", String(Math.round(px)));
+  const width = g.measureText(text).width;
+  if (width > maxW) {
+    px = Math.max(size * 0.75, (size * maxW) / width);
+    g.font = font.replace("{size}", String(Math.round(px)));
+  }
+  let shown = text;
+  while (shown.length > 1 && g.measureText(shown).width > maxW) shown = shown.slice(0, -2) + "…";
+  g.fillText(shown, x, y);
 }
 
 export const studio = new VideoStudio();

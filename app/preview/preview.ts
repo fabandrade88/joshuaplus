@@ -292,7 +292,9 @@ if (state === "video") {
       // ?combo=all|cover|text|artist|title|none picks the overlay parts.
       const combo = params.get("combo") ?? "all";
       const on = (p: string) => combo === "all" || combo === p || (combo === "text" && (p === "title" || p === "artist"));
-      drawTitle(g, f, on("title") ? "Left For Good" : "", on("artist") ? "Bad Omens" : "", on("cover") ? cover : null);
+      // ?title=… tries a long name (it must shrink, never squeeze).
+      const title = params.get("title") ?? "Left For Good";
+      drawTitle(g, f, on("title") ? title : "", on("artist") ? (params.get("artist") ?? "Bad Omens") : "", on("cover") ? cover : null);
       c.style.height = "460px";
       wrap.append(c);
     }
