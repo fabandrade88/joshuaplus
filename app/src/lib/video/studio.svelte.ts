@@ -36,6 +36,27 @@ interface Clip {
   durationSecs: number;
   /** Song time at video time 0 (from transport samples). */
   songAtStart: number;
+  /** The song it was filmed on: its sound and overlay come from this song
+   *  even if another one is open later. */
+  song: ClipSong;
+}
+
+interface ClipSong {
+  id: string;
+  title: string;
+  artist: string;
+  cover: string | null;
+}
+
+/** The open song, as a clip remembers it. */
+function currentClipSong(): ClipSong {
+  const s = app.song;
+  return {
+    id: s?.project.id ?? "",
+    title: s?.project.title ?? "",
+    artist: s?.project.metadata?.artist ?? "",
+    cover: s?.cover ?? null,
+  };
 }
 
 /** Parts of the overlay burned into exported clips. */
@@ -95,6 +116,7 @@ class VideoStudio {
   }
 
   private chunks: Blob[] = [];
+  private filmedSong: ClipSong | null = null;
   private t0 = 0;
   private samples: SyncSample[] = [];
   private unlisten: (() => void) | null = null;
@@ -202,6 +224,7 @@ class VideoStudio {
     if (!this.stream || !this.container || this.phase !== "idle") return;
     this.discardClip();
     this.phase = "starting";
+    this.filmedSong = currentClipSong();
     this.chunks = [];
     this.samples = [];
     const recorder = new MediaRecorder(this.stream, {
@@ -255,7 +278,7 @@ class VideoStudio {
       this.phase = "idle";
       return;
     }
-    this.clip = { blob, durationSecs, songAtStart };
+    this.clip = { blob, durationSecs, songAtStart, song: this.filmedSong ?? currentClipSong() };
     this.clipUrl = URL.createObjectURL(blob);
     this.phase = "review";
   }
@@ -278,6 +301,14 @@ class VideoStudio {
     this.clip = null;
     this.saved = [];
     if (this.phase === "review") this.phase = "idle";
+    // Filming again: the camera may have been closed while the clip waited.
+    if (app.videoOpen && this.phase === "idle" && !this.stream) void this.openCamera();
+  }
+
+  /** The clip under review was filmed on another song than the open one
+   *  (its sound and overlay belong to that song). */
+  get clipFromOtherSong(): boolean {
+    return !!this.clip && this.clip.song.id !== (app.song?.project.id ?? "");
   }
 
   // ── Mix audio for the clip ───────────────────────────────────────────────
@@ -371,7 +402,7 @@ class VideoStudio {
     };
     let starting = false;
     const onPlay = async () => {
-      if (starting || !this.clip) return;
+      if (starting || !this.clip || this.clipFromOtherSong) return;
       this.stopReviewSound();
       const sync = this.syncMs;
       if (!this.reviewFresh(sync)) {
@@ -454,6 +485,8 @@ class VideoStudio {
     const container = this.container;
     const formats = this.selectedFormats;
     if (!clip || !container || formats.length === 0 || this.phase !== "review") return;
+    // The sound is rendered from the open song: it must be the clip's song.
+    if (this.clipFromOtherSong) return;
     this.exportRunning = true;
     this.phase = "exporting";
     this.exportStage = "audio";
@@ -493,9 +526,10 @@ class VideoStudio {
       src.buffer = buffer;
       src.connect(dest);
       const ov = { ...this.overlay };
-      const title = ov.title ? (app.song?.project.title ?? "") : "";
-      const artist = ov.artist ? (app.song?.project.metadata?.artist ?? "") : "";
-      const cover = ov.cover ? await loadImage(app.song?.cover ?? null) : null;
+      // Always the song the clip was filmed on.
+      const title = ov.title ? clip.song.title : "";
+      const artist = ov.artist ? clip.song.artist : "";
+      const cover = ov.cover ? await loadImage(clip.song.cover) : null;
       const withOverlay = !!(title || artist || cover);
 
       const outputs = await Promise.all(

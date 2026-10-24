@@ -315,7 +315,7 @@ if (state === "video") {
     await new Promise<void>((r) => ((rec.onstop = () => r()), rec.stop()));
     clearInterval(anim);
     const blob = new Blob(chunks, { type: rec.mimeType });
-    studio.clip = { blob, durationSecs: 3, songAtStart: 10 };
+    studio.clip = { blob, durationSecs: 3, songAtStart: 10, song: { id: project.id, title: project.title, artist: project.metadata?.artist ?? "", cover: null } };
     studio.clipUrl = URL.createObjectURL(blob);
     studio.phase = "review";
     log.push(`clip ${blob.size} bytes ${rec.mimeType}`);
@@ -350,7 +350,7 @@ if (state === "video") {
     await new Promise<void>((r) => ((rec.onstop = () => r()), rec.stop()));
     clearInterval(anim);
     const blob = new Blob(chunks, { type: rec.mimeType });
-    studio.clip = { blob, durationSecs: 6, songAtStart: 10 };
+    studio.clip = { blob, durationSecs: 6, songAtStart: 10, song: { id: project.id, title: project.title, artist: project.metadata?.artist ?? "", cover: null } };
     studio.clipUrl = URL.createObjectURL(blob);
     studio.phase = "review";
     await new Promise((r) => setTimeout(r, 800));
@@ -377,10 +377,46 @@ if (state === "video") {
     log.push(`export-sound renders=${renders.n}`);
     document.title = "phase=remix | " + log.join(" | ");
   }
+  if (params.get("phase") === "othersong") {
+    // A clip filmed on another song: notice, no export; discarding films
+    // this song with the camera on. Then: an exported clip of another song
+    // is dropped when the studio reopens, and the camera starts.
+    const { studio } = await import("../src/lib/video/studio.svelte");
+    const log: string[] = [];
+    const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    const clipOf = (id: string, title: string) => {
+      const blob = new Blob([new Uint8Array(1000)], { type: "video/mp4" });
+      studio.clip = { blob, durationSecs: 5, songAtStart: 10, song: { id, title, artist: "Tom Jobim", cover: null } };
+      studio.clipUrl = URL.createObjectURL(blob);
+      studio.phase = "review";
+    };
+    await wait(1500);
+    clipOf("other-song", "Garota de Ipanema");
+    await wait(800);
+    const notice = document.querySelector(".other-song")?.textContent?.trim().slice(0, 60);
+    const exportBtn = document.querySelector<HTMLButtonElement>("aside .btn.primary");
+    log.push(`notice="${notice}" exportDisabled=${exportBtn?.disabled}`);
+    if (params.get("shot") === "1") {
+      document.title = "phase=othersong";
+    } else {
+      [...document.querySelectorAll<HTMLButtonElement>(".other-song .btn")].pop()!.click();
+      await wait(2500);
+      log.push(`after discard: phase=${studio.phase} camera=${!!studio.stream} clip=${!!studio.clip}`);
+      clipOf("other-song", "Garota de Ipanema");
+      studio.saved = ["/x/a.mp4"];
+      studio.closeCamera();
+      app.videoOpen = false;
+      await wait(500);
+      app.videoOpen = true;
+      await wait(2500);
+      log.push(`reopen after export: phase=${studio.phase} camera=${!!studio.stream} clip=${!!studio.clip}`);
+      document.title = "phase=othersong | " + log.join(" | ");
+    }
+  }
   if (params.get("phase") === "exportflow") {
     const { studio } = await import("../src/lib/video/studio.svelte");
     const blob = new Blob([new Uint8Array(1000)], { type: "video/mp4" });
-    studio.clip = { blob, durationSecs: 5, songAtStart: 10 };
+    studio.clip = { blob, durationSecs: 5, songAtStart: 10, song: { id: project.id, title: project.title, artist: project.metadata?.artist ?? "", cover: null } };
     studio.clipUrl = URL.createObjectURL(blob);
     studio.phase = "review";
     await new Promise((r) => setTimeout(r, 800));
@@ -431,7 +467,7 @@ if (state === "video") {
     // Review screen with a dummy clip (layout checks only).
     const { studio } = await import("../src/lib/video/studio.svelte");
     const blob = new Blob([new Uint8Array(1000)], { type: "video/mp4" });
-    studio.clip = { blob, durationSecs: 5, songAtStart: 10 };
+    studio.clip = { blob, durationSecs: 5, songAtStart: 10, song: { id: project.id, title: project.title, artist: project.metadata?.artist ?? "", cover: null } };
     studio.clipUrl = URL.createObjectURL(blob);
     studio.phase = "review";
   }

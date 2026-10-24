@@ -609,8 +609,15 @@ class AppStore {
     return !!this.transport.recording;
   }
 
+  /** Inputs whose device is connected and running. Disconnected ones are
+   *  only listed in Instruments & inputs (tagged "disconnected"); the song
+   *  screen and recording ignore them. */
+  get liveInputs(): InputView[] {
+    return this.inputs.filter((i) => !i.error);
+  }
+
   get armedCount(): number {
-    return this.inputs.filter((i) => i.armed && i.canRecord).length;
+    return this.liveInputs.filter((i) => i.armed && i.canRecord).length;
   }
 
   /** Index of a take's meter (takes follow the stems). */
