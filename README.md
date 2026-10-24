@@ -34,7 +34,9 @@ The app speaks **English, Português (Brasil) and Deutsch**.
 
 ## Install
 
-### macOS (Apple Silicon or Intel, macOS 13.4 or newer)
+### macOS (Apple Silicon, macOS 13.4 or newer)
+
+Intel Macs are not supported by the beta yet: ONNX Runtime, which runs the separation models, no longer publishes Intel macOS builds.
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/fabandrade88/joshuaplus/main/scripts/install.sh | sh

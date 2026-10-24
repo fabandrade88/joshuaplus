@@ -24,11 +24,12 @@ arch=$(uname -m)
 
 case "$os" in
   Darwin)
-    case "$arch" in
-      arm64) pattern='_aarch64\.dmg$' ;;
-      x86_64) pattern='_x64\.dmg$' ;;
-      *) die "unsupported macOS architecture: $arch" ;;
-    esac ;;
+    # A shell running under Rosetta reports x86_64 on Apple Silicon.
+    if [ "$arch" = "arm64" ] || [ "$(sysctl -n hw.optional.arm64 2>/dev/null)" = "1" ]; then
+      pattern='_aarch64\.dmg$'
+    else
+      die "Intel Macs are not supported by this beta yet (ONNX Runtime ships no Intel build); build from source instead"
+    fi ;;
   Linux)
     [ "$arch" = "x86_64" ] || die "only x86_64 Linux builds are published for now (got $arch); build from source instead"
     if command -v apt-get >/dev/null 2>&1 && command -v dpkg >/dev/null 2>&1; then

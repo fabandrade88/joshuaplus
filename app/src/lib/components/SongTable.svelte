@@ -415,6 +415,13 @@
     cursor: pointer;
     min-width: 0;
     max-width: 200px;
+    padding-right: 6px;
+    text-overflow: ellipsis;
+  }
+  @media (max-width: 1100px) {
+    select {
+      max-width: 130px;
+    }
   }
   select:hover {
     color: var(--text);
