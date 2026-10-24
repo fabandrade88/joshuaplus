@@ -52,6 +52,12 @@ class VideoStudio {
   progress = $state(0);
   saved = $state<string[]>([]);
   clip = $state<Clip | null>(null);
+  /** Export step shown in the sidebar. */
+  exportStage = $state<"audio" | "encoding" | "saving" | null>(null);
+  exportError = $state<string | null>(null);
+  exportFormats = $state<FormatId[]>([]);
+  /** The element being encoded; the sidebar card displays it. */
+  composeVideo = $state<HTMLVideoElement | null>(null);
   clipUrl = $state<string | null>(null);
   readonly container: Container | null =
     typeof MediaRecorder === "undefined" ? null : pickContainer((m) => MediaRecorder.isTypeSupported(m));
@@ -176,6 +182,7 @@ class VideoStudio {
   }
 
   discardClip(): void {
+    this.resetReviewAudio();
     if (this.clipUrl) URL.revokeObjectURL(this.clipUrl);
     this.clipUrl = null;
     this.clip = null;
@@ -191,31 +198,104 @@ class VideoStudio {
     return ctx.decodeAudioData(wav);
   }
 
-  /** Plays the clip with its final sound, to check the sync. */
+  // ── Review playback with the final sound ───────────────────────────────
+  /** State of the review sound (the camera clip itself is silent). */
+  reviewAudio = $state<"idle" | "loading" | "ready" | "error">("idle");
+  private reviewCtx: AudioContext | null = null;
+  private reviewBuffer: AudioBuffer | null = null;
+  private reviewSync: number | null = null;
+  private reviewSrc: AudioBufferSourceNode | null = null;
+
+  /** Must run inside a click/tap: WebKit only lets audio start from a gesture. */
+  unlockAudio(): void {
+    this.reviewCtx ??= new AudioContext();
+    void this.reviewCtx.resume();
+  }
+
+  /** Renders (once per sync value) the mix that goes with the clip. */
+  private async reviewBufferFor(sync: number): Promise<AudioBuffer> {
+    if (this.reviewBuffer && this.reviewSync === sync) return this.reviewBuffer;
+    this.reviewAudio = "loading";
+    const ctx = (this.reviewCtx ??= new AudioContext());
+    const buffer = await this.clipAudio(ctx);
+    this.reviewBuffer = buffer;
+    this.reviewSync = sync;
+    this.reviewAudio = "ready";
+    return buffer;
+  }
+
+  private stopReviewSound(): void {
+    try {
+      this.reviewSrc?.stop();
+    } catch {
+      /* already stopped */
+    }
+    this.reviewSrc = null;
+  }
+
+  /** Wires the review `<video>` so every play — native controls or the
+   *  Preview button — sounds with the real mix, in sync. Returns a cleanup. */
+  attachReview(video: HTMLVideoElement): () => void {
+    video.muted = true;
+    let starting = false;
+    const onPlay = async () => {
+      if (starting || !this.clip) return;
+      this.stopReviewSound();
+      const sync = this.syncMs;
+      if (!this.reviewBuffer || this.reviewSync !== sync) {
+        // Hold the picture until the sound is ready, then resume together.
+        starting = true;
+        video.pause();
+        try {
+          await this.reviewBufferFor(sync);
+        } catch {
+          this.reviewAudio = "error";
+          starting = false;
+          return;
+        }
+        starting = false;
+        void video.play();
+        return;
+      }
+      const ctx = this.reviewCtx!;
+      await ctx.resume();
+      const src = ctx.createBufferSource();
+      src.buffer = this.reviewBuffer;
+      src.connect(ctx.destination);
+      src.start(ctx.currentTime, Math.min(video.currentTime, this.reviewBuffer.duration));
+      this.reviewSrc = src;
+    };
+    const onStop = () => {
+      if (!starting) this.stopReviewSound();
+    };
+    video.addEventListener("playing", onPlay);
+    video.addEventListener("pause", onStop);
+    video.addEventListener("seeking", onStop);
+    video.addEventListener("ended", onStop);
+    return () => {
+      video.removeEventListener("playing", onPlay);
+      video.removeEventListener("pause", onStop);
+      video.removeEventListener("seeking", onStop);
+      video.removeEventListener("ended", onStop);
+      this.stopReviewSound();
+    };
+  }
+
+  /** Plays the clip from the start with its final sound. */
   async preview(video: HTMLVideoElement): Promise<void> {
     if (!this.clip) return;
-    const ctx = new AudioContext();
-    const buffer = await this.clipAudio(ctx);
-    const src = ctx.createBufferSource();
-    src.buffer = buffer;
-    src.connect(ctx.destination);
-    video.muted = true;
+    this.unlockAudio();
+    video.pause();
     video.currentTime = 0;
-    const done = () => {
-      try {
-        src.stop();
-      } catch {
-        /* already stopped */
-      }
-      void ctx.close();
-    };
-    video.onpause = done;
-    video.onended = done;
-    video.onplaying = () => {
-      video.onplaying = null;
-      src.start(ctx.currentTime, video.currentTime);
-    };
     await video.play();
+  }
+
+  /** Drops the review sound (new clip, or the studio closed). */
+  private resetReviewAudio(): void {
+    this.stopReviewSound();
+    this.reviewBuffer = null;
+    this.reviewSync = null;
+    this.reviewAudio = "idle";
   }
 
   // ── Export ───────────────────────────────────────────────────────────────
@@ -223,28 +303,41 @@ class VideoStudio {
     this.cancelExport = true;
   }
 
-  /** Composes and saves one file per selected format, in a single pass. */
+  /** Composes and saves one file per selected format, in a single pass.
+   *  Runs in the background: the studio can close while it works, and the
+   *  sidebar shows its progress (and hosts the visible preview element). */
   async export(): Promise<void> {
     const clip = this.clip;
     const container = this.container;
     const formats = this.selectedFormats;
     if (!clip || !container || formats.length === 0 || this.phase !== "review") return;
     this.phase = "exporting";
+    this.exportStage = "audio";
+    this.exportError = null;
     this.progress = 0;
     this.cancelExport = false;
     this.saved = [];
+    this.exportFormats = formats.map((f) => f.id);
+    // Created inside the click, so the browser lets it play sound.
     const ctx = new AudioContext();
     const video = document.createElement("video");
     video.muted = true;
     video.playsInline = true;
+    video.preload = "auto";
+    video.className = "compose-video";
     video.src = this.clipUrl!;
+    // WebKit pauses muted videos that are not visible: the sidebar card
+    // shows this element as a live thumbnail while exporting.
+    this.composeVideo = video;
+    const ready = whenReady(video); // listen now, before any await
     const handles: number[] = [];
     try {
+      await ctx.resume();
       const buffer = await this.clipAudio(ctx);
-      await new Promise<void>((resolve, reject) => {
-        video.onloadeddata = () => resolve();
-        video.onerror = () => reject(new Error("video"));
-      });
+      if (this.cancelExport) throw new Cancelled();
+      await ready;
+      await ensureInDocument(video);
+      this.exportStage = "encoding";
       const dest = ctx.createMediaStreamDestination();
       const src = ctx.createBufferSource();
       src.buffer = buffer;
@@ -268,12 +361,17 @@ class VideoStudio {
           const handle = await api.videoSaveBegin(f.id, container.ext);
           handles.push(handle);
           let queue = Promise.resolve();
+          let failed: unknown = null;
           rec.ondataavailable = (e) => {
             if (e.data.size === 0) return;
-            queue = queue.then(async () => api.videoSaveChunk(handle, new Uint8Array(await e.data.arrayBuffer())));
+            queue = queue
+              .then(async () => api.videoSaveChunk(handle, new Uint8Array(await e.data.arrayBuffer())))
+              .catch((err: unknown) => {
+                failed = err;
+              });
           };
           const finished = new Promise<void>((resolve) => (rec.onstop = () => resolve()));
-          return { f, g, rec, handle, finished, flush: () => queue };
+          return { f, g, rec, handle, finished, flush: () => queue, failed: () => failed };
         }),
       );
 
@@ -290,29 +388,45 @@ class VideoStudio {
       let frameLoop: number | undefined;
       const tick = () => {
         draw();
-        if (!video.ended && !video.paused) frameLoop = requestAnimationFrame(tick);
+        if (!video.ended) frameLoop = requestAnimationFrame(tick);
       };
 
       for (const o of outputs) o.rec.start(1000);
       draw();
-      await new Promise<void>((resolve) => {
+      await new Promise<void>((resolve, reject) => {
+        let lastTime = -1;
+        let lastMove = performance.now();
+        const watchdog = setInterval(() => {
+          if (this.cancelExport) {
+            clearInterval(watchdog);
+            video.pause();
+            resolve();
+            return;
+          }
+          if (video.currentTime !== lastTime) {
+            lastTime = video.currentTime;
+            lastMove = performance.now();
+          } else if (performance.now() - lastMove > STALL_MS) {
+            clearInterval(watchdog);
+            video.pause();
+            reject(new Error("stalled"));
+          } else if (video.paused && !video.ended) {
+            void video.play().catch(() => undefined); // paused by the system: resume
+          }
+        }, 500);
         video.onplaying = () => {
           video.onplaying = null;
           src.start(ctx.currentTime, video.currentTime);
           tick();
         };
-        const guard = setInterval(() => {
-          if (this.cancelExport) {
-            clearInterval(guard);
-            video.pause();
-            resolve();
-          }
-        }, 200);
         video.onended = () => {
-          clearInterval(guard);
+          clearInterval(watchdog);
           resolve();
         };
-        void video.play();
+        video.play().catch(() => {
+          clearInterval(watchdog);
+          reject(new Error("play"));
+        });
       });
       if (frameLoop !== undefined) cancelAnimationFrame(frameLoop);
       try {
@@ -320,33 +434,79 @@ class VideoStudio {
       } catch {
         /* already stopped */
       }
+      this.exportStage = "saving";
       for (const o of outputs) o.rec.stop();
       await Promise.all(outputs.map((o) => o.finished));
       await Promise.all(outputs.map((o) => o.flush()));
+      const keep = !this.cancelExport && outputs.every((o) => o.failed() === null);
       for (const o of outputs) {
-        const path = await api.videoSaveEnd(o.handle, !this.cancelExport);
+        const path = await api.videoSaveEnd(o.handle, keep);
         if (path) this.saved = [...this.saved, path];
       }
       handles.length = 0;
-      if (!this.cancelExport) app.notify(i18n.t("video.exported", { n: this.saved.length }));
-    } catch {
-      app.notify(i18n.t("video.exportFailed"));
+      if (this.cancelExport) app.notify(i18n.t("video.exportCancelled"));
+      else if (!keep) throw new Error("save");
+      else app.notify(i18n.t("video.exported", { n: this.saved.length }));
+    } catch (e) {
+      if (!(e instanceof Cancelled)) {
+        this.exportError = i18n.t("video.exportFailed");
+        app.notify(this.exportError);
+      }
     } finally {
       for (const h of handles) void api.videoSaveEnd(h, false).catch(() => undefined);
+      video.pause();
       video.removeAttribute("src");
+      video.load();
+      video.remove();
+      this.composeVideo = null;
+      this.exportStage = null;
       void ctx.close();
       this.phase = "review";
     }
   }
 
-  /** Closes the studio: stops filming, frees the camera and the clip. */
+  /** Closes the studio window. While exporting, the export keeps running in
+   *  the background (shown in the sidebar); otherwise the clip is dropped. */
   async close(): Promise<void> {
     if (this.phase === "recording") await this.stop();
-    if (this.phase === "exporting") this.cancel();
     this.closeCamera();
+    if (this.phase === "exporting") return;
     this.discardClip();
     this.phase = "idle";
   }
+
+  /** Forgets a finished export (clears the sidebar card). */
+  dismissExport(): void {
+    if (this.phase === "exporting") return;
+    this.saved = [];
+    this.exportError = null;
+    this.exportFormats = [];
+    if (!app.videoOpen) this.discardClip();
+  }
+}
+
+class Cancelled extends Error {}
+
+/** No picture progress for this long means the export is stuck. */
+const STALL_MS = 8_000;
+
+/** Resolves once the video can show its first frame (listens immediately). */
+function whenReady(video: HTMLVideoElement): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) return resolve();
+    const timer = setTimeout(() => reject(new Error("load timeout")), 15_000);
+    video.addEventListener("loadeddata", () => (clearTimeout(timer), resolve()), { once: true });
+    video.addEventListener("error", () => (clearTimeout(timer), reject(new Error("video"))), { once: true });
+  });
+}
+
+/** The sidebar card adopts the element; if it has not (e.g. the sidebar is
+ *  hidden), park it in a small visible corner so WebKit keeps playing it. */
+async function ensureInDocument(video: HTMLVideoElement): Promise<void> {
+  for (let i = 0; i < 10 && !video.isConnected; i++) await new Promise((r) => setTimeout(r, 50));
+  if (video.isConnected) return;
+  video.classList.add("compose-video-parked");
+  document.body.append(video);
 }
 
 /** Song title (and artist) in the lower left, over a soft shade. */

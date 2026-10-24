@@ -363,4 +363,35 @@
   .empty {
     color: var(--text-faint);
   }
+  /* The art sits top-right; keep the hero text clear of it. */
+  .hero h2,
+  .hero p {
+    padding-right: 120px;
+  }
+  @media (max-width: 1280px) {
+    .toc {
+      width: 210px;
+      padding: 20px 10px 20px 18px;
+    }
+    .content {
+      padding: 20px 20px 40px 8px;
+    }
+    .hero {
+      padding: 18px 20px;
+    }
+    .card {
+      padding: 14px 16px 14px 20px;
+    }
+    /* Term above its explanation: a side column would be too narrow. */
+    dl {
+      grid-template-columns: 1fr;
+    }
+    dt {
+      padding-bottom: 0;
+    }
+    dd {
+      padding-top: 3px;
+      border-top: 0;
+    }
+  }
 </style>

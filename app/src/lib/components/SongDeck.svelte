@@ -78,7 +78,7 @@
       {#if cover}<img class="cover" src={cover} alt="" />{/if}
       <div class="info-text">
       <button class="back" onclick={() => app.backFromSong()}>
-        <Icon name="back" size={14} />{listName || folder?.name || i18n.t("song.back")}
+        <Icon name="back" size={14} /><span class="crumb">{listName || folder?.name || i18n.t("song.back")}</span>
         {#if index >= 0}<span class="pos tabular">· {i18n.t("playlist.position", { i: index + 1, n: total })}</span>{/if}
       </button>
       <div class="title-row">
@@ -254,6 +254,7 @@
   .deck {
     display: grid;
     grid-template-columns: minmax(200px, 1fr) auto minmax(260px, 340px);
+    grid-template-areas: "info transport counter";
     align-items: center;
     gap: 28px;
     padding: 16px 24px;
@@ -261,6 +262,7 @@
     background: var(--bg-raised);
   }
   .info {
+    grid-area: info;
     min-width: 0;
     display: flex;
     gap: 14px;
@@ -373,6 +375,8 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
+    max-width: 100%;
+    white-space: nowrap;
     font-size: 12px;
     font-weight: 600;
     color: var(--text-faint);
@@ -380,7 +384,13 @@
   .back:hover {
     color: var(--text);
   }
+  .crumb {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
   .pos {
+    flex: none;
     color: var(--text-faint);
     font-weight: 500;
   }
@@ -430,9 +440,14 @@
   }
   .chips {
     display: flex;
-    gap: 6px;
+    flex-wrap: wrap;
+    gap: 4px 6px;
+  }
+  .chip {
+    white-space: nowrap;
   }
   .transport {
+    grid-area: transport;
     display: flex;
     align-items: center;
     gap: 14px;
@@ -547,6 +562,8 @@
     cursor: not-allowed;
   }
   .counter {
+    grid-area: counter;
+    min-width: 0;
     padding: 10px 14px 8px;
     border-radius: 12px;
     background: #0b0c10;
@@ -606,5 +623,87 @@
   .bar div {
     height: 100%;
     background: var(--accent);
+  }
+  /* Medium windows: a tighter transport so the title keeps its room. */
+  @media (max-width: 1520px) {
+    .deck {
+      grid-template-columns: minmax(180px, 1fr) auto minmax(200px, 260px);
+      gap: 18px;
+      padding: 12px 18px;
+    }
+    .cover {
+      width: 68px;
+      height: 68px;
+    }
+    .transport {
+      gap: 9px;
+      padding: 6px 10px;
+    }
+    .round {
+      width: 34px;
+      height: 34px;
+    }
+    .round.small {
+      width: 28px;
+      height: 28px;
+    }
+    .play {
+      width: 50px;
+      height: 50px;
+    }
+    .rec {
+      width: 38px;
+      height: 38px;
+    }
+    .rec-group {
+      gap: 6px;
+    }
+    .v {
+      font-size: 24px;
+    }
+    .v.small {
+      font-size: 16px;
+      padding-top: 5px;
+    }
+  }
+  /* Narrow windows (down to the 960 px minimum): the transport moves under the
+     counter, so the song info keeps a readable width. */
+  @media (max-width: 1180px) {
+    .deck {
+      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-areas:
+        "info counter"
+        "info transport";
+      row-gap: 8px;
+      column-gap: 16px;
+      padding: 10px 16px;
+    }
+    .transport {
+      justify-self: stretch;
+      justify-content: space-between;
+    }
+    .counter {
+      padding: 6px 12px 6px;
+    }
+    .bar {
+      margin-top: 5px;
+    }
+  }
+  @media (max-height: 760px) {
+    .deck {
+      padding-top: 8px;
+      padding-bottom: 8px;
+    }
+    .cover {
+      width: 60px;
+      height: 60px;
+    }
+    h1 {
+      font-size: 19px;
+      margin: 0 0 4px;
+    }
+    .up-next {
+      margin-top: 4px;
+    }
   }
 </style>

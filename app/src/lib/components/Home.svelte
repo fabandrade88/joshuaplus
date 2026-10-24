@@ -261,4 +261,10 @@
     flex-direction: column;
     gap: 10px;
   }
+  @media (max-width: 1180px), (max-height: 760px) {
+    .home {
+      padding: 20px 24px 32px;
+      gap: 18px;
+    }
+  }
 </style>

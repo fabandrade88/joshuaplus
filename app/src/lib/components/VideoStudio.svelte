@@ -26,6 +26,18 @@
     if (live) live.srcObject = studio.stream;
   });
 
+  // The camera clip is silent: every play of the review video gets the mix.
+  $effect(() => {
+    if (review) return studio.attachReview(review);
+  });
+
+  /** Starts the export in the background and closes the studio; progress
+   *  shows in the sidebar. (Starts inside the click so audio may play.) */
+  function exportAndClose(): void {
+    void studio.export();
+    app.videoOpen = false;
+  }
+
   onMount(() => {
     if (studio.supported) void studio.openCamera();
   });
@@ -90,7 +102,9 @@
         <div class="stage">
           {#if studio.phase === "review" || studio.phase === "exporting"}
             <!-- svelte-ignore a11y_media_has_caption -->
-            <video bind:this={review} src={studio.clipUrl} controls playsinline></video>
+            <video bind:this={review} src={studio.clipUrl} controls playsinline onpointerdown={() => studio.unlockAudio()}></video>
+            {#if studio.reviewAudio === "loading"}<p class="sound-state">{i18n.t("video.soundLoading")}</p>{/if}
+            {#if studio.reviewAudio === "error"}<p class="sound-state err">{i18n.t("video.soundError")}</p>{/if}
           {:else}
             <div class="live">
               <!-- svelte-ignore a11y_media_has_caption -->
@@ -146,7 +160,7 @@
               <p class="hint">{i18n.t("video.exporting")}</p>
               <button class="btn" onclick={() => studio.cancel()}>{i18n.t("common.cancel")}</button>
             {:else}
-              <button class="btn primary" disabled={studio.selectedFormats.length === 0} onclick={() => studio.export()}>
+              <button class="btn primary" disabled={studio.selectedFormats.length === 0} onclick={exportAndClose}>
                 <Icon name="export" size={14} />{i18n.t("video.export", { n: studio.selectedFormats.length })}
               </button>
               <button class="btn" onclick={() => studio.discardClip()}>{i18n.t("video.again")}</button>
@@ -310,6 +324,14 @@
     50% {
       opacity: 0.2;
     }
+  }
+  .sound-state {
+    margin: 6px 0 0;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .sound-state.err {
+    color: var(--danger);
   }
   .cam-error,
   .error {
@@ -548,7 +570,27 @@
     right: 8px;
     font-size: 11px;
   }
-  @media (max-width: 1000px) {
+  /* Keep the 16:9 preview short enough that the controls beside it stay on
+     screen on small windows (960×600 minimum). */
+  .studio:not(.mini) .stage video,
+  .studio:not(.mini) .live {
+    width: min(100%, calc((100vh - 190px) * 16 / 9));
+    margin-inline: auto;
+  }
+  @media (max-width: 1100px), (max-height: 760px) {
+    .backdrop:not(.mini) {
+      padding: 12px;
+    }
+    .studio:not(.mini) {
+      gap: 10px;
+      padding: 14px;
+    }
+    .body {
+      grid-template-columns: minmax(0, 1fr) 260px;
+      gap: 14px;
+    }
+  }
+  @media (max-width: 760px) {
     .body {
       grid-template-columns: 1fr;
     }

@@ -73,25 +73,29 @@
 
 <div class="gear">
   <header class="head">
-    <div>
+    <div class="head-text">
       <h1>{i18n.t("gear.title")}</h1>
       <p>{i18n.t("gear.subtitle")}</p>
     </div>
     <div class="summary">
-      <span class="pill" style="--c: var(--ok)"><Icon name="volume" size={13} />{app.inputs.length} {i18n.t("gear.inputs")}</span>
+      <span class="pill" style="--c: var(--ok)"><Icon name="volume" size={12} />{app.inputs.length} {i18n.t("gear.inputs")}</span>
       <span class="pill" class:dim={!drums?.connected} style="--c: var(--stem-drums)">
-        <Icon name="click" size={13} />{drums?.connected ?? i18n.t("gear.noPort")}
+        <Icon name="click" size={12} /><span class="pill-text">{drums?.connected ?? i18n.t("gear.noPort")}</span>
       </span>
     </div>
   </header>
 
-  <section class="panel" style="--c: var(--ok)">
+  <section class="panel" style="--c: var(--ok)" aria-labelledby="gear-audio">
     <div class="panel-head">
-      <span class="badge"><Icon name="volume" size={18} /></span>
-      <h2>{i18n.t("gear.audio")}</h2>
+      <span class="badge"><Icon name="volume" size={15} /></span>
+      <div class="titles">
+        <h2 id="gear-audio">{i18n.t("gear.audio")}</h2>
+        <p class="hint">{i18n.t("gear.audioHint")}</p>
+      </div>
       <select
         class="add"
         value=""
+        aria-label={i18n.t("gear.addInput")}
         onfocus={refreshDevices}
         onchange={(e) => {
           const id = e.currentTarget.value;
@@ -105,7 +109,6 @@
         {/each}
       </select>
     </div>
-    <p class="hint">{i18n.t("gear.audioHint")}</p>
 
     {#if app.inputs.length === 0}
       <p class="empty">{i18n.t("gear.noInputs")}</p>
@@ -113,12 +116,20 @@
       <div class="inputs">
         {#each app.inputs as input (input.index)}
           <div class="input" class:off={!!input.error} class:live={input.monitor && input.monitorOk}>
-            <div class="meter"><LedMeter level={app.inputLevels[input.index] ?? 0} segments={14} /></div>
+            <div class="meter"><LedMeter level={app.inputLevels[input.index] ?? 0} segments={10} /></div>
             <div class="input-main">
               <div class="input-title">
-                <Icon name="volume" size={15} />
+                <Icon name="volume" size={13} />
                 <span class="name" title={input.name}>{input.name}</span>
                 {#if input.sampleRate}<span class="meta tabular">{input.channels} ch · {input.sampleRate / 1000} kHz</span>{/if}
+                <button
+                  class="icon-btn remove"
+                  title={i18n.t("gear.remove")}
+                  aria-label={`${i18n.t("gear.remove")}: ${input.name}`}
+                  onclick={() => app.removeInput(input.index)}
+                >
+                  <Icon name="trash" size={13} />
+                </button>
               </div>
               {#if input.error}
                 <span class="tag warn">{i18n.t("gear.disconnected")}</span>
@@ -126,6 +137,7 @@
                 <div class="input-controls">
                   <select
                     value={`${input.stereo ? "s" : "m"}${input.firstChannel}`}
+                    aria-label={`${i18n.t("gear.channel")} · ${input.name}`}
                     onchange={(e) => setRouting(input, e.currentTarget.value)}
                   >
                     {#each routingOptions(input) as o (o.value)}
@@ -145,40 +157,41 @@
                       {i18n.t("gear.monitor")}
                     </label>
                   {/if}
-                  <Knob
-                    value={input.gainDb}
-                    min={-40}
-                    max={12}
-                    reset={0}
-                    size={30}
-                    label={i18n.t("track.volume")}
-                    display={`${formatDb(input.gainDb)} dB`}
-                    onchange={(db) => app.updateInput(input.index, { gainDb: Math.round(db * 10) / 10 })}
-                  />
+                  <span class="knob">
+                    <Knob
+                      value={input.gainDb}
+                      min={-40}
+                      max={12}
+                      reset={0}
+                      size={26}
+                      label={i18n.t("track.volume")}
+                      display={`${formatDb(input.gainDb)} dB`}
+                      onchange={(db) => app.updateInput(input.index, { gainDb: Math.round(db * 10) / 10 })}
+                    />
+                  </span>
                 </div>
                 {#if input.directMonitor}
-                  <span class="tag">{i18n.t("gear.directMonitorHint")}</span>
+                  <span class="note-text">{i18n.t("gear.directMonitorHint")}</span>
                 {:else if !input.monitorOk}
-                  <span class="tag">{i18n.t("gear.monitorUnavailable", { out: outRate })}</span>
+                  <span class="note-text">{i18n.t("gear.monitorUnavailable", { out: outRate })}</span>
                 {/if}
               {/if}
             </div>
-            <button class="icon-btn" title={i18n.t("gear.remove")} onclick={() => app.removeInput(input.index)}>
-              <Icon name="trash" size={15} />
-            </button>
           </div>
         {/each}
       </div>
     {/if}
   </section>
 
-  <section class="panel" style="--c: var(--stem-drums)">
+  <section class="panel" style="--c: var(--stem-drums)" aria-labelledby="gear-drums">
     <div class="panel-head">
-      <span class="badge"><Icon name="click" size={18} /></span>
-      <h2>{i18n.t("gear.drums")}</h2>
+      <span class="badge"><Icon name="click" size={15} /></span>
+      <div class="titles">
+        <h2 id="gear-drums">{i18n.t("gear.drums")}</h2>
+        <p class="hint">{i18n.t("gear.drumsHint")}</p>
+      </div>
       <button class="btn small" onclick={() => app.refreshDrums()}>{i18n.t("gear.refresh")}</button>
     </div>
-    <p class="hint">{i18n.t("gear.drumsHint")}</p>
 
     {#if drums}
       <div class="row">
@@ -199,27 +212,27 @@
             {/each}
           </select>
         </label>
-      </div>
-      <div class="status">
-        {#if drums.connected}<span class="tag ok">● {i18n.t("gear.connected", { name: drums.connected })}</span>{/if}
-        {#if drums.error}<span class="tag warn">{drums.error}</span>{/if}
-        {#if brand}<span class="models">{brand.models}</span>{/if}
+        <div class="status">
+          {#if drums.connected}<span class="tag ok">● {i18n.t("gear.connected", { name: drums.connected })}</span>{/if}
+          {#if drums.error}<span class="tag warn">{drums.error}</span>{/if}
+          {#if brand}<span class="models" title={brand.models}>{brand.models}</span>{/if}
+        </div>
       </div>
       {#if app.drumsMidiOnly}
-        <p class="tip alert"><Icon name="volume" size={13} />{i18n.t("gear.midiOnly", { name: drums.connected ?? "" })}</p>
-      {:else if brand?.usbAudio}<p class="tip"><Icon name="volume" size={13} />{i18n.t("gear.usbAudio")}</p>{/if}
+        <p class="tip alert"><Icon name="volume" size={12} />{i18n.t("gear.midiOnly", { name: drums.connected ?? "" })}</p>
+      {:else if brand?.usbAudio}<p class="tip"><Icon name="volume" size={12} />{i18n.t("gear.usbAudio")}</p>{/if}
 
-      <div class="kit-head">
-        <h3>{i18n.t("gear.kit")}</h3>
-        {#if app.lastNote}
-          <span class="note tabular">{i18n.t("gear.lastNote", { note: app.lastNote.note, vel: app.lastNote.velocity })}</span>
-        {/if}
-      </div>
-      <p class="hint">{i18n.t("gear.kitHint")}</p>
+      <div class="kit-wrap">
+        <div class="kit-head">
+          <h3>{i18n.t("gear.kit")}</h3>
+          <p class="hint">{i18n.t("gear.kitHint")}</p>
+          {#if app.lastNote}
+            <span class="note tabular">{i18n.t("gear.lastNote", { note: app.lastNote.note, vel: app.lastNote.velocity })}</span>
+          {/if}
+        </div>
 
-      <div class="kit">
-        {#each KIT as row, r (r)}
-          <div class="kit-row">
+        <div class="kit">
+          {#each KIT as row, r (r)}
             {#each row as pad (pad)}
               {@const light = padLight(pad)}
               <button
@@ -227,6 +240,8 @@
                 class:sel={selected === pad}
                 class:learning={drums.learning === pad}
                 class:cymbal={pad.startsWith("crash") || pad.startsWith("ride") || pad === "splash" || pad === "china" || pad.startsWith("hiHat")}
+                aria-pressed={selected === pad}
+                title={i18n.t(`pad.${pad}` as MessageKey)}
                 style={`--light:${light}`}
                 onclick={() => (selected = selected === pad ? null : pad)}
               >
@@ -234,23 +249,25 @@
                 <span class="pad-notes tabular">{(notesByPad[pad] ?? []).join(" · ") || "—"}</span>
               </button>
             {/each}
-          </div>
-        {/each}
-      </div>
-
-      <div class="learn-bar">
-        <div class="hh">
-          <span>{i18n.t("gear.hihat")}</span>
-          <div class="hh-bar"><div style={`width:${(app.hiHatOpenness / 127) * 100}%`}></div></div>
+          {/each}
         </div>
-        {#if drums.learning}
-          <span class="learning-msg">{i18n.t("gear.learning", { pad: i18n.t(`pad.${drums.learning}` as MessageKey) })}</span>
-          <button class="btn small" onclick={() => app.drumLearn(null)}>{i18n.t("gear.cancel")}</button>
-        {:else}
-          <button class="btn small primary" disabled={!selected || !drums.connected} onclick={() => app.drumLearn(selected)}>
-            {i18n.t("gear.learn")}{selected ? `: ${i18n.t(`pad.${selected}` as MessageKey)}` : ""}
-          </button>
-        {/if}
+
+        <div class="learn-bar">
+          <div class="hh">
+            <span>{i18n.t("gear.hihat")}</span>
+            <div class="hh-bar" role="meter" aria-label={i18n.t("gear.hihat")} aria-valuemin={0} aria-valuemax={127} aria-valuenow={app.hiHatOpenness}>
+              <div style={`width:${(app.hiHatOpenness / 127) * 100}%`}></div>
+            </div>
+          </div>
+          {#if drums.learning}
+            <span class="learning-msg" role="status">{i18n.t("gear.learning", { pad: i18n.t(`pad.${drums.learning}` as MessageKey) })}</span>
+            <button class="btn small" onclick={() => app.drumLearn(null)}>{i18n.t("gear.cancel")}</button>
+          {:else}
+            <button class="btn small primary" disabled={!selected || !drums.connected} onclick={() => app.drumLearn(selected)}>
+              {i18n.t("gear.learn")}{selected ? `: ${i18n.t(`pad.${selected}` as MessageKey)}` : ""}
+            </button>
+          {/if}
+        </div>
       </div>
     {/if}
   </section>
@@ -260,53 +277,64 @@
   .gear {
     flex: 1;
     overflow-y: auto;
-    padding: 28px 40px 48px;
+    padding: 16px 24px 28px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 10px;
   }
   .gear > * {
     flex: none;
   }
   .head {
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     justify-content: space-between;
-    gap: 16px;
+    gap: 8px 16px;
     flex-wrap: wrap;
-    padding: 20px 22px;
-    border-radius: var(--radius-l);
+    padding: 10px 16px;
+    border-radius: var(--radius);
     background: color-mix(in srgb, var(--accent) 7%, var(--bg-raised));
     border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
   }
+  .head-text {
+    min-width: 0;
+    flex: 1 1 320px;
+  }
   .head h1 {
     margin: 0;
-    font-size: 24px;
-    letter-spacing: -0.03em;
+    font-size: 18px;
+    letter-spacing: -0.02em;
     color: var(--accent);
   }
   .head p {
-    margin: 4px 0 0;
+    margin: 2px 0 0;
     color: var(--text-dim);
-    font-size: 12.5px;
-    max-width: 560px;
+    font-size: 12px;
   }
   .summary {
     display: flex;
-    gap: 8px;
+    gap: 6px;
     flex-wrap: wrap;
+    min-width: 0;
   }
   .pill {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 5px 11px;
+    gap: 5px;
+    max-width: 260px;
+    padding: 3px 9px;
     border-radius: 999px;
-    font-size: 12px;
+    font-size: 11.5px;
     font-weight: 700;
     color: var(--c);
     background: color-mix(in srgb, var(--c) 14%, transparent);
     border: 1px solid color-mix(in srgb, var(--c) 30%, transparent);
+  }
+  .pill-text {
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .pill.dim {
     filter: grayscale(1);
@@ -314,88 +342,97 @@
   }
   .hint {
     margin: 0;
-    color: var(--text-dim);
-    font-size: 12.5px;
+    color: var(--text-faint);
+    font-size: 11.5px;
+    line-height: 1.4;
   }
   .panel {
     position: relative;
     overflow: hidden;
-    padding: 18px 20px 18px 24px;
-    border-radius: var(--radius-l);
+    padding: 12px 14px 12px 18px;
+    border-radius: var(--radius);
     background: var(--bg-raised);
     border: 1px solid var(--line);
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
   }
   .panel::before {
     content: "";
     position: absolute;
     inset: 0 auto 0 0;
-    width: 4px;
+    width: 3px;
     background: var(--c);
   }
   .panel-head {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
+  }
+  .titles {
+    flex: 1;
+    min-width: 0;
   }
   .panel-head h2 {
     margin: 0;
-    font-size: 16px;
-    flex: 1;
+    font-size: 14px;
   }
   .badge {
+    flex: none;
     display: grid;
     place-items: center;
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
     color: var(--c);
     background: color-mix(in srgb, var(--c) 16%, transparent);
   }
   h3 {
     margin: 0;
-    font-size: 13px;
+    font-size: 12px;
+    white-space: nowrap;
     color: color-mix(in srgb, var(--c) 65%, var(--text));
   }
   select {
-    height: 34px;
-    padding: 0 10px;
+    height: 28px;
+    min-width: 0;
+    padding: 0 8px;
     border-radius: var(--radius-s);
     border: 1px solid var(--line-strong);
     background: var(--bg);
     color: var(--text);
     font: inherit;
+    font-size: 12.5px;
   }
   select:focus {
     border-color: var(--c, var(--accent));
   }
   .add {
-    max-width: 320px;
+    flex: 0 1 220px;
     border-color: color-mix(in srgb, var(--c) 45%, var(--line-strong));
     color: var(--c);
     font-weight: 600;
   }
   .empty {
-    margin: 4px 0;
-    padding: 18px;
-    border-radius: var(--radius);
+    margin: 0;
+    padding: 10px;
+    border-radius: var(--radius-s);
     border: 1.5px dashed var(--line-strong);
     color: var(--text-faint);
+    font-size: 12.5px;
     text-align: center;
   }
   .inputs {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-    gap: 10px;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 8px;
   }
   .input {
     display: flex;
-    gap: 12px;
-    align-items: stretch;
-    padding: 12px 12px 12px 14px;
-    border-radius: var(--radius);
+    gap: 10px;
+    align-items: flex-start;
+    padding: 8px 8px 8px 10px;
+    border-radius: var(--radius-s);
     background: var(--bg-panel);
     border: 1px solid var(--line);
     transition: border-color 0.15s;
@@ -407,23 +444,27 @@
     opacity: 0.6;
   }
   .meter {
-    height: 76px;
+    height: 52px;
+    flex: none;
   }
   .input-main {
     flex: 1;
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
   }
   .input-title {
     display: flex;
     align-items: center;
     gap: 6px;
+    min-width: 0;
     color: var(--ok);
   }
   .name {
+    min-width: 0;
     color: var(--text);
+    font-size: 12.5px;
     font-weight: 700;
     white-space: nowrap;
     overflow: hidden;
@@ -431,23 +472,37 @@
   }
   .meta {
     margin-left: auto;
-    font-size: 10.5px;
+    font-size: 10px;
     font-family: var(--mono);
     color: var(--text-faint);
     white-space: nowrap;
   }
+  .remove {
+    flex: none;
+    width: 24px;
+    height: 24px;
+  }
   .input-controls {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
+    min-width: 0;
+  }
+  .input-controls select {
+    flex: 0 1 120px;
+  }
+  .knob {
+    margin-left: auto;
+    display: flex;
   }
   .toggle {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 5px 10px;
+    gap: 5px;
+    height: 24px;
+    padding: 0 9px;
     border-radius: 999px;
-    font-size: 12px;
+    font-size: 11.5px;
     font-weight: 600;
     color: var(--text-dim);
     background: var(--bg-active);
@@ -471,11 +526,17 @@
     opacity: 0.45;
     cursor: not-allowed;
   }
+  .note-text {
+    font-size: 10.5px;
+    line-height: 1.35;
+    color: var(--text-faint);
+  }
   .tag {
     align-self: flex-start;
-    padding: 3px 9px;
+    padding: 2px 8px;
     border-radius: 6px;
-    font-size: 11.5px;
+    font-size: 11px;
+    white-space: nowrap;
     color: var(--text-dim);
     background: var(--bg-active);
   }
@@ -487,92 +548,115 @@
   .tag.warn {
     color: var(--danger);
     background: color-mix(in srgb, var(--danger) 14%, transparent);
+    white-space: normal;
   }
   .tip {
     display: flex;
-    align-items: center;
-    gap: 8px;
+    align-items: flex-start;
+    gap: 6px;
     margin: 0;
-    padding: 8px 12px;
+    padding: 6px 10px;
     border-radius: var(--radius-s);
-    font-size: 12px;
+    font-size: 11.5px;
+    line-height: 1.4;
     color: var(--ok);
     background: color-mix(in srgb, var(--ok) 10%, transparent);
   }
+  .tip :global(svg) {
+    flex: none;
+    margin-top: 2px;
+  }
   .tip.alert {
-    align-items: flex-start;
-    line-height: 1.45;
     color: var(--accent);
     background: color-mix(in srgb, var(--accent) 10%, transparent);
   }
   .note {
-    font-size: 11.5px;
+    flex: none;
+    font-size: 10.5px;
     color: var(--text-faint);
     margin: 0;
     font-family: var(--mono);
+    white-space: nowrap;
   }
   .row {
     display: flex;
-    gap: 12px;
+    align-items: flex-end;
+    gap: 8px 10px;
     flex-wrap: wrap;
   }
   .field {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    min-width: 240px;
+    gap: 3px;
+    flex: 0 1 220px;
+    min-width: 160px;
   }
   .field span {
-    font-size: 10.5px;
+    font-size: 10px;
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: color-mix(in srgb, var(--c) 70%, var(--text-faint));
   }
   .status {
+    flex: 1 1 200px;
+    min-width: 0;
     display: flex;
-    gap: 10px;
+    gap: 4px 8px;
     flex-wrap: wrap;
     align-items: center;
+    min-height: 28px;
   }
   .models {
-    font-size: 11.5px;
+    min-width: 0;
+    font-size: 11px;
     color: var(--text-faint);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .kit-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-top: 8px;
+    border-top: 1px solid var(--line);
   }
   .kit-head {
     display: flex;
     align-items: baseline;
-    justify-content: space-between;
-    margin-top: 6px;
-    padding-top: 12px;
-    border-top: 1px solid var(--line);
+    gap: 10px;
+    min-width: 0;
+  }
+  .kit-head .hint {
+    flex: 1;
+    min-width: 0;
   }
   .kit {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 14px;
-    border-radius: var(--radius);
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 4px;
+    max-width: 860px;
+    padding: 6px;
+    border-radius: var(--radius-s);
     background: var(--bg);
     border: 1px solid var(--line);
   }
-  .kit-row {
-    display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 8px;
-  }
   .pad {
     position: relative;
-    height: 64px;
-    border-radius: 14px;
+    min-width: 0;
+    height: 36px;
+    padding: 0 6px;
+    border-radius: 7px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 2px;
+    gap: 0;
+    line-height: 1.2;
     background: color-mix(in srgb, var(--stem-drums) calc(var(--light) * 75%), var(--bg-panel));
     border: 1px solid var(--line-strong);
-    box-shadow: 0 0 calc(var(--light) * 26px) color-mix(in srgb, var(--stem-drums) calc(var(--light) * 100%), transparent);
+    box-shadow: 0 0 calc(var(--light) * 16px) color-mix(in srgb, var(--stem-drums) calc(var(--light) * 100%), transparent);
     transition: border-color 0.12s;
   }
   .pad:hover {
@@ -585,7 +669,7 @@
   }
   .pad.sel {
     outline: 2px solid var(--accent);
-    outline-offset: 2px;
+    outline-offset: 1px;
   }
   .pad.learning {
     animation: pulse 0.6s ease-in-out infinite alternate;
@@ -597,30 +681,36 @@
     }
   }
   .pad-name {
-    font-size: 12px;
+    max-width: 100%;
+    font-size: 11px;
     font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .pad-notes {
-    font-size: 10.5px;
+    font-size: 9.5px;
     font-family: var(--mono);
     color: var(--text-faint);
   }
   .learn-bar {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
+    max-width: 860px;
   }
   .hh {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 12px;
+    font-size: 11.5px;
     color: var(--text-dim);
     margin-right: auto;
+    white-space: nowrap;
   }
   .hh-bar {
-    width: 160px;
-    height: 6px;
+    width: 120px;
+    height: 5px;
     border-radius: 3px;
     background: var(--bg);
     border: 1px solid var(--line);
@@ -631,17 +721,30 @@
     background: var(--stem-drums);
   }
   .learning-msg {
+    font-size: 12px;
     color: var(--accent);
     font-weight: 700;
   }
   .small {
-    height: 32px;
-    padding: 0 14px;
-    font-size: 12.5px;
+    flex: none;
+    height: 28px;
+    padding: 0 12px;
+    font-size: 12px;
   }
   .btn:disabled {
     opacity: 0.45;
     cursor: not-allowed;
   }
+  @media (max-width: 1100px) {
+    .gear {
+      padding: 12px 16px 20px;
+    }
+    .kit-head {
+      flex-wrap: wrap;
+    }
+    .kit-head .hint {
+      order: 3;
+      flex-basis: 100%;
+    }
+  }
 </style>
-

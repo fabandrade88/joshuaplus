@@ -433,4 +433,20 @@
     background: #ff4d4d;
     box-shadow: 0 0 10px #ff4d4d;
   }
+  @media (max-width: 1180px) {
+    .pedal {
+      padding: 10px 12px;
+    }
+  }
+  @media (max-height: 760px) {
+    .pedal {
+      gap: 6px;
+      padding-top: 8px;
+      padding-bottom: 8px;
+    }
+    .switch {
+      width: 44px;
+      height: 44px;
+    }
+  }
 </style>

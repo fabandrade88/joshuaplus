@@ -170,4 +170,20 @@
   .empty p {
     margin: 0;
   }
+  @media (max-width: 1180px), (max-height: 760px) {
+    .view {
+      padding: 18px 24px 32px;
+      gap: 14px;
+    }
+    .head {
+      gap: 10px;
+    }
+    .badge {
+      width: 38px;
+      height: 38px;
+    }
+    h1 {
+      font-size: 22px;
+    }
+  }
 </style>

@@ -366,4 +366,21 @@
     background: var(--accent);
     box-shadow: 0 0 8px var(--accent);
   }
+  /* Short windows: two rows of bars leave the console its height. */
+  @media (max-height: 760px) {
+    .map {
+      padding-top: 6px;
+      padding-bottom: 6px;
+    }
+    .toolbar {
+      margin-bottom: 5px;
+    }
+    .grid {
+      max-height: 84px;
+      scroll-snap-type: y mandatory;
+    }
+    .cell {
+      scroll-snap-align: start;
+    }
+  }
 </style>

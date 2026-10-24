@@ -50,6 +50,13 @@
   --lane-h: 84px;
 }
 
+/* Narrow windows (the minimum is 960 px wide): give the content more room. */
+@media (max-width: 1180px) {
+  :root {
+    --sidebar-w: 240px;
+  }
+}
+
 * {
   box-sizing: border-box;
 }

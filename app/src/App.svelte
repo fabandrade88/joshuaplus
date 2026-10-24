@@ -100,6 +100,9 @@
     min-width: 0;
     display: flex;
     flex-direction: column;
+    /* The song view needs ~600 px; on shorter windows scroll rather than clip. */
+    overflow-y: auto;
+    overflow-x: hidden;
     background: var(--bg);
   }
   .toast {

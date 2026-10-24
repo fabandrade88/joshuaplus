@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ExportsCard from "./ExportsCard.svelte";
   import { app, type FolderKey } from "../app.svelte";
   import { i18n } from "../i18n/index.svelte";
   import type { MessageKey } from "../i18n/en";
@@ -69,6 +70,7 @@
     </div>
   </section>
 
+  <ExportsCard />
   {#if app.jobs.length > 0}
     <section class="block">
       <h2 class="section-title">{i18n.t("jobs.title")}</h2>
@@ -309,5 +311,29 @@
     border-radius: 50%;
     background: var(--ok);
     box-shadow: 0 0 6px var(--ok);
+  }
+  /* Short windows: never let the processing queue squeeze the folder list to
+     nothing; the queue scrolls instead. */
+  .folders {
+    min-height: 150px;
+  }
+  .block:not(.folders) {
+    flex-shrink: 1;
+  }
+  @media (max-height: 760px) {
+    .brand {
+      padding: 14px 16px 10px;
+    }
+    .drop {
+      margin: 4px 12px;
+      padding: 8px 10px;
+    }
+    .block {
+      padding-top: 8px;
+    }
+    .foot .nav-item {
+      padding-top: 6px;
+      padding-bottom: 6px;
+    }
   }
 </style>
