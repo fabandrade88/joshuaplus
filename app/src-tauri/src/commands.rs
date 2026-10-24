@@ -795,7 +795,7 @@ pub(crate) fn flush_and_project(state: &AppState) -> ApiResult<(Workspace, SongP
 /// Renders the current song's mix (stems, takes, click unless muted) to a
 /// 24-bit WAV in `<workspace>/Exports`. Progress: `export-progress` (0..1).
 #[tauri::command]
-pub async fn export_mix(app: AppHandle) -> ApiResult<String> {
+pub async fn export_mix(app: AppHandle, include_click: Option<bool>) -> ApiResult<String> {
     tauri::async_runtime::spawn_blocking(move || {
         let state = app.state::<AppState>();
         let (ws, project, rate) = flush_and_project(&state)?;
@@ -813,7 +813,14 @@ pub async fn export_mix(app: AppHandle) -> ApiResult<String> {
         };
         joshua_core::export::render_mix(
             Box::new(session),
-            &|shared| apply_mix(shared, &project),
+            &|shared| {
+                apply_mix(shared, &project);
+                // The export dialog decides about the click, whatever the
+                // mixer has it set to while playing.
+                if let Some(on) = include_click {
+                    shared.channels[METRONOME].set_mute(!on);
+                }
+            },
             0,
             end,
             &mut |l, r| writer.write(l, r),
@@ -827,13 +834,113 @@ pub async fn export_mix(app: AppHandle) -> ApiResult<String> {
     .map_err(|_| ApiError::new("internal", "export crashed"))?
 }
 
+/// An exported mix or video, for the Exports view.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExportFile {
+    pub name: String,
+    pub path: String,
+    /// "audio" or "video".
+    pub kind: &'static str,
+    pub size: u64,
+    pub modified_unix: u64,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExportList {
+    pub dir: String,
+    pub files: Vec<ExportFile>,
+}
+
+/// Most files listed in the Exports view.
+const MAX_LISTED_EXPORTS: usize = 500;
+
+fn export_kind(path: &std::path::Path) -> Option<&'static str> {
+    let ext = path.extension()?.to_str()?.to_ascii_lowercase();
+    match ext.as_str() {
+        "wav" => Some("audio"),
+        "mp4" | "webm" => Some("video"),
+        _ => None,
+    }
+}
+
+/// Exported files in the export folder, newest first. Unfinished `.part`
+/// files, folders and symlinks are left out.
+#[tauri::command]
+pub fn list_exports(state: State<'_, AppState>) -> ApiResult<ExportList> {
+    let dir = state.export_dir()?;
+    let mut files = Vec::new();
+    if let Ok(entries) = std::fs::read_dir(&dir) {
+        for entry in entries.flatten() {
+            let Ok(meta) = entry.metadata() else { continue };
+            let path = entry.path();
+            let Some(kind) = export_kind(&path).filter(|_| meta.is_file()) else { continue };
+            let modified_unix = meta
+                .modified()
+                .ok()
+                .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                .map_or(0, |d| d.as_secs());
+            files.push(ExportFile {
+                name: entry.file_name().to_string_lossy().into_owned(),
+                path: path.to_string_lossy().into_owned(),
+                kind,
+                size: meta.len(),
+                modified_unix,
+            });
+        }
+    }
+    files.sort_by(|a, b| b.modified_unix.cmp(&a.modified_unix).then_with(|| a.name.cmp(&b.name)));
+    files.truncate(MAX_LISTED_EXPORTS);
+    Ok(ExportList { dir: dir.to_string_lossy().into_owned(), files })
+}
+
+/// An exported file, checked to be inside the current export folder.
+fn export_file(state: &AppState, path: &str) -> ApiResult<PathBuf> {
+    let dir = state.export_dir()?;
+    let canon = PathBuf::from(path).canonicalize().map_err(|_| ApiError::new("not_found", "file not found"))?;
+    joshua_core::security::ensure_inside(&dir, &canon)?;
+    if !canon.is_file() || export_kind(&canon).is_none() {
+        return Err(ApiError::new("not_found", "file not found"));
+    }
+    Ok(canon)
+}
+
 /// Shows an exported file in Finder / Explorer. Only files inside the
 /// current export folder are accepted.
 #[tauri::command]
 pub fn reveal_export(state: State<'_, AppState>, path: String) -> ApiResult<()> {
-    let dir = state.export_dir()?;
-    let path = PathBuf::from(path);
-    let canon = path.canonicalize().map_err(|_| ApiError::new("not_found", "file not found"))?;
-    joshua_core::security::ensure_inside(&dir, &canon)?;
+    let canon = export_file(&state, &path)?;
     tauri_plugin_opener::reveal_item_in_dir(&canon).map_err(|e| ApiError::new("io", e.to_string()))
+}
+
+/// Opens an exported mix or video in the system's default player.
+#[tauri::command]
+pub fn open_export(state: State<'_, AppState>, path: String) -> ApiResult<()> {
+    let canon = export_file(&state, &path)?;
+    tauri_plugin_opener::open_path(canon, None::<&str>).map_err(|e| ApiError::new("io", e.to_string()))
+}
+
+/// Opens the export folder in Finder / Explorer.
+#[tauri::command]
+pub fn open_export_dir(state: State<'_, AppState>) -> ApiResult<()> {
+    let dir = state.export_dir()?;
+    std::fs::create_dir_all(&dir).map_err(|e| ApiError::new("io", e.to_string()))?;
+    tauri_plugin_opener::open_path(dir, None::<&str>).map_err(|e| ApiError::new("io", e.to_string()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::export_kind;
+    use std::path::Path;
+
+    #[test]
+    fn only_finished_mixes_and_videos_are_listed() {
+        assert_eq!(export_kind(Path::new("/x/Song mix.wav")), Some("audio"));
+        assert_eq!(export_kind(Path::new("/x/Song youtube.MP4")), Some("video"));
+        assert_eq!(export_kind(Path::new("/x/Song vertical.webm")), Some("video"));
+        assert_eq!(export_kind(Path::new("/x/Song mix.wav.part")), None);
+        assert_eq!(export_kind(Path::new("/x/notes.txt")), None);
+        assert_eq!(export_kind(Path::new("/x/no-extension")), None);
+    }
 }
