@@ -5,6 +5,7 @@
   import type { MessageKey } from "../i18n/en";
   import { engineOf } from "../stems";
   import { barBeatAt } from "../timeline";
+  import { studio } from "../video/studio.svelte";
   import Icon from "./Icon.svelte";
 
   const project = $derived(app.song?.project);
@@ -200,7 +201,11 @@
           title={app.recording ? i18n.t("record.stop") : app.recordMode === "video" ? i18n.t("record.openVideo") : i18n.t("record.start")}
           aria-label={app.recording ? i18n.t("record.stop") : i18n.t("record.start")}
           disabled={!app.canPlay || app.savingTakes}
-          onclick={() => (app.recordMode === "video" && !app.recording ? (app.videoOpen = true) : app.toggleRecording())}
+          onclick={() => {
+            if (app.videoOpen && studio.phase === "recording") void studio.stop(); // stop the camera too
+            else if (app.recordMode === "video" && !app.recording) app.videoOpen = true;
+            else void app.toggleRecording();
+          }}
         >
           <Icon name={app.recording ? "stop" : app.recordMode === "video" ? "video" : "record"} size={18} fill={app.recordMode === "audio" || app.recording} />
         </button>

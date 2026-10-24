@@ -46,6 +46,8 @@
       }),
   );
   const busy = $derived(studio.phase === "starting" || studio.phase === "saving" || studio.phase === "exporting");
+  /** While filming, the studio shrinks to a corner so the app stays visible. */
+  const mini = $derived(studio.phase === "starting" || studio.phase === "recording");
 </script>
 
 {#snippet formatPicker()}
@@ -68,8 +70,8 @@
 
 <svelte:window onkeydown={(e) => e.key === "Escape" && !busy && studio.phase !== "recording" && void close()} />
 
-<div class="backdrop" role="presentation">
-  <div class="studio" role="dialog" aria-modal="true" tabindex="-1" aria-label={i18n.t("video.title")}>
+<div class="backdrop" class:mini role="presentation">
+  <div class="studio" class:mini role="dialog" aria-modal={!mini} tabindex="-1" aria-label={i18n.t("video.title")}>
     <header>
       <span class="badge"><Icon name="video" size={18} /></span>
       <div>
@@ -495,6 +497,56 @@
     text-decoration: underline;
     background: none;
     font-size: 12px;
+  }
+  /* Compact floating window while filming. */
+  .backdrop.mini {
+    inset: auto 20px 20px auto;
+    padding: 0;
+    background: none;
+    backdrop-filter: none;
+    pointer-events: none;
+  }
+  .studio.mini {
+    width: 340px;
+    gap: 8px;
+    padding: 10px;
+    pointer-events: auto;
+    border-color: color-mix(in srgb, var(--danger) 60%, transparent);
+  }
+  .mini header p,
+  .mini header .icon-btn,
+  .mini :global(h3),
+  .mini .formats,
+  .mini .check,
+  .mini .facts,
+  .mini .hint,
+  .mini .field,
+  .mini .guide span {
+    display: none;
+  }
+  .mini h2 {
+    font-size: 13px;
+  }
+  .mini .badge {
+    width: 28px;
+    height: 28px;
+    border-radius: 9px;
+  }
+  .mini .body {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .mini .live {
+    border-radius: 10px;
+  }
+  .mini .rec {
+    height: 38px;
+    font-size: 13px;
+  }
+  .mini .rec-badge {
+    top: 8px;
+    right: 8px;
+    font-size: 11px;
   }
   @media (max-width: 1000px) {
     .body {

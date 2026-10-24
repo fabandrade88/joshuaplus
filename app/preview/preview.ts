@@ -179,7 +179,14 @@ if (state === "song" || state === "away" || state === "video") {
 }
 
 if (state === "away") app.goHome();
-if (state === "video") app.videoOpen = true;
+if (state === "video") {
+  app.videoOpen = true;
+  if (params.get("phase") === "recording") {
+    const { studio } = await import("../src/lib/video/studio.svelte");
+    studio.phase = "recording";
+    studio.elapsed = 42;
+  }
+}
 
 if (state === "gear") {
   app.openGear();
