@@ -192,6 +192,7 @@ export const en = {
   "video.sync": "Picture/sound sync",
   "video.mixTitle": "Video sound",
   "video.mixHint": "Adjust volumes, mutes and the takes' room, then press Preview: the video is exported exactly as you hear it. It is the song's own mix, so the console changes too.",
+  "video.mixWholeSong": "Whole song",
   "video.syncHint": "Press Preview and watch a hit: if the sound comes late, drag left; early, drag right.",
   "video.preview": "Preview",
   "video.formats": "Formats",

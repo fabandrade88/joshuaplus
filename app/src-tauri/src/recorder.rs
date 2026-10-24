@@ -292,20 +292,29 @@ fn take_name(input_name: &str) -> String {
 
 /// Adds freshly recorded takes to a song. A take from an input that already
 /// has one replaces it in place, keeping its level, pan, room and solo, so
-/// recording again is "record over". Returns the replaced files (relative to
-/// the song folder) to delete once the project is saved.
+/// recording again is "record over"; older extra takes of that input (from
+/// before takes were replaced) go too. Returns the replaced files (relative
+/// to the song folder) to delete once the project is saved.
 fn merge_takes(takes: &mut Vec<TakeSettings>, new: Vec<TakeSettings>) -> Vec<String> {
     let mut old_files = Vec::new();
     for mut t in new {
-        if let Some(old) = takes.iter_mut().find(|o| o.name == t.name) {
-            t.gain_db = old.gain_db;
-            t.pan = old.pan;
-            t.room = old.room;
-            t.solo = old.solo;
-            old_files.push(std::mem::replace(old, t).file);
-        } else {
+        let Some(first) = takes.iter().position(|o| o.name == t.name) else {
             takes.push(t);
-        }
+            continue;
+        };
+        let old = &takes[first];
+        (t.gain_db, t.pan, t.room, t.solo) = (old.gain_db, old.pan, old.room, old.solo);
+        let name = t.name.clone();
+        old_files.push(std::mem::replace(&mut takes[first], t).file);
+        let mut j = 0;
+        takes.retain(|o| {
+            let extra = j != first && o.name == name;
+            j += 1;
+            if extra {
+                old_files.push(o.file.clone());
+            }
+            !extra
+        });
     }
     old_files
 }
@@ -338,11 +347,12 @@ mod tests {
         old_drums.gain_db = -4.0;
         old_drums.room = 0.5;
         old_drums.muted = true;
-        let mut takes = vec![old_drums, take(2, "SPD-SX PRO")];
+        // take-5 is an older duplicate of the same input.
+        let mut takes = vec![old_drums, take(2, "SPD-SX PRO"), take(5, "Yamaha AG06MK2")];
         let removed = merge_takes(&mut takes, vec![take(3, "Yamaha AG06MK2"), take(4, "Guitar DI")]);
-        assert_eq!(removed, vec!["takes/take-1.wav".to_string()]);
+        assert_eq!(removed, ["takes/take-1.wav", "takes/take-5.wav"]);
         let ids: Vec<_> = takes.iter().map(|t| t.id.as_str()).collect();
-        assert_eq!(ids, ["take-3", "take-2", "take-4"], "replaced in place, new input appended");
+        assert_eq!(ids, ["take-3", "take-2", "take-4"], "replaced in place, duplicates gone, new input appended");
         // The new drums take keeps the old mix but is heard.
         assert_eq!((takes[0].gain_db, takes[0].room, takes[0].muted), (-4.0, 0.5, false));
     }

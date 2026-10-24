@@ -30,13 +30,13 @@
     set: (patch: { gainDb?: number; muted?: boolean; room?: number }) => void;
   };
 
-  const rows = $derived.by((): Row[] => {
+  const songRows = $derived.by((): Row[] => {
     if (!project) return [];
     const out: Row[] = [
       {
         key: "song",
         kind: "song",
-        name: i18n.t("console.song"),
+        name: i18n.t("video.mixWholeSong"),
         color: "var(--accent)",
         gainDb: project.songGainDb ?? 0,
         muted: project.songMuted ?? false,
@@ -54,6 +54,11 @@
         set: (p) => void app.updateTrack(i, p),
       }),
     );
+    return out;
+  });
+
+  const takeRows = $derived.by((): Row[] => {
+    const out: Row[] = [];
     for (const t of takes) {
       out.push({
         key: t.id,
@@ -83,6 +88,16 @@
       <h3 id="video-mix-title">{i18n.t("video.mixTitle")}</h3>
       <p>{i18n.t("video.mixHint")}</p>
     </header>
+    {@render group(i18n.t("console.song"), songRows)}
+    {#if takeRows.length > 0}
+      {@render group(i18n.t("record.takes"), takeRows)}
+    {/if}
+  </section>
+{/if}
+
+{#snippet group(title: string, rows: Row[])}
+  <div class="group">
+    <h4 class="section-title">{title}</h4>
     <ul>
       {#each rows as row (row.key)}
         <li class:off={row.muted} class:song={row.kind === "song"} style={`--c:${row.color}`}>
@@ -130,8 +145,8 @@
         </li>
       {/each}
     </ul>
-  </section>
-{/if}
+  </div>
+{/snippet}
 
 <style>
   .mix {
@@ -148,6 +163,14 @@
     margin: 2px 0 0;
     font-size: var(--fs-small);
     color: var(--text-dim);
+  }
+  .group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  h4 {
+    margin: 4px 0 0;
   }
   ul {
     list-style: none;

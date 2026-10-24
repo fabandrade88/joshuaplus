@@ -194,6 +194,7 @@ export const de: Messages = {
   "video.sync": "Bild/Ton-Synchronität",
   "video.mixTitle": "Ton des Videos",
   "video.mixHint": "Stelle Lautstärken, Stummschaltung und den Raum der Takes ein und drücke Vorschau: Das Video wird genau so exportiert, wie du es hörst. Es ist der Mix des Songs, das Mischpult ändert sich mit.",
+  "video.mixWholeSong": "Ganzer Song",
   "video.syncHint": "Drück Vorschau und achte auf einen Schlag: Kommt der Ton zu spät, zieh nach links; zu früh, nach rechts.",
   "video.preview": "Vorschau",
   "video.formats": "Formate",

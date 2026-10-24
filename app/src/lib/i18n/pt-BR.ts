@@ -194,6 +194,7 @@ export const ptBR: Messages = {
   "video.sync": "Sincronia imagem/som",
   "video.mixTitle": "Som do vídeo",
   "video.mixHint": "Ajuste volumes, mute e a sala dos takes e aperte Prévia: o vídeo é exportado exatamente como você ouvir. É a própria mixagem da música, então o mixer muda junto.",
+  "video.mixWholeSong": "Música inteira",
   "video.syncHint": "Aperte Prévia e olhe uma batida: se o som vem atrasado, arraste para a esquerda; adiantado, para a direita.",
   "video.preview": "Prévia",
   "video.formats": "Formatos",
