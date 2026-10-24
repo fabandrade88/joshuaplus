@@ -42,7 +42,10 @@
   }
 
   onMount(() => {
-    if (studio.supported) void studio.openCamera();
+    if (!studio.supported) return;
+    // Reopened while an export runs: the clip is shown, no camera needed.
+    if (studio.phase === "idle") void studio.openCamera();
+    return studio.watchCameras();
   });
   onDestroy(() => void studio.close());
 
@@ -61,6 +64,9 @@
       }),
   );
   const busy = $derived(studio.phase === "starting" || studio.phase === "saving" || studio.phase === "exporting");
+  /** The window can close at any time except mid-take: an export keeps
+   *  running in the background (its progress shows in the sidebar). */
+  const canClose = $derived(studio.phase !== "recording" && studio.phase !== "starting" && studio.phase !== "saving");
   /** While filming, the studio shrinks to a corner so the app stays visible. */
   const mini = $derived(studio.phase === "starting" || studio.phase === "recording");
 </script>
@@ -93,7 +99,7 @@
   </div>
 {/snippet}
 
-<svelte:window onkeydown={(e) => e.key === "Escape" && !busy && studio.phase !== "recording" && void close()} />
+<svelte:window onkeydown={(e) => e.key === "Escape" && canClose && void close()} />
 
 <div class="backdrop" class:mini role="presentation">
   <div class="studio" class:mini role="dialog" aria-modal={!mini} tabindex="-1" aria-label={i18n.t("video.title")}>
@@ -103,7 +109,7 @@
         <h2>{i18n.t("video.title")}</h2>
         <p>{i18n.t("video.subtitle")}</p>
       </div>
-      <button class="icon-btn" title={i18n.t("common.close")} aria-label={i18n.t("common.close")} disabled={busy || studio.phase === "recording"} onclick={() => close()}>
+      <button class="icon-btn" title={i18n.t("common.close")} aria-label={i18n.t("common.close")} disabled={!canClose} onclick={() => close()}>
         <Icon name="close" size={16} />
       </button>
     </header>
@@ -206,16 +212,31 @@
             {/if}
             <p class="note">{studio.container?.ext === "webm" ? i18n.t("video.webmNote") : i18n.t("video.mp4Note")}</p>
           {:else}
-            {#if studio.cameras.length > 1}
-              <label class="field">
-                <span>{i18n.t("video.camera")}</span>
-                <select value={studio.cameraId ?? ""} disabled={studio.phase !== "idle"} onchange={(e) => studio.openCamera(e.currentTarget.value)}>
+            <div class="field">
+              <label for="studio-camera">{i18n.t("video.camera")}</label>
+              <div class="camera-row">
+                <select
+                  id="studio-camera"
+                  value={studio.cameraId ?? ""}
+                  disabled={studio.phase !== "idle" || studio.cameras.length === 0}
+                  onchange={(e) => studio.chooseCamera(e.currentTarget.value)}
+                >
+                  {#if studio.cameras.length === 0}<option value="">{i18n.t("video.noCameras")}</option>{/if}
                   {#each studio.cameras as c (c.id)}
                     <option value={c.id}>{c.label}</option>
                   {/each}
                 </select>
-              </label>
-            {/if}
+                <button
+                  class="icon-btn"
+                  title={i18n.t("video.findCameras")}
+                  aria-label={i18n.t("video.findCameras")}
+                  disabled={studio.phase !== "idle"}
+                  onclick={() => studio.openCamera(studio.cameraId)}
+                >
+                  <Icon name="loop" size={15} />
+                </button>
+              </div>
+            </div>
             {@render formatPicker()}
             <ul class="facts">
               <li><Icon name="music" size={14} />{i18n.t("video.factMusic")}</li>
@@ -449,6 +470,15 @@
     text-transform: uppercase;
     letter-spacing: 0.1em;
     color: var(--text-faint);
+  }
+  .camera-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .camera-row select {
+    flex: 1;
+    min-width: 0;
   }
   .formats {
     display: flex;

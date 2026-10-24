@@ -114,28 +114,82 @@ class VideoStudio {
   }
 
   // ── Camera ───────────────────────────────────────────────────────────────
+  /** Opens a camera: the given one, else the one used last time (matched by
+   *  name: ids can change between runs), else any. A camera that is gone or
+   *  busy falls back to whichever is available. */
   async openCamera(id: string | null = this.cameraId): Promise<void> {
     this.closeCamera();
     this.cameraError = null;
+    await this.refreshCameras();
+    const remembered = readCameraLabel();
+    const wanted =
+      (id && this.cameras.some((c) => c.id === id) ? id : null) ??
+      this.cameras.find((c) => remembered !== null && c.label === remembered)?.id ??
+      null;
+    let stream: MediaStream | null = null;
+    let error: unknown = null;
+    for (const choice of wanted ? [wanted, null] : [null]) {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: {
+            ...(choice ? { deviceId: { exact: choice } } : {}),
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+            frameRate: { ideal: FPS },
+          },
+        });
+        break;
+      } catch (e) {
+        error = e;
+        if (e instanceof DOMException && e.name === "NotAllowedError") break;
+      }
+    }
+    if (!stream) {
+      this.cameraError =
+        error instanceof DOMException && error.name === "NotAllowedError" ? i18n.t("video.denied") : i18n.t("video.noCamera");
+      return;
+    }
+    this.stream = stream;
+    this.cameraId = stream.getVideoTracks()[0]?.getSettings().deviceId ?? wanted;
+    // Labels are only readable once a camera is open.
+    await this.refreshCameras();
+  }
+
+  /** Lists the cameras connected to the computer. */
+  async refreshCameras(): Promise<void> {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: false,
-        video: {
-          ...(id ? { deviceId: { exact: id } } : {}),
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-          frameRate: { ideal: FPS },
-        },
-      });
-      this.stream = stream;
-      this.cameraId = stream.getVideoTracks()[0]?.getSettings().deviceId ?? id;
       const devices = await navigator.mediaDevices.enumerateDevices();
       this.cameras = devices
-        .filter((d) => d.kind === "videoinput")
+        .filter((d) => d.kind === "videoinput" && d.deviceId !== "")
         .map((d, i) => ({ id: d.deviceId, label: d.label || `${i18n.t("video.camera")} ${i + 1}` }));
-    } catch (e) {
-      this.cameraError = e instanceof DOMException && e.name === "NotAllowedError" ? i18n.t("video.denied") : i18n.t("video.noCamera");
+    } catch {
+      this.cameras = [];
     }
+  }
+
+  /** The user picked a camera: open it and remember it for next time. */
+  async chooseCamera(id: string): Promise<void> {
+    const label = this.cameras.find((c) => c.id === id)?.label;
+    if (label) writeCameraLabel(label);
+    await this.openCamera(id);
+  }
+
+  /** Follows cameras being plugged in or out while the studio is open.
+   *  Returns a cleanup. */
+  watchCameras(): () => void {
+    const media = navigator.mediaDevices;
+    if (!media?.addEventListener) return () => {};
+    const onChange = async () => {
+      const before = this.cameraId;
+      await this.refreshCameras();
+      if (this.phase !== "idle") return; // never swap cameras mid-take
+      const gone = before !== null && !this.cameras.some((c) => c.id === before);
+      const ended = this.stream?.getVideoTracks().every((t) => t.readyState === "ended") ?? true;
+      if (gone || ended || !this.stream) await this.openCamera(null);
+    };
+    media.addEventListener("devicechange", onChange);
+    return () => media.removeEventListener("devicechange", onChange);
   }
 
   closeCamera(): void {
@@ -652,6 +706,24 @@ export function loadImage(src: string | null): Promise<HTMLImageElement | null> 
 /** Album cover, song title and artist in the lower left, over a soft shade.
  *  Any part may be missing (empty text / null cover); with nothing to show it
  *  draws nothing at all. */
+const CAMERA_KEY = "joshua.video.camera";
+
+function readCameraLabel(): string | null {
+  try {
+    return localStorage.getItem(CAMERA_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeCameraLabel(label: string): void {
+  try {
+    localStorage.setItem(CAMERA_KEY, label);
+  } catch {
+    // Remembering the camera is a convenience only.
+  }
+}
+
 export function drawTitle(
   g: CanvasRenderingContext2D,
   f: VideoFormat,

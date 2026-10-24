@@ -172,6 +172,17 @@ class AppStore {
       events.onJob((u) => this.onJob(u)),
       events.onTransport((t) => this.onTransport(t)),
       events.onLibraryChanged(() => void this.refreshLibrary()),
+      events.onDevicesChanged((c) => {
+        if (c.restored && c.output) this.notify(i18n.t("devices.restored", { name: c.output }));
+        else if (c.lostOutput)
+          this.notify(
+            c.output
+              ? i18n.t("devices.outputLost", { lost: c.lostOutput, name: c.output })
+              : i18n.t("devices.outputNone", { lost: c.lostOutput }),
+          );
+        void this.refreshInfo();
+        void this.refreshInputs();
+      }),
       events.onModelProgress((p) => (this.modelProgress = p)),
       events.onExportProgress((p) => (this.exportProgress = p)),
       events.onInputLevels((l) => {

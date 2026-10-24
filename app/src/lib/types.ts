@@ -28,6 +28,14 @@ export interface AppInfo {
   musicDir: string | null;
 }
 
+/** An audio interface was plugged in or out (see the device watchdog). */
+export interface DevicesChanged {
+  lostOutput: string | null;
+  output: string | null;
+  restored: boolean;
+  inputsChanged: boolean;
+}
+
 export interface ExportFile {
   name: string;
   path: string;
