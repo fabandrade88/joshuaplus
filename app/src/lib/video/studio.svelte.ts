@@ -3,7 +3,7 @@
 // clip per chosen format. The picture is the camera, cropped to the format;
 // the sound is the real Joshua+ mix — song and takes, never the click —
 // rendered by the backend and lined up with the picture.
-import { api, events } from "../api";
+import { api, events, isApiError } from "../api";
 import { app } from "../app.svelte";
 import { i18n } from "../i18n/index.svelte";
 import {
@@ -191,6 +191,13 @@ class VideoStudio {
   }
 
   // ── Mix audio for the clip ───────────────────────────────────────────────
+  /** The clip's sound for the current sync: reuses the one prepared for
+   *  the review player when possible (rendering it is the slow part). */
+  private async audioFor(ctx: AudioContext): Promise<AudioBuffer> {
+    if (this.reviewBuffer && this.reviewSync === this.syncMs) return this.reviewBuffer;
+    return this.clipAudio(ctx);
+  }
+
   private async clipAudio(ctx: AudioContext): Promise<AudioBuffer> {
     const clip = this.clip!;
     const start = clip.songAtStart + this.syncMs / 1000;
@@ -325,18 +332,24 @@ class VideoStudio {
     video.playsInline = true;
     video.preload = "auto";
     video.className = "compose-video";
-    video.src = this.clipUrl!;
-    // WebKit pauses muted videos that are not visible: the sidebar card
-    // shows this element as a live thumbnail while exporting.
+    // WebKit pauses (and may not even load) muted videos that are not in
+    // the page and visible: the sidebar card shows this element as a live
+    // thumbnail. Put it in the page first, then load it.
     this.composeVideo = video;
-    const ready = whenReady(video); // listen now, before any await
     const handles: number[] = [];
+    const t0 = performance.now();
+    const step = (what: string) => trace(`${what} (+${Math.round(performance.now() - t0)} ms)`);
     try {
-      await ctx.resume();
-      const buffer = await this.clipAudio(ctx);
-      if (this.cancelExport) throw new Cancelled();
-      await ready;
       await ensureInDocument(video);
+      video.src = this.clipUrl!;
+      video.load();
+      step(`video loading, in page: ${video.isConnected}`);
+      await ctx.resume();
+      const buffer = await this.audioFor(ctx);
+      step(`sound ready: ${buffer.duration.toFixed(1)} s`);
+      if (this.cancelExport) throw new Cancelled();
+      await whenReady(video);
+      step(`video ready ${video.videoWidth}x${video.videoHeight}`);
       this.exportStage = "encoding";
       const dest = ctx.createMediaStreamDestination();
       const src = ctx.createBufferSource();
@@ -393,6 +406,7 @@ class VideoStudio {
 
       for (const o of outputs) o.rec.start(1000);
       draw();
+      step(`encoding ${outputs.length} format(s) as ${container.mime}`);
       await new Promise<void>((resolve, reject) => {
         let lastTime = -1;
         let lastMove = performance.now();
@@ -435,6 +449,7 @@ class VideoStudio {
         /* already stopped */
       }
       this.exportStage = "saving";
+      step(`picture done at ${video.currentTime.toFixed(1)} s`);
       for (const o of outputs) o.rec.stop();
       await Promise.all(outputs.map((o) => o.finished));
       await Promise.all(outputs.map((o) => o.flush()));
@@ -444,12 +459,15 @@ class VideoStudio {
         if (path) this.saved = [...this.saved, path];
       }
       handles.length = 0;
+      step(`saved ${this.saved.length} file(s)`);
       if (this.cancelExport) app.notify(i18n.t("video.exportCancelled"));
       else if (!keep) throw new Error("save");
       else app.notify(i18n.t("video.exported", { n: this.saved.length }));
     } catch (e) {
       if (!(e instanceof Cancelled)) {
-        this.exportError = i18n.t("video.exportFailed");
+        const why = e instanceof Error ? e.message : isApiError(e) ? e.code : String(e);
+        trace(`failed: ${why}; video readyState=${video.readyState} networkState=${video.networkState} error=${video.error?.code ?? "-"}`);
+        this.exportError = `${i18n.t("video.exportFailed")} (${why})`;
         app.notify(this.exportError);
       }
     } finally {
@@ -490,14 +508,50 @@ class Cancelled extends Error {}
 /** No picture progress for this long means the export is stuck. */
 const STALL_MS = 8_000;
 
-/** Resolves once the video can show its first frame (listens immediately). */
+/** Resolves once the video can show its first frame. Some engines only
+ *  report `canplay`, or need a nudge (`play` then `pause`) to decode. */
 function whenReady(video: HTMLVideoElement): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) return resolve();
-    const timer = setTimeout(() => reject(new Error("load timeout")), 15_000);
-    video.addEventListener("loadeddata", () => (clearTimeout(timer), resolve()), { once: true });
-    video.addEventListener("error", () => (clearTimeout(timer), reject(new Error("video"))), { once: true });
+    let nudged = false;
+    const poll = setInterval(() => {
+      if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) return done();
+      if (!nudged && performance.now() - started > 3_000) {
+        nudged = true;
+        void video
+          .play()
+          .then(() => video.pause())
+          .catch(() => undefined);
+      }
+      if (performance.now() - started > 20_000) {
+        cleanup();
+        reject(new Error(`load timeout (readyState ${video.readyState}, network ${video.networkState})`));
+      }
+    }, 250);
+    const started = performance.now();
+    const cleanup = () => {
+      clearInterval(poll);
+      video.removeEventListener("loadeddata", done);
+      video.removeEventListener("canplay", done);
+      video.removeEventListener("error", fail);
+    };
+    const done = () => {
+      cleanup();
+      resolve();
+    };
+    const fail = () => {
+      cleanup();
+      reject(new Error(`video error ${video.error?.code ?? "?"}`));
+    };
+    video.addEventListener("loadeddata", done);
+    video.addEventListener("canplay", done);
+    video.addEventListener("error", fail);
   });
+}
+
+/** Diagnostics for exports (shown in the dev log). */
+function trace(message: string): void {
+  console.warn(`[video export] ${message}`);
 }
 
 /** The sidebar card adopts the element; if it has not (e.g. the sidebar is

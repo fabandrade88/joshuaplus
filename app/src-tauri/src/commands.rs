@@ -754,8 +754,13 @@ pub async fn export_mix(app: AppHandle) -> ApiResult<String> {
         let end = session.length;
         let path = ws.new_export_path(&project.title, "mix", "wav")?;
         let mut writer = joshua_core::wav::StereoWavWriter::create(&path, rate)?;
+        // ~50 updates per export, not one per rendered block.
+        let last = std::cell::Cell::new(-1.0f32);
         let report = |p: f32| {
-            let _ = app.emit("export-progress", p);
+            if p - last.get() >= 0.02 || p >= 1.0 {
+                last.set(p);
+                let _ = app.emit("export-progress", p);
+            }
         };
         joshua_core::export::render_mix(
             Box::new(session),
