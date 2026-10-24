@@ -131,7 +131,7 @@
           class="chip export"
           title={i18n.t("export.hint")}
           disabled={app.exportProgress !== null || app.recording}
-          onclick={() => app.exportMix()}
+          onclick={() => (app.exportDialogOpen = true)}
         >
           <Icon name="export" size={12} />
           {app.exportProgress !== null ? `${Math.round(app.exportProgress * 100)}%` : i18n.t("export.audio")}

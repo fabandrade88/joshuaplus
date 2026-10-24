@@ -121,10 +121,11 @@ export const helpEn: HelpSection[] = [
       { term: "Arm an input", text: "Press ● on an input’s track (in the console) to arm it. Every armed input records to its own take." },
       { term: "REC (audio)", text: "With the microphone mode selected, press the red button: the song plays with its count-in and the armed inputs record. Press again (■) to stop." },
       { term: "Takes", text: "Each recording appears in the Takes group, already lined up with the song (latency and clock differences are corrected). It has its own fader, pan, M, S and × to delete." },
-      { term: "Export audio", text: "Exports the mix of all active tracks (song + takes) as a 24-bit WAV into the Exports folder. The click goes in only if it is on: turn it off to export without it." },
+      { term: "Export audio", text: "Exports the mix of all active tracks (song + takes) as a 24-bit WAV into the Exports folder. A window asks whether to include the metronome (click) and shows where the file goes." },
+      { term: "Exports", text: "In the sidebar: every mix and video you exported, with buttons to play it or show it in its folder. Recorded takes stay inside their song (Takes group in the mixer)." },
       { term: "Video studio", text: "Choose the camera mode next to REC and press it. Pick the formats (YouTube 16:9, Shorts/Reels/TikTok 9:16, Instagram 1:1 or 4:5); the dashed guides show the crop. Press Record video." },
       { term: "Video sound", text: "The video gets the song’s mix and your armed inputs — never the click. After filming, press Preview and adjust the sync slider if the sound is early or late." },
-      { term: "Export videos", text: "Exports one file per chosen format into the Exports folder (MP4 when the system supports it). Export runs in real time, as long as the clip." },
+      { term: "Export videos", text: "Exports one file per chosen format into the Exports folder (MP4 when the system supports it). Export runs in real time, as long as the clip. The videos then appear under Exports in the sidebar." },
     ],
   },
   {

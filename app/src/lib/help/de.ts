@@ -121,10 +121,11 @@ export const helpDe: HelpSection[] = [
       { term: "Eingang scharf schalten", text: "Drück ● auf der Spur eines Eingangs (im Mischpult). Jeder scharfe Eingang nimmt auf einen eigenen Take auf." },
       { term: "REC (Audio)", text: "Mit dem Mikrofon-Modus den roten Knopf drücken: Der Song läuft mit Einzähler, die scharfen Eingänge nehmen auf. Nochmal (■) zum Stoppen." },
       { term: "Takes", text: "Jede Aufnahme erscheint in der Gruppe Takes, schon am Song ausgerichtet (Latenz und Takt-Unterschiede werden korrigiert). Mit Fader, Pan, M, S und × zum Löschen." },
-      { term: "Audio exportieren", text: "Exportiert den Mix aller aktiven Spuren (Song + Takes) als 24-Bit-WAV in den Ordner Exports. Der Klick ist nur dabei, wenn er an ist: ausschalten, um ohne zu exportieren." },
+      { term: "Audio exportieren", text: "Exportiert den Mix aller aktiven Spuren (Song + Takes) als 24-Bit-WAV in den Ordner Exports. Ein Fenster fragt, ob das Metronom (Klick) dabei sein soll, und zeigt, wohin die Datei kommt." },
+      { term: "Exporte", text: "In der Seitenleiste: alle exportierten Mixe und Videos, mit Knöpfen zum Abspielen oder Zeigen im Ordner. Aufgenommene Takes bleiben im Song (Gruppe Takes im Mixer)." },
       { term: "Video-Studio", text: "Wähle neben REC den Kamera-Modus und drück ihn. Wähle Formate (YouTube 16:9, Shorts/Reels/TikTok 9:16, Instagram 1:1 oder 4:5); gestrichelte Hilfslinien zeigen den Ausschnitt. Drück Video aufnehmen." },
       { term: "Ton im Video", text: "Das Video bekommt den Mix des Songs und deine scharfen Eingänge — nie den Klick. Nach dem Filmen Vorschau drücken und die Synchronität anpassen, falls der Ton zu früh oder zu spät ist." },
-      { term: "Videos exportieren", text: "Exportiert eine Datei pro Format in den Ordner Exports (MP4, wenn das System es kann). Der Export läuft in Echtzeit, so lange wie der Clip." },
+      { term: "Videos exportieren", text: "Exportiert eine Datei pro Format in den Ordner Exports (MP4, wenn das System es kann). Der Export läuft in Echtzeit, so lange wie der Clip. Danach findest du die Videos unter Exporte in der Seitenleiste." },
     ],
   },
   {

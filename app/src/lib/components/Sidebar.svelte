@@ -35,6 +35,11 @@
       <span>{i18n.t("home.allSongs")}</span>
       <span class="count tabular">{app.songs.length}</span>
     </button>
+    <button class="nav-item" class:active={app.view.kind === "exports"} onclick={() => app.openExports()}>
+      <Icon name="export" size={16} />
+      <span>{i18n.t("nav.exports")}</span>
+      {#if app.exports}<span class="count tabular">{app.exports.files.length}</span>{/if}
+    </button>
   </nav>
 
   <section class="block folders">

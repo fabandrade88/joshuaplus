@@ -8,6 +8,8 @@
   import HelpView from "./lib/components/HelpView.svelte";
   import Home from "./lib/components/Home.svelte";
   import SettingsDialog from "./lib/components/SettingsDialog.svelte";
+  import ExportDialog from "./lib/components/ExportDialog.svelte";
+  import ExportsView from "./lib/components/ExportsView.svelte";
   import VideoStudio from "./lib/components/VideoStudio.svelte";
   import Sidebar from "./lib/components/Sidebar.svelte";
   import BarMap from "./lib/components/BarMap.svelte";
@@ -65,6 +67,8 @@
         <AboutView />
       {:else if app.view.kind === "help"}
         <HelpView />
+      {:else if app.view.kind === "exports"}
+        <ExportsView />
       {:else if app.view.kind === "gear"}
         <GearView />
       {:else if app.view.kind === "folder"}
@@ -84,6 +88,7 @@
 </div>
 
 <SettingsDialog />
+<ExportDialog />
 {#if app.videoOpen}<VideoStudio />{/if}
 
 <style>

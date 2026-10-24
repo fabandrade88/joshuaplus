@@ -77,6 +77,7 @@
                   color="var(--ok)"
                   tag={i18n.t("console.direct")}
                   level={app.inputLevels[input.index] ?? 0}
+                  caption={i18n.t("gear.directMonitorVolume")}
                   note={i18n.t("gear.directMonitor")}
                   noteTitle={i18n.t("gear.directMonitorHint")}
                   onnote={() => app.openGear()}

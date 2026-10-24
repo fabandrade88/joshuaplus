@@ -28,6 +28,19 @@ export interface AppInfo {
   musicDir: string | null;
 }
 
+export interface ExportFile {
+  name: string;
+  path: string;
+  kind: "audio" | "video";
+  size: number;
+  modifiedUnix: number;
+}
+
+export interface ExportList {
+  dir: string;
+  files: ExportFile[];
+}
+
 export interface SongSummary {
   id: string;
   title: string;

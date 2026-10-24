@@ -108,6 +108,26 @@ function sineWav(secs: number): ArrayBuffer {
 mockIPC(
   (cmd, args) => {
     switch (cmd) {
+      case "list_exports": {
+        const dir = "/Users/musician/Music/Joshua+/Exports";
+        const now = Math.floor(Date.now() / 1000);
+        const f = (name: string, kind: string, mb: number, ago: number) => ({
+          name,
+          path: `${dir}/${name}`,
+          kind,
+          size: mb * 1024 * 1024,
+          modifiedUnix: now - ago,
+        });
+        return {
+          dir,
+          files: [
+            f("Mercy mix (2).wav", "audio", 63, 600),
+            f("Left For Good youtube.mp4", "video", 18, 3600),
+            f("Left For Good vertical.mp4", "video", 19, 3600),
+            f("Mercy mix.wav", "audio", 63, 86400),
+          ],
+        };
+      }
       case "render_clip_audio":
         return sineWav((args as { durationSecs: number }).durationSecs);
       case "video_save_begin":
@@ -187,6 +207,11 @@ await new Promise((r) => setTimeout(r, 150));
 if (state !== "welcome") {
   await emit("job-update", { id: 1, fileName: "Wonderwall (Remastered).mp3", status: "running", stage: "separating", progress: 0.62, error: null, songId: null, folder: "banda" });
   await emit("job-update", { id: 2, fileName: "Asa Branca.flac", status: "queued", stage: null, progress: 0, error: null, songId: null, folder: null });
+}
+if (state === "exports") app.openExports();
+if (state === "exportdialog") {
+  await app.openSong(project.id);
+  app.exportDialogOpen = true;
 }
 if (state === "folder") app.openFolder("igreja");
 if (state === "settings") {

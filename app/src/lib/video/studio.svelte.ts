@@ -503,6 +503,7 @@ class VideoStudio {
       if (this.cancelExport) app.notify(i18n.t("video.exportCancelled"));
       else if (!keep) throw new Error("save");
       else app.notify(i18n.t("video.exported", { n: this.saved.length }));
+      void app.refreshExports();
     } catch (e) {
       if (!(e instanceof Cancelled)) {
         const why = e instanceof Error ? e.message : isApiError(e) ? e.code : String(e);
