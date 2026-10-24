@@ -105,6 +105,8 @@ function sineWav(secs: number): ArrayBuffer {
   return buf;
 }
 (window as unknown as { savedBytes: Record<number, number> }).savedBytes = savedBytes;
+/** How many times the clip sound was rendered (remix test). */
+const renders = { n: 0 };
 
 mockIPC(
   (cmd, args) => {
@@ -130,6 +132,7 @@ mockIPC(
         };
       }
       case "render_clip_audio":
+        renders.n++;
         return sineWav((args as { durationSecs: number }).durationSecs);
       case "video_save_begin":
         savedBytes[nextHandle] = 0;
@@ -324,6 +327,47 @@ if (state === "video") {
     }
     log.push(`phase=${studio.phase} saved=${JSON.stringify(studio.saved)} err=${studio.exportError}`);
     document.title = log.join(" | ");
+  }
+  if (params.get("phase") === "remix") {
+    // Editing the mix while the review plays re-renders the clip sound, and
+    // the export then reuses that fresh sound.
+    const { studio } = await import("../src/lib/video/studio.svelte");
+    const log: string[] = [];
+    const cv = document.createElement("canvas");
+    cv.width = 640;
+    cv.height = 360;
+    const g = cv.getContext("2d")!;
+    let f = 0;
+    const anim = setInterval(() => {
+      g.fillStyle = `hsl(${(f++ * 9) % 360} 70% 40%)`;
+      g.fillRect(0, 0, 640, 360);
+    }, 33);
+    const rec = new MediaRecorder(cv.captureStream(30), { mimeType: studio.container!.mime.replace(/,mp4a\.40\.2|,opus/, "") });
+    const chunks: Blob[] = [];
+    rec.ondataavailable = (e) => chunks.push(e.data);
+    rec.start(500);
+    await new Promise((r) => setTimeout(r, 6000));
+    await new Promise<void>((r) => ((rec.onstop = () => r()), rec.stop()));
+    clearInterval(anim);
+    const blob = new Blob(chunks, { type: rec.mimeType });
+    studio.clip = { blob, durationSecs: 6, songAtStart: 10 };
+    studio.clipUrl = URL.createObjectURL(blob);
+    studio.phase = "review";
+    await new Promise((r) => setTimeout(r, 800));
+    const v = document.querySelector<HTMLVideoElement>(".stage > video")!;
+    studio.unlockAudio();
+    await v.play().catch((e: unknown) => log.push(`play failed ${String(e)}`));
+    await new Promise((r) => setTimeout(r, 1500));
+    log.push(`first renders=${renders.n} paused=${v.paused} t=${v.currentTime.toFixed(1)}`);
+    const slider = document.querySelector<HTMLInputElement>(".mix input[type=range]")!;
+    slider.value = "-10";
+    slider.dispatchEvent(new Event("input", { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 1500));
+    log.push(`after-edit renders=${renders.n} paused=${v.paused} t=${v.currentTime.toFixed(1)} songGain=${app.song?.project.songGainDb}`);
+    const s3 = studio as unknown as { audioFor: (c: AudioContext) => Promise<AudioBuffer> };
+    await s3.audioFor(new AudioContext());
+    log.push(`export-sound renders=${renders.n}`);
+    document.title = "phase=remix | " + log.join(" | ");
   }
   if (params.get("phase") === "exportflow") {
     const { studio } = await import("../src/lib/video/studio.svelte");

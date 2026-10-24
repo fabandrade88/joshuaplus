@@ -9,6 +9,7 @@
   import { FORMATS, coverCrop, type FormatId } from "../video/formats";
   import { studio } from "../video/studio.svelte";
   import Icon from "./Icon.svelte";
+  import VideoMix from "./VideoMix.svelte";
 
   let live = $state<HTMLVideoElement | null>(null);
   let review = $state<HTMLVideoElement | null>(null);
@@ -117,6 +118,7 @@
             <video bind:this={review} src={studio.clipUrl} controls playsinline onpointerdown={() => studio.unlockAudio()}></video>
             {#if studio.reviewAudio === "loading"}<p class="sound-state">{i18n.t("video.soundLoading")}</p>{/if}
             {#if studio.reviewAudio === "error"}<p class="sound-state err">{i18n.t("video.soundError")}</p>{/if}
+            <VideoMix disabled={studio.phase === "exporting"} />
           {:else}
             <div class="live">
               <!-- svelte-ignore a11y_media_has_caption -->
@@ -691,6 +693,10 @@
   .studio:not(.mini) .live {
     width: min(100%, calc((100vh - 190px) * 16 / 9));
     margin-inline: auto;
+  }
+  /* Reviewing: a smaller picture leaves the video's sound mix on screen. */
+  .studio:not(.mini) .stage > video {
+    width: min(100%, calc((100vh - 190px) * 0.5 * 16 / 9));
   }
   @media (max-width: 1100px), (max-height: 760px) {
     .backdrop:not(.mini) {

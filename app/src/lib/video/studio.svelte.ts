@@ -230,7 +230,7 @@ class VideoStudio {
   /** The clip's sound for the current sync: reuses the one prepared for
    *  the review player when possible (rendering it is the slow part). */
   private async audioFor(ctx: AudioContext): Promise<AudioBuffer> {
-    if (this.reviewBuffer && this.reviewSync === this.syncMs) return this.reviewBuffer;
+    if (this.reviewFresh(this.syncMs)) return this.reviewBuffer!;
     return this.clipAudio(ctx);
   }
 
@@ -248,6 +248,31 @@ class VideoStudio {
   private reviewBuffer: AudioBuffer | null = null;
   private reviewSync: number | null = null;
   private reviewSrc: AudioBufferSourceNode | null = null;
+  /** Bumped on every mix change made while reviewing: the prepared sound
+   *  is then stale and gets rendered again (for preview and export). */
+  private mixVersion = 0;
+  private reviewMix = -1;
+  private reviewVideo: HTMLVideoElement | null = null;
+  private remixTimer: ReturnType<typeof setTimeout> | undefined;
+
+  private reviewFresh(sync: number): boolean {
+    return this.reviewBuffer !== null && this.reviewSync === sync && this.reviewMix === this.mixVersion;
+  }
+
+  /** The mix was edited in the review: re-render the clip's sound. If the
+   *  clip is playing, it picks the new sound up where it is (debounced, so
+   *  dragging a slider does not render on every step). */
+  mixChanged(): void {
+    this.mixVersion++;
+    clearTimeout(this.remixTimer);
+    this.remixTimer = setTimeout(() => {
+      const v = this.reviewVideo;
+      if (v && !v.paused) {
+        v.pause();
+        void v.play();
+      }
+    }, 350);
+  }
 
   /** Must run inside a click/tap: WebKit only lets audio start from a gesture. */
   unlockAudio(): void {
@@ -257,12 +282,14 @@ class VideoStudio {
 
   /** Renders (once per sync value) the mix that goes with the clip. */
   private async reviewBufferFor(sync: number): Promise<AudioBuffer> {
-    if (this.reviewBuffer && this.reviewSync === sync) return this.reviewBuffer;
+    if (this.reviewFresh(sync)) return this.reviewBuffer!;
     this.reviewAudio = "loading";
     const ctx = (this.reviewCtx ??= new AudioContext());
+    const mix = this.mixVersion;
     const buffer = await this.clipAudio(ctx);
     this.reviewBuffer = buffer;
     this.reviewSync = sync;
+    this.reviewMix = mix;
     this.reviewAudio = "ready";
     return buffer;
   }
@@ -280,12 +307,13 @@ class VideoStudio {
    *  Preview button — sounds with the real mix, in sync. Returns a cleanup. */
   attachReview(video: HTMLVideoElement): () => void {
     video.muted = true;
+    this.reviewVideo = video;
     let starting = false;
     const onPlay = async () => {
       if (starting || !this.clip) return;
       this.stopReviewSound();
       const sync = this.syncMs;
-      if (!this.reviewBuffer || this.reviewSync !== sync) {
+      if (!this.reviewFresh(sync)) {
         // Hold the picture until the sound is ready, then resume together.
         starting = true;
         video.pause();
@@ -303,9 +331,10 @@ class VideoStudio {
       const ctx = this.reviewCtx!;
       await ctx.resume();
       const src = ctx.createBufferSource();
-      src.buffer = this.reviewBuffer;
+      const buffer = this.reviewBuffer!;
+      src.buffer = buffer;
       src.connect(ctx.destination);
-      src.start(ctx.currentTime, Math.min(video.currentTime, this.reviewBuffer.duration));
+      src.start(ctx.currentTime, Math.min(video.currentTime, buffer.duration));
       this.reviewSrc = src;
     };
     const onStop = () => {
@@ -320,6 +349,8 @@ class VideoStudio {
       video.removeEventListener("pause", onStop);
       video.removeEventListener("seeking", onStop);
       video.removeEventListener("ended", onStop);
+      if (this.reviewVideo === video) this.reviewVideo = null;
+      clearTimeout(this.remixTimer);
       this.stopReviewSound();
     };
   }
@@ -338,6 +369,7 @@ class VideoStudio {
     this.stopReviewSound();
     this.reviewBuffer = null;
     this.reviewSync = null;
+    this.reviewMix = -1;
     this.reviewAudio = "idle";
   }
 
