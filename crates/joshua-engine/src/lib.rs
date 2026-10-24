@@ -29,6 +29,9 @@ use joshua_core::metronome::ClickTrack;
 use joshua_core::mixer::{MAX_MONITORS, Mixer, Session, SharedState};
 
 pub mod input;
+pub mod monitor;
+
+use monitor::MonitorReader;
 
 pub use joshua_core::mixer;
 
@@ -56,6 +59,8 @@ pub struct DeviceInfo {
 /// Parameters of the running stream.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StreamInfo {
+    /// Backend id of the output device, when the host reports one.
+    pub device_id: Option<String>,
     pub device_name: String,
     pub sample_rate: u32,
     pub channels: u16,
@@ -88,7 +93,7 @@ pub struct Processor {
     commands: rtrb::Consumer<Command>,
     garbage: rtrb::Producer<Garbage>,
     scratch: Vec<f32>,
-    monitors: [Option<rtrb::Consumer<f32>>; MAX_MONITORS],
+    monitors: [Option<MonitorReader>; MAX_MONITORS],
 }
 
 impl std::fmt::Debug for Processor {
@@ -210,8 +215,8 @@ impl Processor {
                 }
                 Command::SetMonitor(slot, ring) => {
                     if let Some(entry) = self.monitors.get_mut(slot) {
-                        if let Some(old) = std::mem::replace(entry, ring) {
-                            let _ = self.garbage.push(Garbage::Monitor(old));
+                        if let Some(old) = std::mem::replace(entry, ring.map(MonitorReader::new)) {
+                            let _ = self.garbage.push(Garbage::Monitor(old.into_ring()));
                         }
                     }
                 }
@@ -219,41 +224,16 @@ impl Processor {
         }
     }
 
-    /// Adds the monitored live inputs to a rendered block.
+    /// Adds the monitored live inputs to a rendered block, then applies the
+    /// soft output limiter.
     fn mix_monitors(&mut self, out: &mut [f32], channels: usize) {
-        let channels = channels.max(1);
-        let frames = out.len() / channels;
-        for (slot, ring) in self.monitors.iter_mut().enumerate() {
-            let Some(ring) = ring else { continue };
-            // Keep latency bounded: drop anything beyond ~2 blocks + 5 ms.
-            let target = (frames * 2 + 256) * 2;
-            // Even count: the ring holds interleaved L/R pairs; dropping an odd
-            // number of samples would swap the channels from then on.
-            let excess = ring.slots().saturating_sub(target) & !1;
-            if excess > 0 {
-                if let Ok(chunk) = ring.read_chunk(excess) {
-                    chunk.commit_all();
-                }
-            }
+        for (slot, reader) in self.monitors.iter_mut().enumerate() {
+            let Some(reader) = reader else { continue };
             let gain = self.shared.monitor_gain[slot].load();
-            let n = (ring.slots() / 2).min(frames);
-            let Ok(chunk) = ring.read_chunk(n * 2) else { continue };
-            if gain > 0.0 {
-                let (a, b) = chunk.as_slices();
-                for (f, pair) in a.iter().chain(b).copied().collect_pairs().take(n).enumerate() {
-                    let base = f * channels;
-                    if channels == 1 {
-                        out[base] += 0.5 * (pair.0 + pair.1) * gain;
-                    } else {
-                        out[base] += pair.0 * gain;
-                        out[base + 1] += pair.1 * gain;
-                    }
-                }
-            }
-            chunk.commit_all();
+            reader.mix_into(out, channels, gain);
         }
         for s in out.iter_mut() {
-            *s = s.clamp(-1.0, 1.0);
+            *s = joshua_core::audio::soft_clip(*s);
         }
     }
 
@@ -279,24 +259,6 @@ impl Processor {
             }
             self.scratch = scratch;
         }
-    }
-}
-
-/// Iterator adapter yielding consecutive `(left, right)` pairs.
-trait CollectPairs: Iterator<Item = f32> + Sized {
-    fn collect_pairs(self) -> Pairs<Self> {
-        Pairs(self)
-    }
-}
-
-impl<I: Iterator<Item = f32>> CollectPairs for I {}
-
-struct Pairs<I>(I);
-
-impl<I: Iterator<Item = f32>> Iterator for Pairs<I> {
-    type Item = (f32, f32);
-    fn next(&mut self) -> Option<(f32, f32)> {
-        Some((self.0.next()?, self.0.next()?))
     }
 }
 
@@ -445,7 +407,8 @@ fn open_stream(
     let format = supported.sample_format();
     let config: StreamConfig = supported.into();
     let channels = usize::from(config.channels);
-    let info = StreamInfo { device_name, sample_rate: config.sample_rate, channels: config.channels };
+    let device_id = device.id().ok().map(|id| id.to_string());
+    let info = StreamInfo { device_id, device_name, sample_rate: config.sample_rate, channels: config.channels };
     let (controller, processor) = channel(channels);
 
     let stream = match format {
@@ -530,41 +493,23 @@ mod tests {
     }
 
     #[test]
-    fn trimming_latency_never_swaps_left_and_right() {
-        let (mut ctl, mut proc) = channel(2);
-        let mut ring = ctl.attach_monitor(0, 48_000).unwrap();
-        ctl.shared().monitor_gain[0].store(1.0);
-        for _ in 0..4_000 {
-            ring.push(0.5).unwrap();
-            ring.push(-0.5).unwrap();
-        }
-        ring.push(0.5).unwrap(); // half a frame: the producer was mid-pair
-        let mut out = vec![0.0f32; 256];
-        proc.process_f32(&mut out, 2);
-        assert!((out[0] - 0.5).abs() < 1e-6 && (out[1] + 0.5).abs() < 1e-6, "channels swapped: {:?}", &out[..2]);
-    }
-
-    #[test]
-    fn monitored_input_is_mixed_even_when_stopped() {
+    fn monitored_input_is_mixed_even_when_stopped_and_limited() {
         let (mut ctl, mut proc) = channel(2);
         let mut ring = ctl.attach_monitor(0, 48_000).unwrap();
         ctl.shared().monitor_gain[0].store(0.5);
-        for _ in 0..64 {
+        for _ in 0..4_000 {
             ring.push(0.8).unwrap();
             ring.push(-0.4).unwrap();
         }
-        let mut out = vec![0.0f32; 128];
-        proc.process_f32(&mut out, 2);
-        assert!((out[0] - 0.4).abs() < 1e-6 && (out[1] + 0.2).abs() < 1e-6);
-        // Muted monitor still drains, so unmuting later is not delayed.
-        ctl.shared().monitor_gain[0].store(0.0);
-        for _ in 0..64 {
-            ring.push(0.8).unwrap();
-            ring.push(0.8).unwrap();
+        let mut out = vec![0.0f32; 256];
+        for _ in 0..4 {
+            proc.process_f32(&mut out, 2);
         }
+        assert!(out.chunks(2).all(|f| (f[0] - 0.4).abs() < 1e-4 && (f[1] + 0.2).abs() < 1e-4), "{:?}", &out[..4]);
+        // Hot input is softly limited, never above full scale.
+        ctl.shared().monitor_gain[0].store(4.0);
         proc.process_f32(&mut out, 2);
-        assert!(out.iter().all(|s| *s == 0.0));
-        assert_eq!(ring.slots(), 48_000, "ring fully drained");
+        assert!(out.iter().all(|s| s.abs() <= 1.0) && out[0] > 0.95);
     }
 
     #[test]

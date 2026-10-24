@@ -246,9 +246,54 @@ where
         .map_err(|e| EngineError::Device(e.to_string()))
 }
 
+/// Whether an input and the output are the same physical interface.
+///
+/// Such an interface already sends its inputs to its own outputs with zero
+/// latency (direct monitoring, and often a loopback switch). Playing the
+/// input again through the app would double it ~20 ms late (a hollow,
+/// "robotic" comb-filter sound) or, with loopback on, feed back on itself.
+/// Matches the backend id, or the name; Windows decorates endpoint names as
+/// "Microphone (Device)" / "Speakers (Device)", so the bracketed part counts.
+#[must_use]
+pub fn same_interface(input_id: &str, input_name: &str, output_id: Option<&str>, output_name: &str) -> bool {
+    if output_id == Some(input_id) {
+        return true;
+    }
+    let core = |name: &str| -> String {
+        let inner = match (name.rfind('('), name.rfind(')')) {
+            (Some(a), Some(b)) if b > a + 1 => &name[a + 1..b],
+            _ => name,
+        };
+        inner.chars().filter(char::is_ascii_alphanumeric).flat_map(|c| c.to_lowercase()).collect()
+    };
+    let (a, b) = (core(input_name), core(output_name));
+    a.len() >= 3 && a == b
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn recognises_the_output_interface_among_inputs() {
+        let ag06 = "coreaudio:AppleUSBAudioEngine:Yamaha Corporation:Yamaha AG06MK2:1131000:1,2";
+        assert!(same_interface(ag06, "Yamaha AG06MK2", Some(ag06), "Yamaha AG06MK2"));
+        assert!(!same_interface("coreaudio:spd", "SPD-SX PRO", Some(ag06), "Yamaha AG06MK2"));
+        assert!(same_interface(
+            "wasapi:{in}",
+            "Microphone (Yamaha AG06MK2)",
+            Some("wasapi:{out}"),
+            "Speakers (Yamaha AG06MK2)"
+        ));
+        assert!(!same_interface(
+            "wasapi:{in}",
+            "Microphone (Realtek Audio)",
+            Some("wasapi:{out}"),
+            "Speakers (Yamaha AG06MK2)"
+        ));
+        assert!(!same_interface("x", "In", None, "In"), "names too short to trust");
+        assert!(!same_interface("mic", "MacBook Pro Microphone", None, "MacBook Pro Speakers"));
+    }
 
     #[test]
     fn meters_and_routes_selected_channels() {

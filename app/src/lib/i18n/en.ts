@@ -222,6 +222,8 @@ export const en = {
   "gear.channel": "Channel",
   "gear.pair": "Channels {a}+{b}",
   "gear.monitor": "Hear (monitor)",
+  "gear.directMonitorHint": "This is your output interface: it already plays this input to your headphones with zero latency. Joshua+ does not play it again, which would cause echo, a \"robotic\" sound or feedback (loopback).",
+  "gear.directMonitor": "Direct monitoring",
   "gear.monitorUnavailable": "Monitoring needs the same sample rate as the output ({out} Hz).",
   "gear.remove": "Remove",
   "gear.disconnected": "Device not connected",

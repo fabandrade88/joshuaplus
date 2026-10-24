@@ -112,8 +112,8 @@ mockIPC(
         ];
       case "get_inputs":
         return [
-          { index: 0, deviceId: "coreaudio:ag06", name: "Yamaha AG06MK2", channels: 2, sampleRate: 48000, firstChannel: 0, stereo: false, monitor: true, gainDb: -3, monitorOk: true, error: null },
-          { index: 1, deviceId: "coreaudio:spd", name: "SPD-SX PRO", channels: 8, sampleRate: 48000, firstChannel: 0, stereo: true, monitor: false, gainDb: 0, monitorOk: true, error: null },
+          { index: 0, deviceId: "coreaudio:ag06", name: "Yamaha AG06MK2", channels: 2, sampleRate: 48000, firstChannel: 0, stereo: false, monitor: true, gainDb: -3, monitorOk: false, directMonitor: true, error: null },
+          { index: 1, deviceId: "coreaudio:spd", name: "SPD-SX PRO", channels: 8, sampleRate: 48000, firstChannel: 0, stereo: true, monitor: true, gainDb: 0, monitorOk: true, directMonitor: false, error: null },
         ];
       case "get_drums":
         return {

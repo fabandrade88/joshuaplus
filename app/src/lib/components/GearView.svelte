@@ -132,15 +132,19 @@
                       <option value={o.value}>{o.label}</option>
                     {/each}
                   </select>
-                  <label class="toggle" class:disabled={!input.monitorOk}>
-                    <input
-                      type="checkbox"
-                      checked={input.monitor}
-                      disabled={!input.monitorOk}
-                      onchange={(e) => app.updateInput(input.index, { monitor: e.currentTarget.checked })}
-                    />
-                    {i18n.t("gear.monitor")}
-                  </label>
+                  {#if input.directMonitor}
+                    <span class="toggle direct" title={i18n.t("gear.directMonitorHint")}>{i18n.t("gear.directMonitor")}</span>
+                  {:else}
+                    <label class="toggle" class:disabled={!input.monitorOk}>
+                      <input
+                        type="checkbox"
+                        checked={input.monitor}
+                        disabled={!input.monitorOk}
+                        onchange={(e) => app.updateInput(input.index, { monitor: e.currentTarget.checked })}
+                      />
+                      {i18n.t("gear.monitor")}
+                    </label>
+                  {/if}
                   <Knob
                     value={input.gainDb}
                     min={-40}
@@ -152,7 +156,9 @@
                     onchange={(db) => app.updateInput(input.index, { gainDb: Math.round(db * 10) / 10 })}
                   />
                 </div>
-                {#if !input.monitorOk}
+                {#if input.directMonitor}
+                  <span class="tag">{i18n.t("gear.directMonitorHint")}</span>
+                {:else if !input.monitorOk}
                   <span class="tag">{i18n.t("gear.monitorUnavailable", { out: outRate })}</span>
                 {/if}
               {/if}
@@ -447,6 +453,11 @@
     background: var(--bg-active);
     white-space: nowrap;
     cursor: pointer;
+  }
+  .toggle.direct {
+    cursor: help;
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
   }
   .toggle:has(input:checked) {
     color: var(--ok);

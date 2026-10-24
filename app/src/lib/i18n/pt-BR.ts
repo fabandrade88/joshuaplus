@@ -224,6 +224,8 @@ export const ptBR: Messages = {
   "gear.channel": "Canal",
   "gear.pair": "Canais {a}+{b}",
   "gear.monitor": "Ouvir (retorno)",
+  "gear.directMonitorHint": "Esta é a sua interface de saída: ela já toca esta entrada nos fones com latência zero. O Joshua+ não toca de novo, o que causaria eco, som \"robótico\" ou microfonia (loopback).",
+  "gear.directMonitor": "Retorno direto",
   "gear.monitorUnavailable": "O retorno exige a mesma taxa de amostragem da saída ({out} Hz).",
   "gear.remove": "Remover",
   "gear.disconnected": "Equipamento desconectado",

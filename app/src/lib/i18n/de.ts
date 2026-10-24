@@ -224,6 +224,8 @@ export const de: Messages = {
   "gear.channel": "Kanal",
   "gear.pair": "Kanäle {a}+{b}",
   "gear.monitor": "Mithören",
+  "gear.directMonitorHint": "Das ist dein Ausgabe-Interface: Es spielt diesen Eingang bereits ohne Latenz auf deine Kopfhörer. Joshua+ spielt ihn nicht noch einmal ab, das würde Echo, einen „robotischen“ Klang oder Rückkopplung (Loopback) verursachen.",
+  "gear.directMonitor": "Direktes Monitoring",
   "gear.monitorUnavailable": "Mithören braucht dieselbe Abtastrate wie der Ausgang ({out} Hz).",
   "gear.remove": "Entfernen",
   "gear.disconnected": "Gerät nicht verbunden",

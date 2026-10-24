@@ -2,7 +2,7 @@
 
 use std::sync::{Arc, Mutex, PoisonError, RwLock};
 
-use joshua_engine::input::{InputStream, MAX_INPUTS, list_input_devices};
+use joshua_engine::input::{InputStream, MAX_INPUTS, list_input_devices, same_interface};
 use joshua_midi::brands::{BRANDS, KitBrand, brand};
 use joshua_midi::{DrumHit, DrumPad, MidiConnection, MidiMessage, MidiPortInfo, NoteMap, list_inputs};
 use serde::{Deserialize, Serialize};
@@ -20,6 +20,9 @@ pub struct LiveInput {
     pub error: Option<String>,
     /// Monitoring possible (input and output share the sample rate).
     pub monitor_ok: bool,
+    /// The input belongs to the output interface, which monitors it directly;
+    /// the app does not play it again (echo / feedback protection).
+    pub direct_monitor: bool,
 }
 
 #[derive(Debug, Default)]
@@ -57,6 +60,7 @@ pub struct InputView {
     pub monitor: bool,
     pub gain_db: f32,
     pub monitor_ok: bool,
+    pub direct_monitor: bool,
     pub error: Option<String>,
 }
 
@@ -120,11 +124,18 @@ pub fn restart_inputs(state: &AppState) {
         }
     }
     let out_rate = engine.as_ref().map(|e| e.info().sample_rate);
+    let out_dev = engine.as_ref().map(|e| (e.info().device_id.clone(), e.info().device_name.clone()));
     for (slot, config) in configs.into_iter().enumerate().take(MAX_INPUTS) {
         let dev = available.iter().find(|d| d.id == config.device_id);
         let rates_match = dev.is_some_and(|d| Some(d.sample_rate) == out_rate);
-        let ring =
-            if rates_match && engine_ok { engine.as_mut().and_then(|e| e.attach_monitor(slot).ok()) } else { None };
+        let direct_monitor = out_dev
+            .as_ref()
+            .is_some_and(|(id, name)| same_interface(&config.device_id, &config.name, id.as_deref(), name));
+        let ring = if rates_match && engine_ok && !direct_monitor {
+            engine.as_mut().and_then(|e| e.attach_monitor(slot).ok())
+        } else {
+            None
+        };
         let attached = ring.is_some();
         let (stream, error) = match dev {
             None => (None, Some("device not connected".to_owned())),
@@ -133,7 +144,7 @@ pub fn restart_inputs(state: &AppState) {
                 Err(e) => (None, Some(e.to_string())),
             },
         };
-        let live = LiveInput { config, monitor_ok: attached && stream.is_some(), stream, error };
+        let live = LiveInput { config, monitor_ok: attached && stream.is_some(), direct_monitor, stream, error };
         drop(engine);
         apply_live_params(state, slot, &live);
         engine = lock(&state.engine);
@@ -156,6 +167,7 @@ fn input_views(state: &AppState) -> Vec<InputView> {
             monitor: i.config.monitor,
             gain_db: i.config.gain_db,
             monitor_ok: i.monitor_ok,
+            direct_monitor: i.direct_monitor,
             error: i.error.clone(),
         })
         .collect()

@@ -184,6 +184,8 @@ export interface InputView {
   monitor: boolean;
   gainDb: number;
   monitorOk: boolean;
+  /** Same interface as the output: it monitors itself; the app won't play it again. */
+  directMonitor: boolean;
   error: string | null;
 }
 

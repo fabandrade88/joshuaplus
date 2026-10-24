@@ -97,9 +97,47 @@ pub fn db_to_gain(db: f32) -> f32 {
     if db <= -96.0 { 0.0 } else { 10f32.powf(db / 20.0) }
 }
 
+/// Level above which [`soft_clip`] starts bending the signal (≈ -0.9 dBFS).
+const SOFT_KNEE: f32 = 0.9;
+
+/// Output safety limiter: transparent below the knee, then a smooth `tanh`
+/// curve that approaches ±1 instead of hard-clipping (which sounds harsh and
+/// "broken" when several loud sources add up). Non-finite input becomes 0.
+#[must_use]
+#[inline]
+pub fn soft_clip(x: f32) -> f32 {
+    if !x.is_finite() {
+        return if x.is_nan() { 0.0 } else { x.signum() };
+    }
+    let a = x.abs();
+    if a <= SOFT_KNEE {
+        return x;
+    }
+    let room = 1.0 - SOFT_KNEE;
+    (SOFT_KNEE + room * ((a - SOFT_KNEE) / room).tanh()).copysign(x)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn soft_clip_is_transparent_then_smooth_and_bounded() {
+        for x in [0.0, 0.25, -0.5, 0.9, -0.9] {
+            assert_eq!(soft_clip(x), x);
+        }
+        let mut prev = soft_clip(0.9);
+        for k in 1..400 {
+            let y = soft_clip(0.9 + k as f32 * 0.01);
+            assert!(y > prev - 1e-7 && y <= 1.0, "monotonic and bounded at {k}");
+            prev = y;
+        }
+        assert!(soft_clip(1.0) < 1.0 && soft_clip(1.0) > 0.95);
+        assert_eq!(soft_clip(-3.0), -soft_clip(3.0));
+        assert_eq!(soft_clip(f32::NAN), 0.0);
+        assert_eq!(soft_clip(f32::INFINITY), 1.0);
+        assert_eq!(soft_clip(f32::NEG_INFINITY), -1.0);
+    }
 
     #[test]
     fn rejects_bad_sample_rate_and_mismatched_channels() {

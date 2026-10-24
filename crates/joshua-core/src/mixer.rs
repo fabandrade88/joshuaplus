@@ -389,12 +389,12 @@ impl Mixer {
         self.gains = targets;
         shared.position.store(pos, Ordering::Relaxed);
 
-        // Master gain, safety clamp and meters.
+        // Master gain, soft safety limiter and meters.
         let master = shared.master_gain.load();
         let mut peak = [0.0f32; 2];
         for frame in out.chunks_exact_mut(channels) {
             for (c, s) in frame.iter_mut().enumerate() {
-                *s = (*s * master).clamp(-1.0, 1.0);
+                *s = crate::audio::soft_clip(*s * master);
                 if c < 2 {
                     peak[c] = peak[c].max(s.abs());
                 }
@@ -750,7 +750,7 @@ mod tests {
         let mut six = vec![0.0; 64 * 6];
         mixer.render(&shared, &mut six, 6);
         assert!(six.iter().all(|s| s.abs() <= 1.0));
-        assert!(six.chunks(6).skip(4).all(|f| f[0] == 1.0 && f[1] == -1.0 && f[2..].iter().all(|s| *s == 0.0)));
+        assert!(six.chunks(6).skip(4).all(|f| f[0] > 0.99 && f[1] < -0.99 && f[2..].iter().all(|s| *s == 0.0)));
         let mut odd = vec![0.0; 7]; // not a whole number of frames
         mixer.render(&shared, &mut odd, 2);
         mixer.render(&shared, &mut [], 0);
