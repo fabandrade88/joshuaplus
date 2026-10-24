@@ -167,6 +167,14 @@
       <span class="note">{info.exportDirCustom ? i18n.t("exportDir.customHint") : i18n.t("exportDir.defaultHint")}</span>
     </div>
 
+    <label class="check">
+      <input type="checkbox" checked={info.updateCheck} onchange={(e) => app.setUpdateCheck(e.currentTarget.checked)} />
+      <span>
+        <strong>{i18n.t("update.setting")}</strong>
+        <span class="note">{i18n.t("update.settingHint")}</span>
+      </span>
+    </label>
+
     {#if app.desktopEntry?.available}
       <div class="field">
         <span class="section-title">{i18n.t("desktopEntry.title")}</span>
@@ -333,6 +341,28 @@
   .btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+  .check {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-top: 16px;
+    cursor: pointer;
+  }
+  .check input {
+    width: 16px;
+    height: 16px;
+    margin-top: 2px;
+    flex: none;
+    accent-color: var(--accent);
+  }
+  .check > span {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .check strong {
+    font-size: var(--fs-body);
   }
   .link {
     align-self: flex-start;

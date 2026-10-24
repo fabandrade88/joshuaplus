@@ -11,6 +11,7 @@ import type {
   BeatAnalysis,
   DrumPad,
   DesktopEntryStatus,
+  UpdateInfo,
   DrumState,
   ExportList,
   InputPatch,
@@ -30,6 +31,7 @@ import type {
 } from "./types";
 
 const DONE_JOB_TTL_MS = 6000;
+const UPDATE_EVERY_MS = 6 * 60 * 60 * 1000;
 
 function readFlag(key: string): boolean {
   try {
@@ -114,6 +116,9 @@ class AppStore {
   exportDialogOpen = $state(false);
   /** Linux AppImage: application-menu entry. */
   desktopEntry = $state<DesktopEntryStatus | null>(null);
+  /** A newer release is out (sidebar notice). */
+  update = $state<UpdateInfo | null>(null);
+  private updateTimer: ReturnType<typeof setInterval> | undefined;
   /** The video studio overlay is open. */
   videoOpen = $state(false);
   toast = $state<string | null>(null);
@@ -214,6 +219,28 @@ class AppStore {
     await this.refreshLibrary();
     void this.refreshExports();
     void this.offerDesktopEntry();
+    // New versions: shortly after start, then a few times a day.
+    setTimeout(() => void this.checkForUpdate(), 4000);
+    clearInterval(this.updateTimer);
+    this.updateTimer = setInterval(() => void this.checkForUpdate(), UPDATE_EVERY_MS);
+  }
+
+  async checkForUpdate(): Promise<void> {
+    this.update = await api.checkForUpdate().catch(() => null);
+  }
+
+  /** "Not now": hide the notice until an even newer version is out. */
+  async skipUpdate(): Promise<void> {
+    const version = this.update?.version;
+    this.update = null;
+    if (version) await this.guard(() => api.skipUpdate(version));
+  }
+
+  async setUpdateCheck(enabled: boolean): Promise<void> {
+    if ((await this.guard(() => api.setUpdateCheck(enabled))) === undefined) return;
+    if (this.info) this.info.updateCheck = enabled;
+    if (enabled) void this.checkForUpdate();
+    else this.update = null;
   }
 
   /** Linux AppImage: ask once whether to add Joshua+ to the application

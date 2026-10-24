@@ -7,6 +7,7 @@ import type {
   DrumPad,
   DesktopEntryStatus,
   DevicesChanged,
+  UpdateInfo,
   DrumState,
   ExportList,
   InputDeviceView,
@@ -87,6 +88,9 @@ export const api = {
   listExports: () => invoke<ExportList>("list_exports"),
   openExport: (path: string) => invoke<void>("open_export", { path }),
   openExportDir: () => invoke<void>("open_export_dir"),
+  checkForUpdate: () => invoke<UpdateInfo | null>("check_for_update"),
+  skipUpdate: (version: string) => invoke<void>("skip_update", { version }),
+  setUpdateCheck: (enabled: boolean) => invoke<void>("set_update_check", { enabled }),
   desktopEntryStatus: () => invoke<DesktopEntryStatus>("desktop_entry_status"),
   setDesktopEntry: (install: boolean) => invoke<DesktopEntryStatus>("set_desktop_entry", { install }),
   renderClipAudio: (startSecs: number, durationSecs: number) =>

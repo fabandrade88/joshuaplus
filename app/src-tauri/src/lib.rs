@@ -15,6 +15,7 @@ mod recorder;
 mod settings;
 mod state;
 mod ticker;
+mod updates;
 mod video;
 mod watchdog;
 
@@ -119,6 +120,9 @@ pub fn run() {
             commands::open_export_dir,
             commands::desktop_entry_status,
             commands::set_desktop_entry,
+            commands::check_for_update,
+            commands::skip_update,
+            commands::set_update_check,
             commands::set_export_dir,
             video::render_clip_audio,
             video::video_save_begin,

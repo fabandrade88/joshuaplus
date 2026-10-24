@@ -76,6 +76,10 @@ pub struct Settings {
     pub export_dir: Option<PathBuf>,
     /// Linux AppImage: menu entry wanted (`None` = not asked yet).
     pub desktop_entry: Option<bool>,
+    /// Tell the user when a newer release is published.
+    pub update_check: bool,
+    /// A release the user chose not to be told about again.
+    pub skipped_version: Option<String>,
 }
 
 impl Default for Settings {
@@ -91,6 +95,8 @@ impl Default for Settings {
             record_offset_ms: 0.0,
             export_dir: None,
             desktop_entry: None,
+            update_check: true,
+            skipped_version: None,
         }
     }
 }
