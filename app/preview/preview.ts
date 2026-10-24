@@ -85,9 +85,44 @@ const songs: SongSummary[] = [
 ];
 
 mockWindows("main");
+const savedBytes: Record<number, number> = {};
+let nextHandle = 1;
+function sineWav(secs: number): ArrayBuffer {
+  const rate = 48000;
+  const n = Math.round(secs * rate);
+  const buf = new ArrayBuffer(44 + n * 4);
+  const v = new DataView(buf);
+  const w = (o: number, t: string) => [...t].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+  w(0, "RIFF"); v.setUint32(4, 36 + n * 4, true); w(8, "WAVE"); w(12, "fmt ");
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 2, true); v.setUint32(24, rate, true);
+  v.setUint32(28, rate * 4, true); v.setUint16(32, 4, true); v.setUint16(34, 16, true); w(36, "data"); v.setUint32(40, n * 4, true);
+  for (let i = 0; i < n; i++) {
+    const x = Math.round(Math.sin((2 * Math.PI * 440 * i) / rate) * 8000);
+    v.setInt16(44 + i * 4, x, true);
+    v.setInt16(46 + i * 4, x, true);
+  }
+  return buf;
+}
+(window as unknown as { savedBytes: Record<number, number> }).savedBytes = savedBytes;
+
 mockIPC(
-  (cmd) => {
+  (cmd, args) => {
     switch (cmd) {
+      case "render_clip_audio":
+        return sineWav((args as { durationSecs: number }).durationSecs);
+      case "video_save_begin":
+        savedBytes[nextHandle] = 0;
+        return nextHandle++;
+      case "video_save_chunk": {
+        const bytes = args as unknown as Uint8Array;
+        const h = Number(Object.keys(savedBytes).pop());
+        savedBytes[h] = (savedBytes[h] ?? 0) + (bytes?.byteLength ?? 0);
+        return null;
+      }
+      case "video_save_end": {
+        const { handle, keep } = args as { handle: number; keep: boolean };
+        return keep ? `/Exports/clip-${handle}.${"mp4"} (${savedBytes[handle]} bytes)` : null;
+      }
       case "get_app_info":
         return {
           version: "0.0.1",
@@ -181,6 +216,106 @@ if (state === "song" || state === "away" || state === "video") {
 if (state === "away") app.goHome();
 if (state === "video") {
   app.videoOpen = true;
+  if (params.get("phase") === "e2e") {
+    const { studio } = await import("../src/lib/video/studio.svelte");
+    const log: string[] = [];
+    const show = () => (document.title = "E2E " + log.join(" | "));
+    const ow = console.warn;
+    console.warn = (...a: unknown[]) => {
+      log.push(a.map(String).join(" "));
+      show();
+      ow(...a);
+    };
+    window.addEventListener("unhandledrejection", (e) => (log.push("UNHANDLED " + String(e.reason)), show()));
+    log.push("start");
+    show();
+    // A moving test picture instead of the camera (headless has no camera).
+    const cv = document.createElement("canvas");
+    cv.width = 1280;
+    cv.height = 720;
+    const g = cv.getContext("2d")!;
+    let f = 0;
+    const anim = setInterval(() => {
+      g.fillStyle = `hsl(${(f * 7) % 360} 70% 40%)`;
+      g.fillRect(0, 0, 1280, 720);
+      g.fillStyle = "#fff";
+      g.fillRect((f * 20) % 1280, 300, 120, 120);
+      f++;
+    }, 33);
+    const stream = cv.captureStream(30);
+    log.push(`container=${studio.container?.mime}`);
+    show();
+    const rec = new MediaRecorder(stream, { mimeType: studio.container!.mime.replace(/,mp4a\.40\.2|,opus/, "") });
+    const chunks: Blob[] = [];
+    rec.ondataavailable = (e) => chunks.push(e.data);
+    rec.start(500);
+    await new Promise((r) => setTimeout(r, 3000));
+    await new Promise<void>((r) => ((rec.onstop = () => r()), rec.stop()));
+    clearInterval(anim);
+    const blob = new Blob(chunks, { type: rec.mimeType });
+    studio.clip = { blob, durationSecs: 3, songAtStart: 10 };
+    studio.clipUrl = URL.createObjectURL(blob);
+    studio.phase = "review";
+    log.push(`clip ${blob.size} bytes ${rec.mimeType}`);
+    void studio.export();
+    app.videoOpen = false;
+    for (let i = 0; i < 60 && (studio.phase === "exporting" || studio.saved.length === 0); i++) {
+      await new Promise((r) => setTimeout(r, 500));
+      if (studio.phase !== "exporting") break;
+    }
+    log.push(`phase=${studio.phase} saved=${JSON.stringify(studio.saved)} err=${studio.exportError}`);
+    document.title = log.join(" | ");
+  }
+  if (params.get("phase") === "exportflow") {
+    const { studio } = await import("../src/lib/video/studio.svelte");
+    const blob = new Blob([new Uint8Array(1000)], { type: "video/mp4" });
+    studio.clip = { blob, durationSecs: 5, songAtStart: 10 };
+    studio.clipUrl = URL.createObjectURL(blob);
+    studio.phase = "review";
+    await new Promise((r) => setTimeout(r, 800));
+    const calls: string[] = [];
+    const s2 = studio as unknown as Record<string, (...a: unknown[]) => unknown>;
+    for (const name of ["discardClip", "close", "dismissExport", "cancel"]) {
+      const orig = s2[name]!.bind(studio);
+      s2[name] = (...a: unknown[]) => {
+        calls.push(`${name}@${studio.phase}`);
+        return orig(...a);
+      };
+    }
+    (window as unknown as { calls: string[] }).calls = calls;
+    const proto = Object.getPrototypeOf(studio) as object;
+    const desc = Object.getOwnPropertyDescriptor(proto, "phase");
+    if (desc?.set && desc.get) {
+      Object.defineProperty(proto, "phase", {
+        get: desc.get,
+        set(v: unknown) {
+          const where = (new Error().stack ?? "").split("\n").slice(2, 4).map((l) => l.trim().replace(/https?:\/\/[^/]+/, "")).join(" < ");
+          calls.push(`SET phase=${String(v)} from ${where}`);
+          desc.set!.call(this, v);
+        },
+        configurable: true,
+      });
+    } else calls.push("no phase accessor");
+    const log: string[] = [`before phase=${studio.phase} container=${!!studio.container} formats=${studio.selectedFormats.length}`];
+    const ow = console.warn;
+    console.warn = (...a: unknown[]) => {
+      calls.push("WARN " + a.map(String).join(" "));
+      ow(...a);
+    };
+    void studio.export().then(
+      () => calls.push(`export-resolved@${studio.phase} err=${studio.exportError}`),
+      (e: unknown) => calls.push(`export-threw ${String(e)}`),
+    );
+    log.push(`after-export phase=${studio.phase}`);
+    app.videoOpen = false; // same as the Export button
+    log.push(`after-close phase=${studio.phase} clip=${studio.clip ? "yes" : "NULL"}`);
+    for (const t of [0, 50, 200, 600]) {
+      await new Promise((r) => setTimeout(r, t));
+      log.push(`${t}ms phase=${studio.phase} clip=${studio.clip ? "yes" : "NULL"} card=${!!document.querySelector(".thumb")} inThumb=${!!document.querySelector(".thumb video")}`);
+    }
+    log.push(`calls=${calls.join(",")} err=${studio.exportError}`);
+    document.title = log.join(" | ");
+  }
   if (params.get("phase") === "recording") {
     const { studio } = await import("../src/lib/video/studio.svelte");
     studio.phase = "recording";

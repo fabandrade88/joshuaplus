@@ -69,6 +69,10 @@ class VideoStudio {
   private unlisten: (() => void) | null = null;
   private timer: ReturnType<typeof setInterval> | undefined;
   private cancelExport = false;
+  /** Plain (non-reactive) flag: Svelte shows teardown code the state from
+   *  before the change that closed the window, so `phase` can read stale
+   *  "review" in `close()` right after an export started. */
+  private exportRunning = false;
 
   get supported(): boolean {
     return !!navigator.mediaDevices?.getUserMedia && this.container !== null;
@@ -182,6 +186,7 @@ class VideoStudio {
   }
 
   discardClip(): void {
+    if (this.exportRunning) return; // the export still needs the clip
     this.resetReviewAudio();
     if (this.clipUrl) URL.revokeObjectURL(this.clipUrl);
     this.clipUrl = null;
@@ -318,6 +323,7 @@ class VideoStudio {
     const container = this.container;
     const formats = this.selectedFormats;
     if (!clip || !container || formats.length === 0 || this.phase !== "review") return;
+    this.exportRunning = true;
     this.phase = "exporting";
     this.exportStage = "audio";
     this.exportError = null;
@@ -479,6 +485,7 @@ class VideoStudio {
       this.composeVideo = null;
       this.exportStage = null;
       void ctx.close();
+      this.exportRunning = false;
       this.phase = "review";
     }
   }
@@ -488,14 +495,14 @@ class VideoStudio {
   async close(): Promise<void> {
     if (this.phase === "recording") await this.stop();
     this.closeCamera();
-    if (this.phase === "exporting") return;
+    if (this.exportRunning) return;
     this.discardClip();
     this.phase = "idle";
   }
 
   /** Forgets a finished export (clears the sidebar card). */
   dismissExport(): void {
-    if (this.phase === "exporting") return;
+    if (this.exportRunning) return;
     this.saved = [];
     this.exportError = null;
     this.exportFormats = [];
