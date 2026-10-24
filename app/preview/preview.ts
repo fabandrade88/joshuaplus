@@ -56,6 +56,7 @@ const project: SongProject = {
   hasCover: true,
   songGainDb: 0,
   songMuted: false,
+  typedBpm: params.get("typed") ? Number(params.get("typed")) : null,
 };
 
 function art(a: string, b: string): string {

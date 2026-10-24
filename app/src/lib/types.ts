@@ -155,6 +155,8 @@ export interface SongProject {
   titleEdited?: boolean;
   folder?: string | null;
   takes?: TakeSettings[];
+  /** The tempo the user last typed (kept when the tempo is detected again). */
+  typedBpm?: number | null;
 }
 
 export interface SongView {

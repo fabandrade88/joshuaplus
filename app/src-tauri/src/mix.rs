@@ -198,6 +198,7 @@ mod tests {
                 solo: false,
                 room: DEFAULT_TAKE_ROOM,
             }],
+            typed_bpm: None,
         }
     }
 

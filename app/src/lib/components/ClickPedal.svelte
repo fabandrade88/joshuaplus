@@ -86,6 +86,13 @@
       {/if}
       <button class="mini" title={i18n.t("tempo.double")} onclick={() => app.editTempo({ kind: "double" })}>×2</button>
     </div>
+    {#if app.typedBpmReminder}
+      <div class="typed" title={i18n.t("tempo.typedHint")}>
+        <span>{i18n.t("tempo.typed", { bpm: formatBpm(app.typedBpmReminder) })}</span>
+        <button class="link" onclick={() => app.useTypedBpm()}>{i18n.t("tempo.useTyped")}</button>
+        <button class="forget" title={i18n.t("tempo.forgetTyped")} aria-label={i18n.t("tempo.forgetTyped")} onclick={() => app.forgetTypedBpm()}>×</button>
+      </div>
+    {/if}
 
     <div class="row mode-row">
       <div class="segmented grow" role="radiogroup" aria-label={i18n.t("tempo.mode")} title={i18n.t("tempo.modeHint")}>
@@ -275,6 +282,31 @@
   .bpm small {
     font-size: var(--fs-label);
     color: color-mix(in srgb, var(--accent) 60%, transparent);
+  }
+  .typed {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: -2px;
+    font-size: var(--fs-small);
+    color: var(--text-dim);
+  }
+  .typed span {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .typed .link {
+    color: var(--accent);
+    text-decoration: underline;
+  }
+  .typed .forget {
+    color: var(--text-faint);
+  }
+  .typed .forget:hover {
+    color: var(--text);
   }
   .mini {
     min-width: 30px;

@@ -628,6 +628,10 @@ pub fn edit_tempo(state: State<'_, AppState>, edit: TempoEdit) -> ApiResult<Beat
         let edited =
             song.project.analysis.edited(edit.clone()).ok_or_else(|| ApiError::invalid("tempo out of range"))?;
         song.project.analysis = edited.clone();
+        // A typed tempo is remembered: detecting again offers it back.
+        if let TempoEdit::SetBpm { bpm, .. } = edit {
+            song.project.typed_bpm = Some(bpm);
+        }
         song.dirty = true;
         Ok((edited, song.session_rate))
     })?;
@@ -635,6 +639,16 @@ pub fn edit_tempo(state: State<'_, AppState>, edit: TempoEdit) -> ApiResult<Beat
         engine.set_click(ClickTrack::from_analysis(&analysis, rate))?;
     }
     Ok(analysis)
+}
+
+/// Forgets the tempo the user typed (the reminder under the BPM goes away).
+#[tauri::command]
+pub fn forget_typed_bpm(state: State<'_, AppState>) -> ApiResult<()> {
+    with_song(&state, |song| {
+        song.project.typed_bpm = None;
+        song.dirty = true;
+        Ok(())
+    })
 }
 
 #[tauri::command]

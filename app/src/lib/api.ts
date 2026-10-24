@@ -66,6 +66,7 @@ export const api = {
   updateMetronome: (patch: MetronomePatch) => invoke<void>("update_metronome", { patch }),
   editTempo: (edit: TempoEdit) => invoke<BeatAnalysis>("edit_tempo", { edit }),
   reanalyzeTempo: (mode: TempoMode) => invoke<BeatAnalysis>("reanalyze_tempo", { mode }),
+  forgetTypedBpm: () => invoke<void>("forget_typed_bpm"),
   setMasterGain: (gainDb: number) => invoke<void>("set_master_gain", { gainDb }),
   updateSongBus: (gainDb: number | null, muted: boolean | null) =>
     invoke<void>("update_song_bus", { gainDb, muted }),

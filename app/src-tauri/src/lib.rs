@@ -87,6 +87,7 @@ pub fn run() {
             commands::update_track,
             commands::update_metronome,
             commands::edit_tempo,
+            commands::forget_typed_bpm,
             commands::reanalyze_tempo,
             commands::update_song_bus,
             commands::set_master_gain,
