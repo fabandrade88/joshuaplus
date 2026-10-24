@@ -33,13 +33,20 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          prerelease=""
-          case "$TAG" in *-*) prerelease="--prerelease" ;; esac
-          if ! gh release view "$TAG" >/dev/null 2>&1; then
-            gh release create "$TAG" --draft $prerelease --verify-tag \
-              --title "Joshua+ ${TAG#v}" --notes-file .github/RELEASE_NOTES.md
+          # Reuse the release for this tag (draft or not) when re-running.
+          id=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq ".[] | select(.tag_name == \"$TAG\") | .id" | head -n1)
+          if [ -z "$id" ]; then
+            prerelease=false
+            case "$TAG" in *-*) prerelease=true ;; esac
+            # Take the id from the create response: a fresh draft can take a
+            # moment to show up in the releases listing.
+            id=$(gh api -X POST "repos/$GITHUB_REPOSITORY/releases" \
+              -f tag_name="$TAG" -f name="Joshua+ ${TAG#v}" \
+              -F draft=true -F prerelease=$prerelease \
+              -F body=@.github/RELEASE_NOTES.md --jq .id)
           fi
-          echo "id=$(gh api "repos/$GITHUB_REPOSITORY/releases" --jq ".[] | select(.tag_name == \"$TAG\") | .id")" >> "$GITHUB_OUTPUT"
+          [ -n "$id" ] || { echo "::error::no release id for $TAG"; exit 1; }
+          echo "id=$id" >> "$GITHUB_OUTPUT"
 
   build:
     name: Build (${{ matrix.name }})
