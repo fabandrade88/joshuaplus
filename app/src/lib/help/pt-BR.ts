@@ -114,6 +114,20 @@ export const helpPtBR: HelpSection[] = [
     ],
   },
   {
+    id: "record",
+    title: "Gravação, vídeo e exportação",
+    intro: "Grave cada entrada conectada na sua própria faixa, exporte a mixagem ou grave um vídeo seu para YouTube e redes sociais.",
+    items: [
+      { term: "Armar uma entrada", text: "Aperte ● na faixa da entrada (no console) para armá-la. Cada entrada armada grava no seu próprio take." },
+      { term: "REC (áudio)", text: "Com o modo microfone escolhido, aperte o botão vermelho: a música toca com a contagem e as entradas armadas gravam. Aperte de novo (■) para parar." },
+      { term: "Gravações", text: "Cada gravação aparece no grupo Gravações, já alinhada com a música (a latência e a diferença de clock são corrigidas). Tem fader, pan, M, S e × para apagar." },
+      { term: "Exportar áudio", text: "Exporta a mixagem de todas as faixas ativas (música + gravações) em WAV 24-bit na pasta Exports. O click só entra se estiver ligado: desligue para exportar sem ele." },
+      { term: "Estúdio de vídeo", text: "Escolha o modo câmera ao lado do REC e aperte. Escolha os formatos (YouTube 16:9, Shorts/Reels/TikTok 9:16, Instagram 1:1 ou 4:5); as guias tracejadas mostram o corte. Aperte Gravar vídeo." },
+      { term: "Som do vídeo", text: "O vídeo leva a mixagem da música e as entradas armadas — nunca o click. Depois de gravar, aperte Prévia e ajuste a sincronia se o som vier adiantado ou atrasado." },
+      { term: "Exportar vídeos", text: "Exporta um arquivo por formato escolhido na pasta Exports (MP4 quando o sistema suporta). A exportação é em tempo real, dura o mesmo que o vídeo." },
+    ],
+  },
+  {
     id: "settings",
     title: "Configurações",
     items: [

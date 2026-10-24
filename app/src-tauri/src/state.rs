@@ -50,6 +50,8 @@ pub struct AppState {
     pub load_lock: Mutex<()>,
     /// The take recording in progress, if any.
     pub recording: Mutex<Option<crate::recorder::ActiveRecording>>,
+    /// Video clips being saved by the video studio.
+    pub videos: crate::video::VideoSaves,
 }
 
 /// Locks ignoring poisoning: a panicked holder never leaves our data in an
@@ -80,6 +82,7 @@ impl AppState {
             devices: crate::devices::Devices::default(),
             load_lock: Mutex::new(()),
             recording: Mutex::new(None),
+            videos: crate::video::VideoSaves::default(),
         }
     }
 

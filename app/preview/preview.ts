@@ -151,7 +151,7 @@ if (state !== "welcome") {
 }
 if (state === "folder") app.openFolder("igreja");
 if (state === "settings") app.settingsOpen = true;
-if (state === "song" || state === "away") {
+if (state === "song" || state === "away" || state === "video") {
   app.browsing = "banda";
   await app.openSong(project.id);
   app.songCollapsed = params.get("collapsed") === "1";
@@ -179,6 +179,7 @@ if (state === "song" || state === "away") {
 }
 
 if (state === "away") app.goHome();
+if (state === "video") app.videoOpen = true;
 
 if (state === "gear") {
   app.openGear();

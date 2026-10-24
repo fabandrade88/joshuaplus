@@ -4,7 +4,7 @@
   import { i18n } from "../i18n/index.svelte";
   import Icon from "./Icon.svelte";
 
-  type IconName = "drop" | "folder" | "spark" | "play" | "loop" | "volume" | "click" | "music" | "plug" | "settings" | "edit" | "help";
+  type IconName = "drop" | "folder" | "spark" | "play" | "loop" | "volume" | "click" | "music" | "plug" | "settings" | "edit" | "help" | "record";
 
   // Each section borrows a colour the app already uses (accent, stems, folders).
   const STYLE: Record<string, { color: string; icon: IconName }> = {
@@ -17,6 +17,7 @@
     metronome: { color: "var(--stem-drums)", icon: "click" },
     info: { color: "var(--stem-acoustic)", icon: "music" },
     gear: { color: "var(--ok)", icon: "plug" },
+    record: { color: "var(--danger)", icon: "record" },
     settings: { color: "var(--stem-other)", icon: "settings" },
     keys: { color: "var(--accent)", icon: "edit" },
     privacy: { color: "var(--stem-bass)", icon: "help" },

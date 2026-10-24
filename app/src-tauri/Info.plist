@@ -4,5 +4,7 @@
 <dict>
   <key>NSMicrophoneUsageDescription</key>
   <string>Joshua+ listens to your audio interface so you can hear and record your instrument while playing along.</string>
+  <key>NSCameraUsageDescription</key>
+  <string>Joshua+ uses your camera to film you playing along, for videos you can share on YouTube and social media.</string>
 </dict>
 </plist>

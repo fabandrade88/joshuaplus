@@ -97,7 +97,8 @@ fn write_raw(rx: &Mutex<RecordRx>, path: PathBuf, rate: u32, stop: &AtomicBool) 
 }
 
 /// Arms capture on every armed input and starts playback (with count-in).
-pub fn start(state: &AppState) -> ApiResult<()> {
+/// A video recording may run without armed inputs (camera + song only).
+pub fn start(state: &AppState, allow_no_inputs: bool) -> ApiResult<()> {
     let ws = state.workspace()?;
     let shared = state.shared()?;
     let mut active = lock(&state.recording);
@@ -115,7 +116,7 @@ pub fn start(state: &AppState) -> ApiResult<()> {
         .filter(|i| i.config.armed)
         .filter_map(|i| i.stream.as_ref().and_then(|s| s.recorder.clone().map(|rx| (i, s, rx))))
         .collect();
-    if armed.is_empty() {
+    if armed.is_empty() && !allow_no_inputs {
         return Err(ApiError::new("no_armed_input", "arm at least one input to record"));
     }
     if existing_takes + armed.len() > MAX_TAKES || stems + existing_takes + armed.len() > MAX_TRACKS {

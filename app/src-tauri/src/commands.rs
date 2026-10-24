@@ -637,9 +637,10 @@ pub struct RecordingResult {
 }
 
 /// Starts recording every armed input and plays the song (with count-in).
+/// `video`: the video studio is filming, so no armed input is required.
 #[tauri::command]
-pub fn start_recording(state: State<'_, AppState>) -> ApiResult<()> {
-    crate::recorder::start(&state)
+pub fn start_recording(state: State<'_, AppState>, video: Option<bool>) -> ApiResult<()> {
+    crate::recorder::start(&state, video.unwrap_or(false))
 }
 
 /// Stops, aligns and saves the takes, then reloads the song with them and
@@ -732,18 +733,23 @@ pub fn set_record_offset(state: State<'_, AppState>, ms: f32) -> ApiResult<()> {
     state.save_settings()
 }
 
+/// Saves pending mixer edits and returns the workspace, the open song's
+/// project and the session sample rate (for offline renders).
+pub(crate) fn flush_and_project(state: &AppState) -> ApiResult<(Workspace, SongProject, u32)> {
+    flush_dirty(state);
+    let ws = state.workspace()?;
+    let (project, rate) =
+        lock(&state.current).as_ref().map(|s| (s.project.clone(), s.session_rate)).ok_or_else(ApiError::no_song)?;
+    Ok((ws, project, rate))
+}
+
 /// Renders the current song's mix (stems, takes, click unless muted) to a
 /// 24-bit WAV in `<workspace>/Exports`. Progress: `export-progress` (0..1).
 #[tauri::command]
 pub async fn export_mix(app: AppHandle) -> ApiResult<String> {
     tauri::async_runtime::spawn_blocking(move || {
         let state = app.state::<AppState>();
-        flush_dirty(&state);
-        let ws = state.workspace()?;
-        let (project, rate) = lock(&state.current)
-            .as_ref()
-            .map(|s| (s.project.clone(), s.session_rate))
-            .ok_or_else(ApiError::no_song)?;
+        let (ws, project, rate) = flush_and_project(&state)?;
         let (session, _) = build_session(&ws, &project, rate)?;
         let end = session.length;
         let path = ws.new_export_path(&project.title, "mix", "wav")?;

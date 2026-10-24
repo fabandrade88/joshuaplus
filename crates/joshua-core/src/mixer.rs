@@ -278,7 +278,12 @@ impl Session {
     /// Stems plus recorded takes (takes are never longer than the song: they
     /// are truncated to the longest stem). Truncates to [`MAX_TRACKS`].
     #[must_use]
-    pub fn with_takes(sample_rate: u32, mut stems: Vec<StereoBuffer>, takes: Vec<StereoBuffer>, click: ClickTrack) -> Self {
+    pub fn with_takes(
+        sample_rate: u32,
+        mut stems: Vec<StereoBuffer>,
+        takes: Vec<StereoBuffer>,
+        click: ClickTrack,
+    ) -> Self {
         stems.truncate(MAX_TRACKS);
         let length = stems.iter().map(StereoBuffer::frames).max().unwrap_or(0);
         let n_stems = stems.len();

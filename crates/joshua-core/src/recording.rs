@@ -78,11 +78,8 @@ pub fn fit_alignment(markers: &[Marker], nominal_ratio: f64) -> Option<Alignment
     }
     let fitted = if sxx > 0.0 { sxy / sxx } else { nominal_ratio };
     // Short takes give a noisy slope: trust the nominal ratio within limits.
-    let ratio = if fitted.is_finite() && (fitted / nominal_ratio - 1.0).abs() <= MAX_DRIFT {
-        fitted
-    } else {
-        nominal_ratio
-    };
+    let ratio =
+        if fitted.is_finite() && (fitted / nominal_ratio - 1.0).abs() <= MAX_DRIFT { fitted } else { nominal_ratio };
     Some(Alignment { offset: my - ratio * mx, ratio })
 }
 

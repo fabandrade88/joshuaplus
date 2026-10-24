@@ -562,18 +562,26 @@ class AppStore {
     if (input) await this.updateInput(index, { armed: !input.armed });
   }
 
-  /** Starts recording every armed input; the song plays with its count-in. */
-  async startRecording(): Promise<void> {
-    if (!this.canPlay || this.recording) return;
-    if (this.armedCount === 0) return this.notify(i18n.t("record.armFirst"));
+  /** Starts recording every armed input; the song plays with its count-in.
+   *  The video studio passes `video` (filming works without armed inputs).
+   *  Returns whether recording started. */
+  async startRecording(video = false): Promise<boolean> {
+    if (!this.canPlay || this.recording) return false;
+    if (!video && this.armedCount === 0) {
+      this.notify(i18n.t("record.armFirst"));
+      return false;
+    }
     // A take is one straight pass through the song.
     if (this.loopEnabled) await this.clearLoop();
     if (this.transport.playing || this.transport.countingIn) await this.guard(() => api.pause());
-    await this.guard(() => api.startRecording());
+    const ok = (await this.guard(() => api.startRecording(video))) !== undefined;
+    if (ok) this.transport.recording = true;
+    return ok;
   }
 
   async stopRecording(): Promise<void> {
     if (!this.recording || this.savingTakes) return;
+    this.transport.recording = false;
     this.savingTakes = true;
     const result = await this.guard(() => api.stopRecording());
     this.savingTakes = false;

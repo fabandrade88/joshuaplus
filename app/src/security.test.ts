@@ -55,6 +55,8 @@ describe("tauri security configuration", () => {
       if (k !== "connect-src") expect(v, k).not.toMatch(/https?:/);
     }
     expect(csp["connect-src"]).toBe("ipc: http://ipc.localhost");
+    // Video studio: local camera stream and in-memory recordings only.
+    expect(csp["media-src"]).toBe("'self' blob: mediastream:");
   });
 
   it("freezes prototypes and keeps the Tauri API off window", () => {
