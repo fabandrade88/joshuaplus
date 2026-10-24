@@ -3,6 +3,7 @@
 import { open } from "@tauri-apps/plugin-dialog";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { api, events, isApiError } from "./api";
+import { hasMatchingAudio } from "./devices";
 import { i18n, matchLocale, type Locale } from "./i18n/index.svelte";
 import { orderSongs } from "./playlist";
 import type {
@@ -93,7 +94,9 @@ class AppStore {
   /** Last strike per pad: velocity and time (ms) — drives the pad lights. */
   padHits = $state<Partial<Record<DrumPad, { velocity: number; at: number }>>>({});
   hiHatOpenness = $state(0);
-  lastNote = $state<{ note: number; velocity: number } | null>(null);
+  lastNote = $state<{ note: number; velocity: number; pad: DrumPad | null; at: number } | null>(null);
+  /** Names of the audio input devices present, to spot MIDI-only kits. */
+  audioDeviceNames = $state<string[]>([]);
   toast = $state<string | null>(null);
   private toastTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -159,7 +162,7 @@ class AppStore {
       }),
       events.onDrumHit((hit) => {
         if (hit.type === "strike") {
-          this.lastNote = { note: hit.note, velocity: hit.velocity };
+          this.lastNote = { note: hit.note, velocity: hit.velocity, pad: hit.pad, at: performance.now() };
           if (hit.pad) this.padHits = { ...this.padHits, [hit.pad]: { velocity: hit.velocity, at: performance.now() } };
         } else if (hit.type === "hiHatPedal") this.hiHatOpenness = hit.openness;
       }),
@@ -297,8 +300,15 @@ class AppStore {
   }
 
   async refreshDrums(): Promise<void> {
-    const d = await this.guard(() => api.getDrums());
+    const [d, audio] = await Promise.all([this.guard(() => api.getDrums()), this.guard(() => api.listAudioInputs())]);
     if (d) this.drums = d;
+    if (audio) this.audioDeviceNames = audio.map((a) => a.name);
+  }
+
+  /** The connected kit sends MIDI over USB but no audio device of that name exists. */
+  get drumsMidiOnly(): boolean {
+    const name = this.drums?.connected;
+    return !!name && !hasMatchingAudio(name, this.audioDeviceNames);
   }
 
   async setMidiPort(portId: string | null): Promise<void> {

@@ -199,7 +199,9 @@
         {#if drums.error}<span class="tag warn">{drums.error}</span>{/if}
         {#if brand}<span class="models">{brand.models}</span>{/if}
       </div>
-      {#if brand?.usbAudio}<p class="tip"><Icon name="volume" size={13} />{i18n.t("gear.usbAudio")}</p>{/if}
+      {#if app.drumsMidiOnly}
+        <p class="tip alert"><Icon name="volume" size={13} />{i18n.t("gear.midiOnly", { name: drums.connected ?? "" })}</p>
+      {:else if brand?.usbAudio}<p class="tip"><Icon name="volume" size={13} />{i18n.t("gear.usbAudio")}</p>{/if}
 
       <div class="kit-head">
         <h3>{i18n.t("gear.kit")}</h3>
@@ -485,6 +487,12 @@
     font-size: 12px;
     color: var(--ok);
     background: color-mix(in srgb, var(--ok) 10%, transparent);
+  }
+  .tip.alert {
+    align-items: flex-start;
+    line-height: 1.45;
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
   }
   .note {
     font-size: 11.5px;

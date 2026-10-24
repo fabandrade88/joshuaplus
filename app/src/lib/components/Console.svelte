@@ -6,6 +6,7 @@
   import { STEM_COLORS, stemLabelKey } from "../stems";
   import ChannelStrip from "./ChannelStrip.svelte";
   import ClickPedal from "./ClickPedal.svelte";
+  import MidiStrip from "./MidiStrip.svelte";
   import Icon from "./Icon.svelte";
 
   const project = $derived(app.song?.project);
@@ -54,7 +55,7 @@
       </div>
     </div>
 
-    {#if app.inputs.length > 0}
+    {#if app.inputs.length > 0 || app.drums?.connected}
       <div class="group">
         <header>
           <span class="group-name">{i18n.t("gear.inputs")}</span>
@@ -75,6 +76,7 @@
               }}
             />
           {/each}
+          {#if app.drums?.connected}<MidiStrip />{/if}
         </div>
       </div>
     {/if}

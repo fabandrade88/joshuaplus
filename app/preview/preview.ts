@@ -107,19 +107,19 @@ mockIPC(
         return { project, peaks: stems.map((_, i) => peaks(i)), audioReady: true, cover: art("#ff6b8a", "#4c1d95") };
       case "list_audio_inputs":
         return [
-          { id: "coreaudio:scarlett", name: "Scarlett 2i2", channels: 2, sampleRate: 48000, isDefault: false },
-          { id: "coreaudio:strata", name: "Alesis Strata Prime", channels: 10, sampleRate: 48000, isDefault: false },
+          { id: "coreaudio:ag06", name: "Yamaha AG06MK2", channels: 2, sampleRate: 48000, isDefault: false },
+          { id: "coreaudio:spd", name: "SPD-SX PRO", channels: 8, sampleRate: 48000, isDefault: false },
         ];
       case "get_inputs":
         return [
-          { index: 0, deviceId: "coreaudio:scarlett", name: "Scarlett 2i2", channels: 2, sampleRate: 48000, firstChannel: 0, stereo: false, monitor: true, gainDb: -3, monitorOk: true, error: null },
-          { index: 1, deviceId: "coreaudio:strata", name: "Alesis Strata Prime", channels: 10, sampleRate: 48000, firstChannel: 0, stereo: true, monitor: false, gainDb: 0, monitorOk: true, error: null },
+          { index: 0, deviceId: "coreaudio:ag06", name: "Yamaha AG06MK2", channels: 2, sampleRate: 48000, firstChannel: 0, stereo: false, monitor: true, gainDb: -3, monitorOk: true, error: null },
+          { index: 1, deviceId: "coreaudio:spd", name: "SPD-SX PRO", channels: 8, sampleRate: 48000, firstChannel: 0, stereo: true, monitor: false, gainDb: 0, monitorOk: true, error: null },
         ];
       case "get_drums":
         return {
-          ports: [{ id: "coremidi:strata", name: "Strata Prime MIDI" }],
+          ports: [{ id: "coremidi:strata", name: "Alesis Prime Drum Module" }, { id: "coremidi:spd", name: "SPD-SX PRO" }],
           portId: "coremidi:strata",
-          connected: "Strata Prime MIDI",
+          connected: "Alesis Prime Drum Module",
           error: null,
           brand: "alesis",
           brands: [
@@ -169,6 +169,10 @@ if (state === "song" || state === "away") {
       }),
     100,
   );
+  setInterval(() => {
+    void emit("input-levels", [0.5 + Math.random() * 0.3, 0.15 + Math.random() * 0.2]);
+    void emit("drum-hit", { type: "strike", pad: "snare", note: 38, velocity: 100 + Math.round(Math.random() * 27) });
+  }, 150);
 }
 
 if (state === "away") app.goHome();
