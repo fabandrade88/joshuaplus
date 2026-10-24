@@ -613,12 +613,14 @@ License summary: MIT OR Apache-2.0 (269), MIT (125), Apache-2.0 OR MIT (56), MIT
 | zvariant_derive | 5.15.1 | MIT | https://github.com/z-galaxy/zbus/ |
 | zvariant_utils | 4.2.0 | MIT | https://github.com/z-galaxy/zbus/ |
 
-## JavaScript packages shipped in the UI (3)
+## JavaScript packages shipped in the UI (5)
 
 | Package | Version | License | Homepage |
 |---|---|---|---|
 | @tauri-apps/api | 2.12.4 | Apache-2.0 OR MIT | https://github.com/tauri-apps/tauri#readme |
 | @tauri-apps/plugin-dialog | 2.8.3 | MIT OR Apache-2.0 | https://github.com/tauri-apps/plugins-workspace#readme |
 | @tauri-apps/plugin-opener | 2.7.2 | MIT OR Apache-2.0 | https://github.com/tauri-apps/plugins-workspace#readme |
+| @fontsource-variable/jetbrains-mono (JetBrains Mono font) | 5.3.0 | OFL-1.1 | https://fontsource.org/fonts/jetbrains-mono |
+| mediabunny | 1.61.3 | MPL-2.0 | https://mediabunny.dev/ |
 
 Build/test-only tooling (Vite, TypeScript, Vitest, svelte-check, Tauri CLI) is not shipped and is listed in `app/package.json`.

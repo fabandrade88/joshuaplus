@@ -2,7 +2,7 @@
 #
 #   irm https://raw.githubusercontent.com/fabandrade88/joshuaplus/main/scripts/install.ps1 | iex
 #
-# Downloads the latest release (or $env:JOSHUA_VERSION = "v0.5.1") from
+# Downloads the latest release (or $env:JOSHUA_VERSION = "v0.5.2") from
 # GitHub, verifies it against the release's SHA256SUMS and runs the installer.
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'

@@ -45,7 +45,7 @@ x86_64 com glibc 2.39+ (Ubuntu 24.04+, Debian 13+, Fedora 40+, Arch). Cole num t
 curl -fsSL https://raw.githubusercontent.com/fabandrade88/joshuaplus/main/scripts/install.sh | sh
 ```
 
-Os scripts baixam a versão mais nova, **conferem o SHA-256 com o `SHA256SUMS` da versão** e só então instalam: o `.deb` com apt no Debian/Ubuntu, o AppImage em `~/.local/bin` nos outros Linux, o app em Aplicativos no macOS. São curtos; leia [`install.sh`](scripts/install.sh) e [`install.ps1`](scripts/install.ps1) antes, se quiser. Use `JOSHUA_VERSION=v0.5.1` para escolher uma versão.
+Os scripts baixam a versão mais nova, **conferem o SHA-256 com o `SHA256SUMS` da versão** e só então instalam: o `.deb` com apt no Debian/Ubuntu, o AppImage em `~/.local/bin` nos outros Linux, o app em Aplicativos no macOS. São curtos; leia [`install.sh`](scripts/install.sh) e [`install.ps1`](scripts/install.ps1) antes, se quiser. Use `JOSHUA_VERSION=v0.5.2` para escolher uma versão.
 
 **Prefere baixar na mão?** Pegue o `.dmg` (macOS), o `-setup.exe` ou `.msi` (Windows), ou o `.deb`, `.rpm` ou `.AppImage` (Linux) em [Releases](https://github.com/fabandrade88/joshuaplus/releases/latest). Os instaladores ainda não são assinados: no macOS, clique com o botão direito no app e escolha **Abrir** na primeira vez; no Windows, escolha **Mais informações → Executar assim mesmo**.
 
@@ -63,7 +63,8 @@ Além disso, antes de cada versão ser publicada, todos os instaladores são ins
 | 📁 | **Pastas como setlists** que lembram a mixagem, as correções de tempo e o loop de cada música | Abra a música e continue de onde parou |
 | 🎤 | **Grave cada entrada no seu próprio take**, alinhado à música automaticamente (latência e diferença de clock corrigidas). Gravar de novo substitui o take anterior | Ouça como você tocou de verdade, junto com a banda |
 | 🏠 | **Sala**: um ambiente comum para os seus takes | Bateria eletrônica ou guitarra em linha direta soam dentro da mixagem, não colados por cima |
-| 🎬 | **Estúdio de vídeo**: grave-se com qualquer webcam, ajuste o som antes de exportar e exporte **YouTube 16:9, Shorts/Reels/TikTok 9:16 e Instagram 1:1 / 4:5** de uma vez, com capa, nome e banda opcionais. Nunca o click | Poste um play-along sem editor de vídeo |
+| ⚖️ | **Equilibrar com o original**: cada gravação é ligada ao instrumento que toca e fica no volume e no lugar do estéreo dele, com o original silenciado; opcional depois de toda gravação. **Restaurar volumes** volta a mixagem inteira | Sua parte soa como se fosse do disco, com um clique |
+| 🎬 | **Estúdio de vídeo**: grave-se com qualquer webcam, ajuste o som antes de exportar e exporte **YouTube 16:9, Shorts/Reels/TikTok 9:16 e Instagram 1:1 / 4:5** de uma vez, com capa, nome e banda opcionais, codificados quadro a quadro (H.264 High, 30 fps estáveis, som em sincronia). Nunca o click | Poste um play-along sem editor de vídeo |
 | 💾 | **Exporte a mixagem** em WAV 24-bit, com ou sem o click. Tudo o que você exporta aparece em **Exportações** | Mande para a banda ou para o professor |
 | 🎛️ | **Até 8 entradas de áudio** com medidores e retorno, **MIDI e baterias eletrônicas** (Alesis, Roland, Yamaha, EFNOTE, Simmons, Pearl, GEWA, ATV, Millenium, General MIDI) | Use o equipamento que você já tem |
 | 🔌 | **Conecte e use**: desconectou uma interface ou câmera, o Joshua+ passa para o que está conectado e volta quando ela retorna | Sem reiniciar no meio do estudo |

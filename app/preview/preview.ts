@@ -154,7 +154,7 @@ mockIPC(
       }
       case "get_app_info":
         return {
-          version: "0.5.1",
+          version: "0.5.2",
           locale: lang,
           workspace: state === "welcome" ? null : "/Users/musician/Music/Joshua+",
           inbox: "/Users/musician/Music/Joshua+/inbox",

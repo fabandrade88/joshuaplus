@@ -22,6 +22,8 @@
     { name: "midir", what: "MIDI input", license: "MIT" },
     { name: "rustfft · rubato · hound", what: "DSP, resampling, WAV", license: "MIT / Apache-2.0" },
     { name: "image", what: "Cover art", license: "MIT / Apache-2.0" },
+    { name: "Mediabunny", what: "Video encoding", license: "MPL-2.0" },
+    { name: "JetBrains Mono", what: "Interface font", license: "OFL-1.1" },
   ];
 </script>
 

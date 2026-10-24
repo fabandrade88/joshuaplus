@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Existing tag to build (e.g. v0.5.1)'
+        description: 'Existing tag to build (e.g. v0.5.2)'
         required: true
 
 permissions:
