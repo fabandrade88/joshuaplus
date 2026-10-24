@@ -144,6 +144,7 @@ mod tests {
         Dirs { applications: root.join("applications"), icons: root.join("icons/hicolor") }
     }
 
+    #[cfg(unix)]
     fn fake_appdir(root: &Path) -> PathBuf {
         let appdir = root.join("squashfs-root");
         for size in ICON_SIZES {
