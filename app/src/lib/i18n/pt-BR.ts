@@ -70,6 +70,8 @@ export const ptBR: Messages = {
   "settings.workspace": "Pasta de trabalho",
   "settings.change": "Alterar…",
   "settings.intro": "Idioma, motor de separação, saída de áudio, pastas e preferências.",
+  "settings.folders": "Pastas",
+  "settings.preferences": "Preferências",
   "settings.version": "Versão {v}",
 
   "error.no_workspace": "Escolha uma pasta de trabalho primeiro.",

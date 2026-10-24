@@ -70,6 +70,8 @@ export const de: Messages = {
   "settings.workspace": "Arbeitsordner",
   "settings.change": "Ändern…",
   "settings.intro": "Sprache, Trennungs-Engine, Audioausgabe, Ordner und Einstellungen.",
+  "settings.folders": "Ordner",
+  "settings.preferences": "Einstellungen",
   "settings.version": "Version {v}",
 
   "error.no_workspace": "Wähle zuerst einen Arbeitsordner.",
