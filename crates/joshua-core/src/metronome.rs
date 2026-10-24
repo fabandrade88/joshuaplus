@@ -150,9 +150,25 @@ impl ClickTrack {
     /// Builds a click track at `sample_rate` from a beat analysis.
     #[must_use]
     pub fn from_analysis(analysis: &BeatAnalysis, sample_rate: u32) -> Self {
+        // An intro before the first detected beat keeps the pulse: the grid
+        // continues back to the start of the song, so the click goes on from
+        // the count-in through the intro, in time, without a gap.
+        let beats = &analysis.beats;
+        let lead: Vec<f64> = match beats.get(..2) {
+            Some([first, second]) if second > first => {
+                let period = second - first;
+                #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                let n = ((first / period).floor().max(0.0) as usize).min(MAX_LEAD_BEATS);
+                (1..=n).rev().map(|k| first - k as f64 * period).collect()
+            }
+            _ => Vec::new(),
+        };
+        let bpb = i64::from(analysis.beats_per_bar.max(1));
+        let phase = i64::from(analysis.downbeat_phase);
+        let shift = lead.len() as i64;
         #[allow(clippy::cast_possible_truncation)]
-        let positions = analysis.beats.iter().map(|b| (b * f64::from(sample_rate)).round() as i64).collect();
-        let accents = (0..analysis.beats.len()).map(|i| analysis.is_downbeat(i)).collect();
+        let positions = lead.iter().chain(beats).map(|b| (b * f64::from(sample_rate)).round() as i64).collect();
+        let accents = (0..lead.len() + beats.len()).map(|i| (i as i64 - shift - phase).rem_euclid(bpb) == 0).collect();
         Self {
             positions,
             accents,
@@ -191,6 +207,9 @@ impl ClickTrack {
         }
     }
 }
+
+/// Longest intro the click fills in before the first detected beat.
+const MAX_LEAD_BEATS: usize = 2_000;
 
 /// Maximum number of count-in clicks (4 bars of 16).
 pub const MAX_COUNT_IN_CLICKS: usize = 64;
@@ -295,6 +314,20 @@ mod tests {
         // Beat index 1 is the downbeat (phase 1) → louder accent click.
         let peak = |a: usize| l[a..a + 60].iter().fold(0.0f32, |m, s| m.max(s.abs()));
         assert!(peak(600) > peak(100));
+    }
+
+    #[test]
+    fn the_click_keeps_time_through_an_intro() {
+        // First detected beat at 1.1 s, beat every 0.5 s, downbeat on index 1.
+        let a = analysis(vec![1.1, 1.6, 2.1, 2.6, 3.1]);
+        let track = ClickTrack::from_analysis(&a, 1_000);
+        assert_eq!(track.positions(), &[100, 600, 1_100, 1_600, 2_100, 2_600, 3_100]);
+        // Bars still line up: the downbeat stays on the 1.6 s beat (and 4
+        // beats before it, which is before the song starts).
+        assert_eq!(track.accents, vec![false, false, false, true, false, false, false]);
+        // The count-in ends where the click takes over, without a gap.
+        let plan = plan_count_in(&a, 1_000, 0, 1).unwrap();
+        assert_eq!(plan.clicks.last().unwrap().0 + 500, 100);
     }
 
     #[test]
