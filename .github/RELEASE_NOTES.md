@@ -11,9 +11,9 @@ The scripts verify every download against `SHA256SUMS`. Platforms: macOS on Appl
 
 - **Recording:** one take per armed input, aligned with the song; recording again replaces the previous take of that input. A mic or guitar on one side of a stereo pair is centred.
 - **Room:** a shared space for takes, so dry recordings sit in the mix (live, in audio exports and in videos).
-- **Video studio:** any webcam (plugged-in cameras are found automatically), edit the sound before exporting, export YouTube 16:9, Shorts/Reels/TikTok 9:16 and Instagram 1:1 / 4:5 in one pass, with the cover, title and artist in the bottom-left corner (each optional). The studio can be closed while an export runs.
+- **Video studio:** any webcam (plugged-in cameras are found automatically), edit the sound before exporting, export YouTube 16:9, Shorts/Reels/TikTok 9:16 and Instagram 1:1 / 4:5 in one pass, with the cover, title and artist in the bottom-left corner (each optional). The studio can be closed while an export runs. A clip keeps the song it was filmed on, so its title, artist and cover always match; discarding a clip turns the camera back on.
 - **Exports:** a sidebar page with every mix and video, and an explicit "include the metronome" choice when exporting audio.
-- **Plug and play:** unplugging the audio interface moves playback to the connected one and back when it returns; no more permanent device error.
+- **Plug and play:** unplugging the audio interface moves playback to the connected one and back when it returns; no more permanent device error. Disconnected inputs leave the song screen and recording, and come back when reconnected.
 - **Library folders:** choose where the library lives, move it later, separate export folder.
 - Readability and layout fixes in English, Português (Brasil) and Deutsch.
 
