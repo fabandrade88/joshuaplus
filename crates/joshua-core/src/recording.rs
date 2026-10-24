@@ -129,6 +129,26 @@ pub fn render_take(
     Ok(Some(AlignedTake { start, audio: StereoBuffer::new(song_rate, out_l, out_r)? }))
 }
 
+/// One side quieter than this (relative to the other) counts as silent.
+const ONE_SIDED_RATIO: f64 = 1e-3; // -60 dB
+
+/// A stereo input pair with a single source plugged in (a mic or guitar on
+/// input 1 of a two-input interface) records the sound on one side and
+/// silence on the other, which plays only in one ear. Such a take is put in
+/// the centre: the live side is copied to both. Real stereo is left alone.
+#[must_use]
+pub fn center_one_sided(audio: StereoBuffer) -> StereoBuffer {
+    let energy = |x: &[f32]| x.iter().map(|s| f64::from(*s) * f64::from(*s)).sum::<f64>();
+    let (el, er) = (energy(audio.left()), energy(audio.right()));
+    let (louder, quieter) = if el >= er { (el, er) } else { (er, el) };
+    // Nothing recorded at all, or both sides carry sound.
+    if louder <= 1e-6 || quieter > louder * ONE_SIDED_RATIO {
+        return audio;
+    }
+    let live = if el >= er { audio.left() } else { audio.right() };
+    StereoBuffer::new(audio.sample_rate(), live.to_vec(), live.to_vec()).unwrap_or(audio)
+}
+
 /// 4-point Hermite interpolation of `x` at fractional index `k` (clamped).
 fn cubic_at(x: &[f32], k: f64) -> f32 {
     let last = x.len() as isize - 1;
@@ -215,6 +235,24 @@ mod tests {
         let peak = take.audio.left().iter().enumerate().max_by(|a, b| a.1.total_cmp(b.1)).unwrap().0;
         assert_eq!(take.start + peak as i64, 50_000);
         assert!(take.start >= 0);
+    }
+
+    #[test]
+    fn a_source_on_one_side_of_a_stereo_pair_is_centred() {
+        let tone: Vec<f32> = (0..4_800).map(|i| (i as f32 * 0.05).sin() * 0.5).collect();
+        let one_sided = StereoBuffer::new(48_000, tone.clone(), vec![1e-6; 4_800]).unwrap();
+        let fixed = center_one_sided(one_sided);
+        assert_eq!(fixed.left(), fixed.right());
+        assert_eq!(fixed.left(), &tone[..]);
+        // Right-only works too.
+        let right_only = StereoBuffer::new(48_000, vec![0.0; 4_800], tone.clone()).unwrap();
+        assert_eq!(center_one_sided(right_only).left(), &tone[..]);
+        // Real stereo and silence are left alone.
+        let other: Vec<f32> = tone.iter().map(|s| s * 0.3).collect();
+        let stereo = StereoBuffer::new(48_000, tone.clone(), other.clone()).unwrap();
+        assert_eq!(center_one_sided(stereo).right(), &other[..]);
+        let silent = StereoBuffer::silent(48_000, 100).unwrap();
+        assert!(center_one_sided(silent).left().iter().all(|s| *s == 0.0));
     }
 
     #[test]

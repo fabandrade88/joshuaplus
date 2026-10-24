@@ -395,7 +395,7 @@ pub async fn load_song(app: AppHandle, id: String) -> ApiResult<SongView> {
         .map_err(|_| ApiError::new("internal", "loader crashed"))?
 }
 
-fn load_song_blocking(app: &AppHandle, id: &str) -> ApiResult<SongView> {
+pub(crate) fn load_song_blocking(app: &AppHandle, id: &str) -> ApiResult<SongView> {
     let state = app.state::<AppState>();
     if crate::recorder::is_recording(&state) {
         return Err(ApiError::new("recording", "stop the recording first"));

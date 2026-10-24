@@ -82,9 +82,6 @@
   {#if app.toast}
     <div class="toast" role="status">{app.toast}</div>
   {/if}
-  {#if app.transport.deviceError}
-    <div class="toast err" role="alert">{i18n.t("error.audio_engine")}</div>
-  {/if}
 </div>
 
 <SettingsDialog />
@@ -123,11 +120,6 @@
     box-shadow: var(--shadow);
     font-weight: 600;
     animation: rise 0.2s ease-out;
-  }
-  .toast.err {
-    bottom: 72px;
-    border-color: var(--danger);
-    color: var(--danger);
   }
   @keyframes rise {
     from {

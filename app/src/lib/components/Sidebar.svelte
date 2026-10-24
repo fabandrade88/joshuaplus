@@ -121,7 +121,7 @@
     <button class="nav-item" class:active={app.view.kind === "gear"} onclick={() => app.openGear()}>
       <Icon name="plug" size={16} />
       <span>{i18n.t("nav.gear")}</span>
-      {#if app.drums?.connected || app.inputs.length > 0}<span class="live-dot" aria-hidden="true"></span>{/if}
+      {#if app.drums?.connected || app.liveInputs.length > 0}<span class="live-dot" aria-hidden="true"></span>{/if}
     </button>
     <button class="nav-item" onclick={() => (app.settingsOpen = true)}>
       <Icon name="settings" size={16} />

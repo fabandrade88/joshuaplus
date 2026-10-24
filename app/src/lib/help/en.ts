@@ -120,7 +120,7 @@ export const helpEn: HelpSection[] = [
     items: [
       { term: "Arm an input", text: "Press ● on an input’s track (in the console) to arm it. Every armed input records to its own take." },
       { term: "REC (audio)", text: "With the microphone mode selected, press the red button: the song plays with its count-in and the armed inputs record. Press again (■) to stop." },
-      { term: "Takes", text: "Each recording appears in the Takes group, already lined up with the song (latency and clock differences are corrected). It has its own fader, pan, M, S and × to delete." },
+      { term: "Takes", text: "Each recording appears in the Takes group, already lined up with the song (latency and clock differences are corrected). It has its own fader, pan, M, S and × to delete. Recording again on the same input replaces its take (the old one is silent while you record, and the new one keeps its volume, pan and room)." },
       { term: "Room", text: "Each take has a Room knob: it sends the take into one shared room, so a dry recording (drum module, DI) sits in the same space as the band. New takes start at 30%; it also goes into exported audio and videos." },
       { term: "Export audio", text: "Exports the mix of all active tracks (song + takes) as a 24-bit WAV into the Exports folder. A window asks whether to include the metronome (click) and shows where the file goes." },
       { term: "Exports", text: "In the sidebar: every mix and video you exported, with buttons to play it or show it in its folder. Recorded takes stay inside their song (Takes group in the mixer)." },

@@ -105,6 +105,8 @@ function sineWav(secs: number): ArrayBuffer {
   return buf;
 }
 (window as unknown as { savedBytes: Record<number, number> }).savedBytes = savedBytes;
+/** How many times the clip sound was rendered (remix test). */
+const renders = { n: 0 };
 
 mockIPC(
   (cmd, args) => {
@@ -130,6 +132,7 @@ mockIPC(
         };
       }
       case "render_clip_audio":
+        renders.n++;
         return sineWav((args as { durationSecs: number }).durationSecs);
       case "video_save_begin":
         savedBytes[nextHandle] = 0;
@@ -146,7 +149,7 @@ mockIPC(
       }
       case "get_app_info":
         return {
-          version: "0.0.1",
+          version: "0.5.0",
           locale: lang,
           workspace: state === "welcome" ? null : "/Users/musician/Music/Joshua+",
           inbox: "/Users/musician/Music/Joshua+/inbox",
@@ -256,7 +259,7 @@ if (state === "video") {
     app.videoOpen = false;
     const wrap = document.createElement("div");
     wrap.style.cssText = "position:fixed;inset:0;z-index:99;background:#222;display:flex;gap:16px;padding:16px;align-items:flex-start";
-    for (const f of FORMATS.slice(0, 2)) {
+    for (const f of FORMATS) {
       const c = document.createElement("canvas");
       c.width = f.width;
       c.height = f.height;
@@ -270,7 +273,7 @@ if (state === "video") {
       const combo = params.get("combo") ?? "all";
       const on = (p: string) => combo === "all" || combo === p || (combo === "text" && (p === "title" || p === "artist"));
       drawTitle(g, f, on("title") ? "Left For Good" : "", on("artist") ? "Bad Omens" : "", on("cover") ? cover : null);
-      c.style.height = "560px";
+      c.style.height = "460px";
       wrap.append(c);
     }
     document.body.append(wrap);
@@ -312,7 +315,7 @@ if (state === "video") {
     await new Promise<void>((r) => ((rec.onstop = () => r()), rec.stop()));
     clearInterval(anim);
     const blob = new Blob(chunks, { type: rec.mimeType });
-    studio.clip = { blob, durationSecs: 3, songAtStart: 10 };
+    studio.clip = { blob, durationSecs: 3, songAtStart: 10, song: { id: project.id, title: project.title, artist: project.metadata?.artist ?? "", cover: null } };
     studio.clipUrl = URL.createObjectURL(blob);
     studio.phase = "review";
     log.push(`clip ${blob.size} bytes ${rec.mimeType}`);
@@ -325,10 +328,95 @@ if (state === "video") {
     log.push(`phase=${studio.phase} saved=${JSON.stringify(studio.saved)} err=${studio.exportError}`);
     document.title = log.join(" | ");
   }
+  if (params.get("phase") === "remix") {
+    // Editing the mix while the review plays re-renders the clip sound, and
+    // the export then reuses that fresh sound.
+    const { studio } = await import("../src/lib/video/studio.svelte");
+    const log: string[] = [];
+    const cv = document.createElement("canvas");
+    cv.width = 640;
+    cv.height = 360;
+    const g = cv.getContext("2d")!;
+    let f = 0;
+    const anim = setInterval(() => {
+      g.fillStyle = `hsl(${(f++ * 9) % 360} 70% 40%)`;
+      g.fillRect(0, 0, 640, 360);
+    }, 33);
+    const rec = new MediaRecorder(cv.captureStream(30), { mimeType: studio.container!.mime.replace(/,mp4a\.40\.2|,opus/, "") });
+    const chunks: Blob[] = [];
+    rec.ondataavailable = (e) => chunks.push(e.data);
+    rec.start(500);
+    await new Promise((r) => setTimeout(r, 6000));
+    await new Promise<void>((r) => ((rec.onstop = () => r()), rec.stop()));
+    clearInterval(anim);
+    const blob = new Blob(chunks, { type: rec.mimeType });
+    studio.clip = { blob, durationSecs: 6, songAtStart: 10, song: { id: project.id, title: project.title, artist: project.metadata?.artist ?? "", cover: null } };
+    studio.clipUrl = URL.createObjectURL(blob);
+    studio.phase = "review";
+    await new Promise((r) => setTimeout(r, 800));
+    const v = document.querySelector<HTMLVideoElement>(".stage > video")!;
+    studio.unlockAudio();
+    await v.play().catch((e: unknown) => log.push(`play failed ${String(e)}`));
+    await new Promise((r) => setTimeout(r, 1500));
+    log.push(`first renders=${renders.n} paused=${v.paused} t=${v.currentTime.toFixed(1)}`);
+    const slider = document.querySelector<HTMLInputElement>(".mix input[type=range]")!;
+    slider.value = "-10";
+    slider.dispatchEvent(new Event("input", { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 1500));
+    log.push(`after-edit renders=${renders.n} paused=${v.paused} t=${v.currentTime.toFixed(1)} songGain=${app.song?.project.songGainDb}`);
+    const gainOf = () => (studio as unknown as { reviewGain: GainNode | null }).reviewGain?.gain.value;
+    v.volume = 0.25;
+    await new Promise((r) => setTimeout(r, 200));
+    const atQuarter = gainOf();
+    v.muted = true;
+    await new Promise((r) => setTimeout(r, 200));
+    log.push(`player volume 0.25 -> gain ${atQuarter}; muted -> gain ${gainOf()}`);
+    v.muted = false;
+    const s3 = studio as unknown as { audioFor: (c: AudioContext) => Promise<AudioBuffer> };
+    await s3.audioFor(new AudioContext());
+    log.push(`export-sound renders=${renders.n}`);
+    document.title = "phase=remix | " + log.join(" | ");
+  }
+  if (params.get("phase") === "othersong") {
+    // A clip filmed on another song: notice, no export; discarding films
+    // this song with the camera on. Then: an exported clip of another song
+    // is dropped when the studio reopens, and the camera starts.
+    const { studio } = await import("../src/lib/video/studio.svelte");
+    const log: string[] = [];
+    const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    const clipOf = (id: string, title: string) => {
+      const blob = new Blob([new Uint8Array(1000)], { type: "video/mp4" });
+      studio.clip = { blob, durationSecs: 5, songAtStart: 10, song: { id, title, artist: "Tom Jobim", cover: null } };
+      studio.clipUrl = URL.createObjectURL(blob);
+      studio.phase = "review";
+    };
+    await wait(1500);
+    clipOf("other-song", "Garota de Ipanema");
+    await wait(800);
+    const notice = document.querySelector(".other-song")?.textContent?.trim().slice(0, 60);
+    const exportBtn = document.querySelector<HTMLButtonElement>("aside .btn.primary");
+    log.push(`notice="${notice}" exportDisabled=${exportBtn?.disabled}`);
+    if (params.get("shot") === "1") {
+      document.title = "phase=othersong";
+    } else {
+      [...document.querySelectorAll<HTMLButtonElement>(".other-song .btn")].pop()!.click();
+      await wait(2500);
+      log.push(`after discard: phase=${studio.phase} camera=${!!studio.stream} clip=${!!studio.clip}`);
+      clipOf("other-song", "Garota de Ipanema");
+      studio.saved = ["/x/a.mp4"];
+      studio.closeCamera();
+      app.videoOpen = false;
+      await wait(500);
+      app.videoOpen = true;
+      await wait(2500);
+      log.push(`reopen after export: phase=${studio.phase} camera=${!!studio.stream} clip=${!!studio.clip}`);
+      document.title = "phase=othersong | " + log.join(" | ");
+    }
+  }
   if (params.get("phase") === "exportflow") {
     const { studio } = await import("../src/lib/video/studio.svelte");
     const blob = new Blob([new Uint8Array(1000)], { type: "video/mp4" });
-    studio.clip = { blob, durationSecs: 5, songAtStart: 10 };
+    studio.clip = { blob, durationSecs: 5, songAtStart: 10, song: { id: project.id, title: project.title, artist: project.metadata?.artist ?? "", cover: null } };
     studio.clipUrl = URL.createObjectURL(blob);
     studio.phase = "review";
     await new Promise((r) => setTimeout(r, 800));
@@ -379,7 +467,7 @@ if (state === "video") {
     // Review screen with a dummy clip (layout checks only).
     const { studio } = await import("../src/lib/video/studio.svelte");
     const blob = new Blob([new Uint8Array(1000)], { type: "video/mp4" });
-    studio.clip = { blob, durationSecs: 5, songAtStart: 10 };
+    studio.clip = { blob, durationSecs: 5, songAtStart: 10, song: { id: project.id, title: project.title, artist: project.metadata?.artist ?? "", cover: null } };
     studio.clipUrl = URL.createObjectURL(blob);
     studio.phase = "review";
   }

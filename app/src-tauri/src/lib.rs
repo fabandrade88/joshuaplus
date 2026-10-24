@@ -15,6 +15,7 @@ mod settings;
 mod state;
 mod ticker;
 mod video;
+mod watchdog;
 
 use tauri::Manager;
 
@@ -42,6 +43,7 @@ pub fn run() {
             state.jobs.start_worker(handle.clone());
             inbox::start(handle.clone());
             backfill::start(handle.clone());
+            watchdog::start(handle.clone());
             ticker::start(handle);
             Ok(())
         })

@@ -9,6 +9,7 @@
   import { FORMATS, coverCrop, type FormatId } from "../video/formats";
   import { studio } from "../video/studio.svelte";
   import Icon from "./Icon.svelte";
+  import VideoMix from "./VideoMix.svelte";
 
   let live = $state<HTMLVideoElement | null>(null);
   let review = $state<HTMLVideoElement | null>(null);
@@ -41,7 +42,13 @@
   }
 
   onMount(() => {
-    if (studio.supported) void studio.openCamera();
+    if (!studio.supported) return;
+    // A clip of another song that was already exported: start fresh.
+    if (studio.phase === "review" && studio.clipFromOtherSong && studio.saved.length > 0) studio.discardClip();
+    // Reopened while an export runs or a clip waits: no camera needed yet
+    // (discarding the clip opens it).
+    if (studio.phase === "idle") void studio.openCamera();
+    return studio.watchCameras();
   });
   onDestroy(() => void studio.close());
 
@@ -60,6 +67,9 @@
       }),
   );
   const busy = $derived(studio.phase === "starting" || studio.phase === "saving" || studio.phase === "exporting");
+  /** The window can close at any time except mid-take: an export keeps
+   *  running in the background (its progress shows in the sidebar). */
+  const canClose = $derived(studio.phase !== "recording" && studio.phase !== "starting" && studio.phase !== "saving");
   /** While filming, the studio shrinks to a corner so the app stays visible. */
   const mini = $derived(studio.phase === "starting" || studio.phase === "recording");
 </script>
@@ -92,7 +102,7 @@
   </div>
 {/snippet}
 
-<svelte:window onkeydown={(e) => e.key === "Escape" && !busy && studio.phase !== "recording" && void close()} />
+<svelte:window onkeydown={(e) => e.key === "Escape" && canClose && void close()} />
 
 <div class="backdrop" class:mini role="presentation">
   <div class="studio" class:mini role="dialog" aria-modal={!mini} tabindex="-1" aria-label={i18n.t("video.title")}>
@@ -102,7 +112,7 @@
         <h2>{i18n.t("video.title")}</h2>
         <p>{i18n.t("video.subtitle")}</p>
       </div>
-      <button class="icon-btn" title={i18n.t("common.close")} aria-label={i18n.t("common.close")} disabled={busy || studio.phase === "recording"} onclick={() => close()}>
+      <button class="icon-btn" title={i18n.t("common.close")} aria-label={i18n.t("common.close")} disabled={!canClose} onclick={() => close()}>
         <Icon name="close" size={16} />
       </button>
     </header>
@@ -117,6 +127,18 @@
             <video bind:this={review} src={studio.clipUrl} controls playsinline onpointerdown={() => studio.unlockAudio()}></video>
             {#if studio.reviewAudio === "loading"}<p class="sound-state">{i18n.t("video.soundLoading")}</p>{/if}
             {#if studio.reviewAudio === "error"}<p class="sound-state err">{i18n.t("video.soundError")}</p>{/if}
+            {#if studio.clipFromOtherSong && studio.phase === "review" && studio.clip}
+              {@const from = studio.clip.song}
+              <div class="other-song" role="status">
+                <p>{i18n.t("video.otherSong", { title: from.title })}</p>
+                <div class="other-actions">
+                  <button class="btn" onclick={() => app.openSong(from.id)}>{i18n.t("video.backToSong", { title: from.title })}</button>
+                  <button class="btn" onclick={() => studio.discardClip()}>{i18n.t("video.discardForThis")}</button>
+                </div>
+              </div>
+            {:else}
+              <VideoMix disabled={studio.phase === "exporting"} />
+            {/if}
           {:else}
             <div class="live">
               <!-- svelte-ignore a11y_media_has_caption -->
@@ -187,7 +209,7 @@
               <p class="hint">{i18n.t("video.exporting")}</p>
               <button class="btn" onclick={() => studio.cancel()}>{i18n.t("common.cancel")}</button>
             {:else}
-              <button class="btn primary" disabled={studio.selectedFormats.length === 0} onclick={exportAndClose}>
+              <button class="btn primary" disabled={studio.selectedFormats.length === 0 || studio.clipFromOtherSong} onclick={exportAndClose}>
                 <Icon name="export" size={14} />{i18n.t("video.export", { n: studio.selectedFormats.length })}
               </button>
               <button class="btn" onclick={() => studio.discardClip()}>{i18n.t("video.again")}</button>
@@ -204,16 +226,31 @@
             {/if}
             <p class="note">{studio.container?.ext === "webm" ? i18n.t("video.webmNote") : i18n.t("video.mp4Note")}</p>
           {:else}
-            {#if studio.cameras.length > 1}
-              <label class="field">
-                <span>{i18n.t("video.camera")}</span>
-                <select value={studio.cameraId ?? ""} disabled={studio.phase !== "idle"} onchange={(e) => studio.openCamera(e.currentTarget.value)}>
+            <div class="field">
+              <label for="studio-camera">{i18n.t("video.camera")}</label>
+              <div class="camera-row">
+                <select
+                  id="studio-camera"
+                  value={studio.cameraId ?? ""}
+                  disabled={studio.phase !== "idle" || studio.cameras.length === 0}
+                  onchange={(e) => studio.chooseCamera(e.currentTarget.value)}
+                >
+                  {#if studio.cameras.length === 0}<option value="">{i18n.t("video.noCameras")}</option>{/if}
                   {#each studio.cameras as c (c.id)}
                     <option value={c.id}>{c.label}</option>
                   {/each}
                 </select>
-              </label>
-            {/if}
+                <button
+                  class="icon-btn"
+                  title={i18n.t("video.findCameras")}
+                  aria-label={i18n.t("video.findCameras")}
+                  disabled={studio.phase !== "idle"}
+                  onclick={() => studio.openCamera(studio.cameraId)}
+                >
+                  <Icon name="loop" size={15} />
+                </button>
+              </div>
+            </div>
             {@render formatPicker()}
             <ul class="facts">
               <li><Icon name="music" size={14} />{i18n.t("video.factMusic")}</li>
@@ -447,6 +484,31 @@
     text-transform: uppercase;
     letter-spacing: 0.1em;
     color: var(--text-faint);
+  }
+  .other-song {
+    margin-top: 12px;
+    padding: 12px 14px;
+    border-radius: var(--radius);
+    border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line));
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+  }
+  .other-song p {
+    margin: 0 0 10px;
+    font-size: var(--fs-body);
+  }
+  .other-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .camera-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .camera-row select {
+    flex: 1;
+    min-width: 0;
   }
   .formats {
     display: flex;
@@ -691,6 +753,10 @@
   .studio:not(.mini) .live {
     width: min(100%, calc((100vh - 190px) * 16 / 9));
     margin-inline: auto;
+  }
+  /* Reviewing: a smaller picture leaves the video's sound mix on screen. */
+  .studio:not(.mini) .stage > video {
+    width: min(100%, calc((100vh - 190px) * 0.5 * 16 / 9));
   }
   @media (max-width: 1100px), (max-height: 760px) {
     .backdrop:not(.mini) {

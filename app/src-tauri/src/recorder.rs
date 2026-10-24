@@ -15,7 +15,7 @@ use std::time::Duration;
 use joshua_core::decode::decode_file;
 use joshua_core::mixer::MAX_TRACKS;
 use joshua_core::project::{MAX_TAKES, TakeSettings};
-use joshua_core::recording::{Marker, fit_alignment, render_take};
+use joshua_core::recording::{Marker, center_one_sided, fit_alignment, render_take};
 use joshua_core::security::random_suffix;
 use joshua_core::wav::StereoWavWriter;
 use joshua_engine::input::{InputControls, RecordRx};
@@ -105,10 +105,14 @@ pub fn start(state: &AppState, allow_no_inputs: bool) -> ApiResult<()> {
     if active.is_some() {
         return Err(ApiError::new("recording", "already recording"));
     }
-    let (song_id, existing_takes, stems) = lock(&state.current)
+    let (song_id, take_names, stems) = lock(&state.current)
         .as_ref()
-        .map(|s| (s.project.id.clone(), s.project.takes.len(), s.project.tracks.len()))
+        .map(|s| {
+            let names: Vec<String> = s.project.takes.iter().map(|t| t.name.clone()).collect();
+            (s.project.id.clone(), names, s.project.tracks.len())
+        })
         .ok_or_else(ApiError::no_song)?;
+    let existing_takes = take_names.len();
 
     let inputs = lock(&state.devices.inputs);
     let armed: Vec<_> = inputs
@@ -119,8 +123,23 @@ pub fn start(state: &AppState, allow_no_inputs: bool) -> ApiResult<()> {
     if armed.is_empty() && !allow_no_inputs {
         return Err(ApiError::new("no_armed_input", "arm at least one input to record"));
     }
-    if existing_takes + armed.len() > MAX_TAKES || stems + existing_takes + armed.len() > MAX_TRACKS {
+    // Recording again over an input replaces its previous take: those takes
+    // are silenced while recording (the song reload afterwards restores the
+    // mix) and do not count against the limit.
+    let replaced: Vec<usize> = take_names
+        .iter()
+        .enumerate()
+        .filter(|(_, name)| armed.iter().any(|(i, _, _)| take_name(&i.config.name) == **name))
+        .map(|(j, _)| j)
+        .collect();
+    let kept = existing_takes - replaced.len();
+    if kept + armed.len() > MAX_TAKES || stems + kept + armed.len() > MAX_TRACKS {
         return Err(ApiError::new("too_many_takes", "delete some takes first"));
+    }
+    for j in &replaced {
+        if let Some(ch) = shared.channels.get(stems + j).filter(|_| stems + j < MAX_TRACKS) {
+            ch.set_mute(true);
+        }
     }
 
     let mut started = Vec::with_capacity(armed.len());
@@ -222,13 +241,15 @@ pub fn stop(state: &AppState) -> ApiResult<Stopped> {
             };
             let id = format!("take-{next_id}");
             let file = format!("takes/{id}.wav");
+            // A mic or guitar on one input of a stereo pair: centre it.
+            let audio = center_one_sided(take.audio);
             let mut w = StereoWavWriter::create(&takes_dir.join(format!("{id}.wav")), out_rate)?;
-            w.write(take.audio.left(), take.audio.right())?;
+            w.write(audio.left(), audio.right())?;
             w.finish()?;
             next_id += 1;
             Ok(Some(TakeSettings {
                 id,
-                name: joshua_core::security::sanitize_title(&input.name).chars().take(80).collect(),
+                name: take_name(&input.name),
                 file,
                 offset_secs: take.start as f64 / f64::from(out_rate),
                 created_unix: std::time::SystemTime::now()
@@ -254,10 +275,50 @@ pub fn stop(state: &AppState) -> ApiResult<Stopped> {
         // Keep the in-memory mixer edits, then add the takes.
         crate::ticker::flush_dirty(state);
         project = ws.load_project(&rec.song_id)?;
-        project.takes.extend(new_takes);
+        let old_files = merge_takes(&mut project.takes, new_takes);
         ws.save_project(&project)?;
+        if let Ok(dir) = ws.song_dir(&rec.song_id) {
+            for file in old_files {
+                let _ = std::fs::remove_file(dir.join(file));
+            }
+        }
     }
     Ok(outcome)
+}
+
+/// Name of the take recorded from an input (also how a new take finds the
+/// one it replaces).
+fn take_name(input_name: &str) -> String {
+    joshua_core::security::sanitize_title(input_name).chars().take(80).collect()
+}
+
+/// Adds freshly recorded takes to a song. A take from an input that already
+/// has one replaces it in place, keeping its level, pan, room and solo, so
+/// recording again is "record over"; older extra takes of that input (from
+/// before takes were replaced) go too. Returns the replaced files (relative
+/// to the song folder) to delete once the project is saved.
+fn merge_takes(takes: &mut Vec<TakeSettings>, new: Vec<TakeSettings>) -> Vec<String> {
+    let mut old_files = Vec::new();
+    for mut t in new {
+        let Some(first) = takes.iter().position(|o| o.name == t.name) else {
+            takes.push(t);
+            continue;
+        };
+        let old = &takes[first];
+        (t.gain_db, t.pan, t.room, t.solo) = (old.gain_db, old.pan, old.room, old.solo);
+        let name = t.name.clone();
+        old_files.push(std::mem::replace(&mut takes[first], t).file);
+        let mut j = 0;
+        takes.retain(|o| {
+            let extra = j != first && o.name == name;
+            j += 1;
+            if extra {
+                old_files.push(o.file.clone());
+            }
+            !extra
+        });
+    }
+    old_files
 }
 
 #[cfg(test)]
@@ -266,6 +327,37 @@ mod tests {
     use super::*;
     use joshua_core::mixer::SharedState;
     use joshua_engine::input::InputTap;
+
+    fn take(id: u32, name: &str) -> TakeSettings {
+        TakeSettings {
+            id: format!("take-{id}"),
+            name: name.into(),
+            file: format!("takes/take-{id}.wav"),
+            offset_secs: 0.0,
+            created_unix: 0,
+            gain_db: 0.0,
+            pan: 0.0,
+            muted: false,
+            solo: false,
+            room: 0.3,
+        }
+    }
+
+    #[test]
+    fn recording_again_replaces_the_take_of_the_same_input() {
+        let mut old_drums = take(1, "Yamaha AG06MK2");
+        old_drums.gain_db = -4.0;
+        old_drums.room = 0.5;
+        old_drums.muted = true;
+        // take-5 is an older duplicate of the same input.
+        let mut takes = vec![old_drums, take(2, "SPD-SX PRO"), take(5, "Yamaha AG06MK2")];
+        let removed = merge_takes(&mut takes, vec![take(3, "Yamaha AG06MK2"), take(4, "Guitar DI")]);
+        assert_eq!(removed, ["takes/take-1.wav", "takes/take-5.wav"]);
+        let ids: Vec<_> = takes.iter().map(|t| t.id.as_str()).collect();
+        assert_eq!(ids, ["take-3", "take-2", "take-4"], "replaced in place, duplicates gone, new input appended");
+        // The new drums take keeps the old mix but is heard.
+        assert_eq!((takes[0].gain_db, takes[0].room, takes[0].muted), (-4.0, 0.5, false));
+    }
 
     #[test]
     fn writer_captures_every_frame_and_marker_until_stopped() {

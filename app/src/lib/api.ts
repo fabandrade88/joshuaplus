@@ -5,6 +5,7 @@ import type {
   ApiError,
   DrumHit,
   DrumPad,
+  DevicesChanged,
   DrumState,
   ExportList,
   InputDeviceView,
@@ -98,6 +99,8 @@ export const events = {
   onTransport: (cb: (t: TransportTick) => void): Promise<UnlistenFn> =>
     listen<TransportTick>("transport", (e) => cb(e.payload)),
   onLibraryChanged: (cb: () => void): Promise<UnlistenFn> => listen("library-changed", () => cb()),
+  onDevicesChanged: (cb: (c: DevicesChanged) => void): Promise<UnlistenFn> =>
+    listen<DevicesChanged>("audio-devices-changed", (e) => cb(e.payload)),
   onInputLevels: (cb: (levels: number[]) => void): Promise<UnlistenFn> =>
     listen<number[]>("input-levels", (e) => cb(e.payload)),
   onDrumHit: (cb: (hit: DrumHit) => void): Promise<UnlistenFn> => listen<DrumHit>("drum-hit", (e) => cb(e.payload)),

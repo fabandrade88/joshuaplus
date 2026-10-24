@@ -36,6 +36,27 @@ interface Clip {
   durationSecs: number;
   /** Song time at video time 0 (from transport samples). */
   songAtStart: number;
+  /** The song it was filmed on: its sound and overlay come from this song
+   *  even if another one is open later. */
+  song: ClipSong;
+}
+
+interface ClipSong {
+  id: string;
+  title: string;
+  artist: string;
+  cover: string | null;
+}
+
+/** The open song, as a clip remembers it. */
+function currentClipSong(): ClipSong {
+  const s = app.song;
+  return {
+    id: s?.project.id ?? "",
+    title: s?.project.title ?? "",
+    artist: s?.project.metadata?.artist ?? "",
+    cover: s?.cover ?? null,
+  };
 }
 
 /** Parts of the overlay burned into exported clips. */
@@ -95,6 +116,7 @@ class VideoStudio {
   }
 
   private chunks: Blob[] = [];
+  private filmedSong: ClipSong | null = null;
   private t0 = 0;
   private samples: SyncSample[] = [];
   private unlisten: (() => void) | null = null;
@@ -114,28 +136,82 @@ class VideoStudio {
   }
 
   // ── Camera ───────────────────────────────────────────────────────────────
+  /** Opens a camera: the given one, else the one used last time (matched by
+   *  name: ids can change between runs), else any. A camera that is gone or
+   *  busy falls back to whichever is available. */
   async openCamera(id: string | null = this.cameraId): Promise<void> {
     this.closeCamera();
     this.cameraError = null;
+    await this.refreshCameras();
+    const remembered = readCameraLabel();
+    const wanted =
+      (id && this.cameras.some((c) => c.id === id) ? id : null) ??
+      this.cameras.find((c) => remembered !== null && c.label === remembered)?.id ??
+      null;
+    let stream: MediaStream | null = null;
+    let error: unknown = null;
+    for (const choice of wanted ? [wanted, null] : [null]) {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: {
+            ...(choice ? { deviceId: { exact: choice } } : {}),
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+            frameRate: { ideal: FPS },
+          },
+        });
+        break;
+      } catch (e) {
+        error = e;
+        if (e instanceof DOMException && e.name === "NotAllowedError") break;
+      }
+    }
+    if (!stream) {
+      this.cameraError =
+        error instanceof DOMException && error.name === "NotAllowedError" ? i18n.t("video.denied") : i18n.t("video.noCamera");
+      return;
+    }
+    this.stream = stream;
+    this.cameraId = stream.getVideoTracks()[0]?.getSettings().deviceId ?? wanted;
+    // Labels are only readable once a camera is open.
+    await this.refreshCameras();
+  }
+
+  /** Lists the cameras connected to the computer. */
+  async refreshCameras(): Promise<void> {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: false,
-        video: {
-          ...(id ? { deviceId: { exact: id } } : {}),
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-          frameRate: { ideal: FPS },
-        },
-      });
-      this.stream = stream;
-      this.cameraId = stream.getVideoTracks()[0]?.getSettings().deviceId ?? id;
       const devices = await navigator.mediaDevices.enumerateDevices();
       this.cameras = devices
-        .filter((d) => d.kind === "videoinput")
+        .filter((d) => d.kind === "videoinput" && d.deviceId !== "")
         .map((d, i) => ({ id: d.deviceId, label: d.label || `${i18n.t("video.camera")} ${i + 1}` }));
-    } catch (e) {
-      this.cameraError = e instanceof DOMException && e.name === "NotAllowedError" ? i18n.t("video.denied") : i18n.t("video.noCamera");
+    } catch {
+      this.cameras = [];
     }
+  }
+
+  /** The user picked a camera: open it and remember it for next time. */
+  async chooseCamera(id: string): Promise<void> {
+    const label = this.cameras.find((c) => c.id === id)?.label;
+    if (label) writeCameraLabel(label);
+    await this.openCamera(id);
+  }
+
+  /** Follows cameras being plugged in or out while the studio is open.
+   *  Returns a cleanup. */
+  watchCameras(): () => void {
+    const media = navigator.mediaDevices;
+    if (!media?.addEventListener) return () => {};
+    const onChange = async () => {
+      const before = this.cameraId;
+      await this.refreshCameras();
+      if (this.phase !== "idle") return; // never swap cameras mid-take
+      const gone = before !== null && !this.cameras.some((c) => c.id === before);
+      const ended = this.stream?.getVideoTracks().every((t) => t.readyState === "ended") ?? true;
+      if (gone || ended || !this.stream) await this.openCamera(null);
+    };
+    media.addEventListener("devicechange", onChange);
+    return () => media.removeEventListener("devicechange", onChange);
   }
 
   closeCamera(): void {
@@ -148,6 +224,7 @@ class VideoStudio {
     if (!this.stream || !this.container || this.phase !== "idle") return;
     this.discardClip();
     this.phase = "starting";
+    this.filmedSong = currentClipSong();
     this.chunks = [];
     this.samples = [];
     const recorder = new MediaRecorder(this.stream, {
@@ -201,7 +278,7 @@ class VideoStudio {
       this.phase = "idle";
       return;
     }
-    this.clip = { blob, durationSecs, songAtStart };
+    this.clip = { blob, durationSecs, songAtStart, song: this.filmedSong ?? currentClipSong() };
     this.clipUrl = URL.createObjectURL(blob);
     this.phase = "review";
   }
@@ -224,13 +301,21 @@ class VideoStudio {
     this.clip = null;
     this.saved = [];
     if (this.phase === "review") this.phase = "idle";
+    // Filming again: the camera may have been closed while the clip waited.
+    if (app.videoOpen && this.phase === "idle" && !this.stream) void this.openCamera();
+  }
+
+  /** The clip under review was filmed on another song than the open one
+   *  (its sound and overlay belong to that song). */
+  get clipFromOtherSong(): boolean {
+    return !!this.clip && this.clip.song.id !== (app.song?.project.id ?? "");
   }
 
   // ── Mix audio for the clip ───────────────────────────────────────────────
   /** The clip's sound for the current sync: reuses the one prepared for
    *  the review player when possible (rendering it is the slow part). */
   private async audioFor(ctx: AudioContext): Promise<AudioBuffer> {
-    if (this.reviewBuffer && this.reviewSync === this.syncMs) return this.reviewBuffer;
+    if (this.reviewFresh(this.syncMs)) return this.reviewBuffer!;
     return this.clipAudio(ctx);
   }
 
@@ -248,6 +333,33 @@ class VideoStudio {
   private reviewBuffer: AudioBuffer | null = null;
   private reviewSync: number | null = null;
   private reviewSrc: AudioBufferSourceNode | null = null;
+  /** Follows the review player's volume and mute buttons. */
+  private reviewGain: GainNode | null = null;
+  /** Bumped on every mix change made while reviewing: the prepared sound
+   *  is then stale and gets rendered again (for preview and export). */
+  private mixVersion = 0;
+  private reviewMix = -1;
+  private reviewVideo: HTMLVideoElement | null = null;
+  private remixTimer: ReturnType<typeof setTimeout> | undefined;
+
+  private reviewFresh(sync: number): boolean {
+    return this.reviewBuffer !== null && this.reviewSync === sync && this.reviewMix === this.mixVersion;
+  }
+
+  /** The mix was edited in the review: re-render the clip's sound. If the
+   *  clip is playing, it picks the new sound up where it is (debounced, so
+   *  dragging a slider does not render on every step). */
+  mixChanged(): void {
+    this.mixVersion++;
+    clearTimeout(this.remixTimer);
+    this.remixTimer = setTimeout(() => {
+      const v = this.reviewVideo;
+      if (v && !v.paused) {
+        v.pause();
+        void v.play();
+      }
+    }, 350);
+  }
 
   /** Must run inside a click/tap: WebKit only lets audio start from a gesture. */
   unlockAudio(): void {
@@ -257,12 +369,14 @@ class VideoStudio {
 
   /** Renders (once per sync value) the mix that goes with the clip. */
   private async reviewBufferFor(sync: number): Promise<AudioBuffer> {
-    if (this.reviewBuffer && this.reviewSync === sync) return this.reviewBuffer;
+    if (this.reviewFresh(sync)) return this.reviewBuffer!;
     this.reviewAudio = "loading";
     const ctx = (this.reviewCtx ??= new AudioContext());
+    const mix = this.mixVersion;
     const buffer = await this.clipAudio(ctx);
     this.reviewBuffer = buffer;
     this.reviewSync = sync;
+    this.reviewMix = mix;
     this.reviewAudio = "ready";
     return buffer;
   }
@@ -279,13 +393,19 @@ class VideoStudio {
   /** Wires the review `<video>` so every play — native controls or the
    *  Preview button — sounds with the real mix, in sync. Returns a cleanup. */
   attachReview(video: HTMLVideoElement): () => void {
-    video.muted = true;
+    // The camera clip has no sound track of its own: the player's volume and
+    // mute buttons drive the mix played next to it.
+    video.muted = false;
+    this.reviewVideo = video;
+    const follow = () => {
+      if (this.reviewGain) this.reviewGain.gain.value = video.muted ? 0 : video.volume;
+    };
     let starting = false;
     const onPlay = async () => {
-      if (starting || !this.clip) return;
+      if (starting || !this.clip || this.clipFromOtherSong) return;
       this.stopReviewSound();
       const sync = this.syncMs;
-      if (!this.reviewBuffer || this.reviewSync !== sync) {
+      if (!this.reviewFresh(sync)) {
         // Hold the picture until the sound is ready, then resume together.
         starting = true;
         video.pause();
@@ -303,9 +423,15 @@ class VideoStudio {
       const ctx = this.reviewCtx!;
       await ctx.resume();
       const src = ctx.createBufferSource();
-      src.buffer = this.reviewBuffer;
-      src.connect(ctx.destination);
-      src.start(ctx.currentTime, Math.min(video.currentTime, this.reviewBuffer.duration));
+      const buffer = this.reviewBuffer!;
+      src.buffer = buffer;
+      if (!this.reviewGain) {
+        this.reviewGain = ctx.createGain();
+        this.reviewGain.connect(ctx.destination);
+      }
+      follow();
+      src.connect(this.reviewGain);
+      src.start(ctx.currentTime, Math.min(video.currentTime, buffer.duration));
       this.reviewSrc = src;
     };
     const onStop = () => {
@@ -315,11 +441,15 @@ class VideoStudio {
     video.addEventListener("pause", onStop);
     video.addEventListener("seeking", onStop);
     video.addEventListener("ended", onStop);
+    video.addEventListener("volumechange", follow);
     return () => {
+      video.removeEventListener("volumechange", follow);
       video.removeEventListener("playing", onPlay);
       video.removeEventListener("pause", onStop);
       video.removeEventListener("seeking", onStop);
       video.removeEventListener("ended", onStop);
+      if (this.reviewVideo === video) this.reviewVideo = null;
+      clearTimeout(this.remixTimer);
       this.stopReviewSound();
     };
   }
@@ -338,6 +468,7 @@ class VideoStudio {
     this.stopReviewSound();
     this.reviewBuffer = null;
     this.reviewSync = null;
+    this.reviewMix = -1;
     this.reviewAudio = "idle";
   }
 
@@ -354,6 +485,8 @@ class VideoStudio {
     const container = this.container;
     const formats = this.selectedFormats;
     if (!clip || !container || formats.length === 0 || this.phase !== "review") return;
+    // The sound is rendered from the open song: it must be the clip's song.
+    if (this.clipFromOtherSong) return;
     this.exportRunning = true;
     this.phase = "exporting";
     this.exportStage = "audio";
@@ -393,9 +526,10 @@ class VideoStudio {
       src.buffer = buffer;
       src.connect(dest);
       const ov = { ...this.overlay };
-      const title = ov.title ? (app.song?.project.title ?? "") : "";
-      const artist = ov.artist ? (app.song?.project.metadata?.artist ?? "") : "";
-      const cover = ov.cover ? await loadImage(app.song?.cover ?? null) : null;
+      // Always the song the clip was filmed on.
+      const title = ov.title ? clip.song.title : "";
+      const artist = ov.artist ? clip.song.artist : "";
+      const cover = ov.cover ? await loadImage(clip.song.cover) : null;
       const withOverlay = !!(title || artist || cover);
 
       const outputs = await Promise.all(
@@ -620,6 +754,24 @@ export function loadImage(src: string | null): Promise<HTMLImageElement | null> 
 /** Album cover, song title and artist in the lower left, over a soft shade.
  *  Any part may be missing (empty text / null cover); with nothing to show it
  *  draws nothing at all. */
+const CAMERA_KEY = "joshua.video.camera";
+
+function readCameraLabel(): string | null {
+  try {
+    return localStorage.getItem(CAMERA_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeCameraLabel(label: string): void {
+  try {
+    localStorage.setItem(CAMERA_KEY, label);
+  } catch {
+    // Remembering the camera is a convenience only.
+  }
+}
+
 export function drawTitle(
   g: CanvasRenderingContext2D,
   f: VideoFormat,
@@ -628,14 +780,13 @@ export function drawTitle(
   cover: HTMLImageElement | null,
 ): void {
   if (!title && !artist && !cover) return;
-  // Vertical platforms (Shorts, Reels, TikTok) cover the bottom ~20% with
-  // their own buttons and captions: lift the overlay into the safe area
-  // and make it a little larger on the tall frame.
+  // Bottom-left corner in every format; a little larger on tall frames,
+  // where the same pixel size reads smaller on a phone.
   const tall = f.height > f.width * 1.2;
   const unit = (Math.min(f.width, f.height) / 1080) * (tall ? 1.3 : 1);
   const pad = 48 * unit;
-  const bottom = tall ? f.height * 0.2 : 0;
-  const shadeTop = f.height * (tall ? 0.55 : 0.7);
+  const bottom = 0;
+  const shadeTop = f.height * (tall ? 0.78 : 0.7);
   const shade = g.createLinearGradient(0, shadeTop, 0, f.height);
   shade.addColorStop(0, "rgba(0,0,0,0)");
   shade.addColorStop(1, "rgba(0,0,0,0.6)");

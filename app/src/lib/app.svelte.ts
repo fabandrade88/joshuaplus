@@ -172,6 +172,17 @@ class AppStore {
       events.onJob((u) => this.onJob(u)),
       events.onTransport((t) => this.onTransport(t)),
       events.onLibraryChanged(() => void this.refreshLibrary()),
+      events.onDevicesChanged((c) => {
+        if (c.restored && c.output) this.notify(i18n.t("devices.restored", { name: c.output }));
+        else if (c.lostOutput)
+          this.notify(
+            c.output
+              ? i18n.t("devices.outputLost", { lost: c.lostOutput, name: c.output })
+              : i18n.t("devices.outputNone", { lost: c.lostOutput }),
+          );
+        void this.refreshInfo();
+        void this.refreshInputs();
+      }),
       events.onModelProgress((p) => (this.modelProgress = p)),
       events.onExportProgress((p) => (this.exportProgress = p)),
       events.onInputLevels((l) => {
@@ -598,8 +609,15 @@ class AppStore {
     return !!this.transport.recording;
   }
 
+  /** Inputs whose device is connected and running. Disconnected ones are
+   *  only listed in Instruments & inputs (tagged "disconnected"); the song
+   *  screen and recording ignore them. */
+  get liveInputs(): InputView[] {
+    return this.inputs.filter((i) => !i.error);
+  }
+
   get armedCount(): number {
-    return this.inputs.filter((i) => i.armed && i.canRecord).length;
+    return this.liveInputs.filter((i) => i.armed && i.canRecord).length;
   }
 
   /** Index of a take's meter (takes follow the stems). */

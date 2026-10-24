@@ -62,14 +62,14 @@
         </div>
       </div>
 
-      {#if app.inputs.length > 0 || app.drums?.connected}
+      {#if app.liveInputs.length > 0 || app.drums?.connected}
         <div class="group">
           <header>
             <span class="group-name">{i18n.t("gear.inputs")}</span>
             <button class="toggle" title={i18n.t("gear.title")} aria-label={i18n.t("gear.title")} onclick={() => app.openGear()}><Icon name="plug" size={13} /></button>
           </header>
           <div class="strips">
-            {#each app.inputs as input (input.index)}
+            {#each app.liveInputs as input (input.index)}
               {#if input.directMonitor}
                 <MeterStrip
                   kind="other"

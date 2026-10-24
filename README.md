@@ -2,332 +2,124 @@
   <img src="app/assets/icon.svg" width="96" alt="Joshua+ icon">
 </p>
 
-<h1 align="center">Joshua+ <sup><code>beta</code></sup></h1>
-<p align="center"><b>Making music at home.</b> Split any song into instrument tracks, get a click that follows the song, and play along.</p>
+<h1 align="center">Joshua+</h1>
+<p align="center"><b>Making music at home.</b> Split any song into instruments, play along with a click locked to the song, record yourself and share the video.</p>
 <p align="center"><i>"Moises led the way. Joshua takes you home"</i></p>
 
 <p align="center">
-  <a href="https://github.com/fabandrade88/joshuaplus/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/fabandrade88/joshuaplus/actions/workflows/ci.yml/badge.svg?branch=test-branch"></a>
-  <a href="https://github.com/fabandrade88/joshuaplus/releases"><img alt="Release" src="https://img.shields.io/github/v/release/fabandrade88/joshuaplus?include_prereleases&label=release"></a>
+  <a href="https://github.com/fabandrade88/joshuaplus/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/fabandrade88/joshuaplus?include_prereleases&label=release"></a>
+  <a href="https://github.com/fabandrade88/joshuaplus/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/fabandrade88/joshuaplus/actions/workflows/ci.yml/badge.svg?branch=main"></a>
   <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-ffb000"></a>
-  <img alt="Platforms" src="https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-333">
+  <img alt="Platforms" src="https://img.shields.io/badge/Windows%20%7C%20macOS%20%7C%20Linux-333">
 </p>
 
 <p align="center">English · <a href="README.pt-BR.md">Português (Brasil)</a></p>
 
-![Song view](docs/screenshots/song.png)
+![Joshua+](docs/screenshots/song.png)
 
-Joshua+ is a free, open-source (MIT) desktop app for musicians who practise at home. Drop a song in, and it:
-
-- **separates it into instrument tracks** (vocals, drums, bass, guitar, piano, other) on your own computer,
-- **finds the tempo and the bars** and builds a **metronome track that is locked to the song**,
-- gives you a **mixer** with volume, mute, solo and pan per track,
-- lets you **loop bars**, count yourself in, and keep a **playlist** per folder that remembers every setting.
-
-Everything runs locally. Your music never leaves your computer unless you choose the optional cloud separator.
-
-The app speaks **English, Português (Brasil) and Deutsch**.
-
-> **Beta 0.0.1.** This is the first public build. Expect rough edges, and please [report problems](https://github.com/fabandrade88/joshuaplus/issues).
-
----
+Free and open source (MIT). Runs on your computer: your music never leaves it. In English, Português (Brasil) and Deutsch.
 
 ## Install
 
-### macOS (Apple Silicon, macOS 13.4 or newer)
+| System | Run this | Requirements |
+|---|---|---|
+| **macOS** | `curl -fsSL https://raw.githubusercontent.com/fabandrade88/joshuaplus/main/scripts/install.sh \| sh` | Apple Silicon (M1 or newer), macOS 13.4+ |
+| **Linux** | `curl -fsSL https://raw.githubusercontent.com/fabandrade88/joshuaplus/main/scripts/install.sh \| sh` | x86_64, glibc 2.39+ (Ubuntu 24.04+, Debian 13+, Fedora 40+, Arch) |
+| **Windows** | `irm https://raw.githubusercontent.com/fabandrade88/joshuaplus/main/scripts/install.ps1 \| iex` (PowerShell) | Windows 10/11, 64-bit. No admin rights needed |
 
-Intel Macs are not supported by the beta yet: ONNX Runtime, which runs the separation models, no longer publishes Intel macOS builds.
+The scripts download the newest release, **check its SHA-256 against the release's `SHA256SUMS`** and only then install it: the `.deb` with apt on Debian/Ubuntu, the AppImage in `~/.local/bin` on other Linux, the app in Applications on macOS. They are short; read [`install.sh`](scripts/install.sh) and [`install.ps1`](scripts/install.ps1) first if you like. Set `JOSHUA_VERSION=v0.5.0` to pick a version.
 
-```sh
-curl -fsSL https://raw.githubusercontent.com/fabandrade88/joshuaplus/main/scripts/install.sh | sh
-```
+**Prefer to download by hand?** Get the `.dmg` (macOS), `-setup.exe` or `.msi` (Windows), or `.deb`, `.rpm` or `.AppImage` (Linux) from [Releases](https://github.com/fabandrade88/joshuaplus/releases/latest). The builds are not code-signed yet: on macOS right-click the app and choose **Open** the first time; on Windows choose **More info → Run anyway**.
 
-### Linux (x86_64: Ubuntu 24.04+, Debian 13+, Fedora 40+, Arch, … — needs glibc 2.39+)
+Every installer is installed and started on clean Windows, macOS and Linux machines by the release pipeline before a release is published.
 
-```sh
-curl -fsSL https://raw.githubusercontent.com/fabandrade88/joshuaplus/main/scripts/install.sh | sh
-```
+## What you get
 
-On Debian and Ubuntu this installs the `.deb` package with `apt`. On other distributions it installs the AppImage to `~/.local/bin/joshua-plus`.
+| | Feature | Why it helps |
+|---|---|---|
+| 🎚️ | **Instrument separation** into vocals, drums, bass, guitar, piano and other, on your own computer (HT-Demucs) | Mute the part you play and play it yourself, or solo it to learn it |
+| 🥁 | **A click locked to the song**: tempo and bars detected, constant or variable tempo, count-in, six click sounds, tap or type the BPM | Practise in time with the real recording, not a grid that drifts away |
+| 🔁 | **Bar map and loops**: click a bar to jump, double-click to loop it, loop 1–8 bars | Drill the hard part until it sits |
+| 📁 | **Folders as setlists** that remember every song's mix, tempo fixes and loop | Open a song and continue exactly where you left it |
+| 🎤 | **Record every input as its own take**, lined up with the song automatically (latency and clock drift corrected). Recording again replaces the previous take | Hear how you really played, against the band |
+| 🏠 | **Room**: a shared space for your takes | A dry drum module or DI guitar sits in the mix instead of on top of it |
+| 🎬 | **Video studio**: film yourself with any webcam, adjust the sound before exporting, and export **YouTube 16:9, Shorts/Reels/TikTok 9:16 and Instagram 1:1 / 4:5** at once with optional cover, title and artist. Never the click | Post a play-along without a video editor |
+| 💾 | **Export the mix** as a 24-bit WAV, with or without the click. Everything you export is listed under **Exports** | Send it to your band or teacher |
+| 🎛️ | **Up to 8 audio inputs** with meters and monitoring, **MIDI and e-drums** (Alesis, Roland, Yamaha, EFNOTE, Simmons, Pearl, GEWA, ATV, Millenium, General MIDI) | Use the gear you already have |
+| 🔌 | **Plug and play**: unplug an interface or a camera and Joshua+ moves to what is connected, and back when it returns | No restart in the middle of practice |
 
-### Windows 10/11 (x64), in PowerShell
+| Home and folders | Video studio | Exports |
+|---|---|---|
+| ![Home](docs/screenshots/home.png) | ![Video review](docs/screenshots/video-review.png) | ![Exports](docs/screenshots/exports.png) |
 
-```powershell
-irm https://raw.githubusercontent.com/fabandrade88/joshuaplus/main/scripts/install.ps1 | iex
-```
+## Quick start
 
-The installer is per-user and does not need admin rights.
+1. **Choose where to keep your library** on first launch (*Music › Joshua+* is suggested; you can move it later in Settings).
+2. **Drop a song** (MP3, WAV, FLAC, OGG, M4A/AAC, AIFF) onto the window or a folder. It is separated in the background.
+3. **Open it**: mute your instrument, turn the click on, press play.
+4. **Record**: arm an input with ● and press the red REC button, or switch REC to the camera to film yourself.
+5. **Share**: *Export audio* for a WAV, or export the video formats you need. Find the files under **Exports** in the sidebar.
 
-### What the install scripts do
+The built-in **How to use** page explains every control in your language.
 
-Every installer:
+## Separation engines
 
-1. Looks up the newest release on GitHub. To pick a version, set `JOSHUA_VERSION=v0.0.1-beta`.
-2. Downloads the package for your system.
-3. **Checks its SHA-256 against the release's `SHA256SUMS` and refuses to install if it doesn't match.**
-4. Installs it.
-
-Read [`scripts/install.sh`](scripts/install.sh) and [`scripts/install.ps1`](scripts/install.ps1) before you run them. They are short.
-
-You can also download the packages by hand from [Releases](https://github.com/fabandrade88/joshuaplus/releases):
-
-| System | Packages |
-|---|---|
-| macOS | `.dmg` |
-| Windows | `-setup.exe` or `.msi` |
-| Linux | `.deb`, `.rpm` or `.AppImage` |
-
-> The beta builds are **not code-signed yet**. On macOS the install script removes the quarantine flag after it verifies the checksum. If you install by hand instead, right-click the app and choose **Open** the first time. On Windows, SmartScreen may ask you to confirm with **More info → Run anyway**.
-
----
-
-## How to use it
-
-### 1. Home: your folders
-
-![Home](docs/screenshots/home.png)
-
-Create folders for your band, your lessons or a gig. Drag audio files onto a folder or onto the window to import them. Joshua+ reads MP3, WAV, FLAC, OGG/Vorbis, M4A/AAC and AIFF.
-
-Each folder also has an **inbox** on disk. Any file you drop into it from Finder or Explorer is imported automatically.
-
-### 2. A folder is a playlist
-
-![Folder](docs/screenshots/folder.png)
-
-Songs in a folder play one after the other, like a setlist. Drag songs to reorder them. Every song keeps its own settings: mutes, volumes, tempo corrections, loop and click sound. Album art and tags (artist, album, year, …) come from the file. Only the cover is shown; click it to see the details. You can rename any song.
-
-### 3. The song: tracks, bar map and click
-
-![Song](docs/screenshots/song.png)
-
-- **Tracks.** Each separated instrument has its own fader, mute (M), solo (S) and pan.
-- **Collapsing the song.** You can fold all the song's tracks into a single "song" track. That keeps room for the recording tracks that are coming in a future version.
-
-  ![Collapsed](docs/screenshots/song-collapsed.png)
-
-- **Bar map.** A compact map of the song's bars, with the downbeats marked. It scrolls with the music.
-  - Click a bar to jump there.
-  - **Double-click a bar to loop it** until you turn the loop off.
-  - Choose how many bars to repeat (1, 2, 4, 8…) to loop a whole phrase.
-- **Metronome.** The click is placed on the song's own beats, not on an ideal grid that drifts away from the recording.
-  - **Count-in:** choose 0–4 bars of count-in before playback. The count-in lands exactly on the song's first downbeat.
-  - **Click sounds:** six voices: classic, wood block, beep, cowbell, sticks and drums (kick on the one, hi-hat on the others).
-  - **Tempo modes:**
-    - **Constant** (the default for most music) fits one perfectly steady tempo.
-    - **Variable** follows a live band that speeds up and slows down.
-    - **Auto** lets Joshua+ decide.
-  - **Fixing the tempo:**
-    - If the analysis picked double or half the tempo, fix it with **×2 / ÷2**.
-    - Nudge the grid, set the "1" of the bar or change the time signature.
-    - **Tap** the tempo, or **type the exact BPM**.
-- **Playback continuity.** Playback continues while you browse other screens; the mini-player shows what is playing. Clicking the song again returns to it without restarting.
-
-### 4. Audio inputs, MIDI and electronic drums
-
-![Inputs](docs/screenshots/gear.png)
-
-Joshua+ is getting ready for recording. Today you can already:
-
-- **Audio inputs.** Pick **up to 8 audio inputs at once**: several audio interfaces, a USB mic, a guitar interface… Each has a live level meter and an optional monitor so you hear yourself over the song.
-- **MIDI and e-drums.** Connect **e-drums and MIDI controllers** over USB-MIDI or a MIDI interface. There are presets for **Alesis** (Strata Prime, Strata Club, Strata Core, Strike Pro SE, Crimson II, Command, Surge, Turbo, Nitro, Debut), **Roland** V-Drums, **Yamaha** DTX, **EFNOTE**, **Simmons**, **Pearl** e/MERGE, **GEWA**, **ATV**, **Millenium** and General MIDI kits. Use **MIDI learn** to map any pad.
-
-### 5. Record, export and film yourself
-
-- **Record every input as its own take.** Press ● on any input strip to arm it, then the red **REC** button. The song plays with its count-in and each armed input records to its own track in the **Takes** group, already lined up with the song. Device latency and the clock drift between different interfaces are corrected automatically. Takes have their own fader, pan, mute, solo and delete.
-- **Export audio.** **Export audio** renders the mix of every active track (song + takes) to a 24-bit WAV, through the same mixer you hear. The click is included only if it is on.
-- **Video studio.** Switch REC to the camera mode to film yourself with your webcam while the song plays (armed inputs record at the same time). Export clips for **YouTube 16:9**, **Shorts/Reels/TikTok 9:16** and **Instagram 1:1 / 4:5** in one pass: MP4 (H.264 + AAC) with the song and your instruments, **never the click**. Optional overlay with the album cover, song title and artist (each can be turned off). The export runs in the background with progress in the sidebar.
-- **Where things are saved.** On first launch, one click uses **Music › Joshua+**, or pick any folder. In Settings you can move the whole library to another folder or disk, and choose a separate folder for exports.
-
-### 6. Built-in help and About
-
-The **How to use** page explains every function in your language. **About** shows the version, the repository, the contributors and the open-source components.
-
-| How to use | About |
-|---|---|
-| ![Help](docs/screenshots/help.png) | ![About](docs/screenshots/about.png) |
-
----
-
-## Separation quality: three engines
-
-| Engine | Where it runs | What it gives you | Cost |
+| Engine | Runs on | Gives you | Cost |
 |---|---|---|---|
-| **Studio (HT-Demucs 6-stem)** — default | Your computer (CPU; GPU via DirectML on Windows, CUDA optional) | Vocals, drums, bass, guitar, piano, other. State-of-the-art quality, low bleed. About 5× real time on an Apple M-series CPU | Free. A one-time ~136 MB model download, SHA-256 verified |
-| **Quick (built-in DSP)** | Your computer, no download | Harmonic/percussive and frequency-band separation. Instant, good for drums vs. the rest | Free |
-| **Cloud (LALAL.AI)** — optional | LALAL.AI servers, with your own key | Extra stems, such as **acoustic vs. electric guitar** | Paid by you to LALAL.AI. Joshua+ never sees the money or your files |
+| **Studio (HT-Demucs 6-stem)**, default | Your computer (CPU; DirectML on Windows, CUDA optional) | Six clean stems, about 5× real time on Apple M-series | Free. One-time ~136 MB model download, SHA-256 verified |
+| **Quick (DSP)** | Your computer, nothing to download | Instant drums-vs-rest and band separation | Free |
+| **Cloud (LALAL.AI)**, optional | LALAL.AI, with your own key | Extra stems such as acoustic vs. electric guitar | Paid by you to LALAL.AI |
 
-The local engines are the norm; the cloud is the exception. You choose the engine per song in **Settings**.
+## Quality and security
 
----
+Nothing reaches `main` without green CI on Linux, macOS and Windows ([ci.yml](.github/workflows/ci.yml)): `rustfmt`, `clippy -D warnings`, unit and property tests, fuzzing of hostile audio and images, attack suites (path traversal, symlinks, decode bombs, MIDI floods, CSP pinning), a real-time check that the audio callback never allocates, performance floors, and `cargo audit` / `pnpm audit`. `unsafe` code is forbidden. Threat model: [SECURITY.md](SECURITY.md).
 
-## How it works (architecture)
-
-```
-┌──────────────────────────── app/ (Tauri 2 + Svelte 5) ────────────────────────────┐
-│  UI: Home · Folder/playlist · Song (console, bar map, metronome) · Inputs · Help    │
-│  TypeScript store ── IPC (typed commands, strict CSP, no fs/shell in the webview) ──┤
-│  src-tauri: commands, folder inbox watcher, player, settings, device manager        │
-└───────────────┬───────────────────┬───────────────────┬───────────────────┬────────┘
-                │                   │                   │                   │
-        crates/joshua-core   crates/joshua-engine  crates/joshua-ai    crates/joshua-midi
-        decode · resample    cpal audio output     HT-Demucs (ONNX)    midir input
-        tempo & beat grid    + up to 8 inputs      model download      note parsing
-        metronome · mixer    lock-free, no alloc   (pinned + SHA-256)  drum-kit maps
-        DSP separation       in the callback       LALAL.AI client     (10+ brands)
-        workspace · security
-```
-
-### Import
-
-The file is sniffed by its signature, not its extension. It is decoded with **Symphonia** under hard limits on size, duration and channels, then resampled with **rubato** if needed. Tags and cover art are read and the cover is re-encoded, so a malicious image never reaches the UI as-is.
-
-### Separation
-
-**HT-Demucs** runs through **ONNX Runtime** (`ort`) in overlapping segments. The six stems are written as 24-bit WAV files (`hound`) next to the song.
-
-### Tempo
-
-The song's tempo map is built in five steps:
-
-1. Compute a spectral-flux onset curve on log-spaced bands.
-2. Estimate the tempo by autocorrelation, with octave-error checks.
-3. Track the beats with dynamic programming (Ellis).
-4. Fit a constant grid, or detect a real tempo change. A change has to persist over several windows, and metric ratios such as half-time or triplet feel are not counted as changes.
-5. Find the downbeat.
-
-Your corrections are stored as edits, so a re-analysis never throws them away.
-
-### Playback
-
-The audio callback mixes up to 12 tracks plus the click and the input monitors. It has no locks and no allocations; the test suite checks this with `assert_no_alloc`. The UI talks to it through atomics and a wait-free ring buffer (`rtrb`).
-
-### Storage
-
-Your workspace is a plain folder:
-
-- one directory per song (`project.json`, stems, cover);
-- one JSON file per folder.
-
-Writes are atomic: a temp file, then a rename. Symlinks are refused.
-
----
-
-## Quality gate: tests, attacks, performance
-
-Nothing reaches `main` without passing CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) on **Linux, macOS and Windows**. Work is pushed to `test-branch`, and `main` is protected and only accepts pull requests whose checks are green.
-
-| Check | What it covers |
-|---|---|
-| `cargo fmt`, `clippy -D warnings` | Style and lints; `unsafe` is forbidden in every crate |
-| Unit tests (Rust + Vitest) | DSP, tempo, mixer, metronome, workspace, MIDI, UI logic, help catalogues |
-| **Property tests** (`proptest`) | Random hostile sequences against the mixer, tempo edits, count-in and JSON parsing. The output must never be NaN, clip or panic |
-| **Fuzzing** | Thousands of mutated MP3/FLAC/OGG/M4A/AIFF/WAV files and cover images: no panic and no hang |
-| **Attack suites** | The attacks the app defends against:<br>• path traversal and `../` names, absolute paths, Windows reserved names<br>• symlink and FIFO tricks, symlinked temp files and workspace directories<br>• zip-bomb-style huge headers and decoded-size caps, absurd beat grids<br>• MIDI floods (1 M messages), CSP and permission pinning, no `innerHTML`/`eval` in the UI |
-| **Real-time safety** | The audio callback must not allocate |
-| **Performance floors** (release) | Mixer, tempo, DSP separation, decode, resample and peaks must stay above minimum × real-time speeds |
-| **Advisories** | `cargo audit` (RustSec) and `pnpm audit` |
-
-Speeds measured on an Apple M-series laptop, as multiples of real time:
-
-| Stage | Speed |
-|---|---|
-| Mixer (7 stems + click) | 1152× |
-| Tempo detection | 2236× |
-| Quick DSP separation | 29.5× |
-| WAV decode | 4549× |
-| Resample | 713× |
-| HT-Demucs on the CPU | 5.3× |
-
-See [`SECURITY.md`](SECURITY.md) for the threat model and the audit status.
-
----
+Measured on an Apple M-series laptop (multiples of real time): mixer 1426×, mixer with 4 takes in the room 556×, tempo detection 3497×, quick separation 46×, WAV decode 6441×, resampling 1220×.
 
 ## Build from source
 
-You need:
-
-- **Rust** stable (1.90+), from https://rustup.rs
-- **Node.js** 20+ and **pnpm** 10
-- **Linux only:**
-  ```sh
-  sudo apt install libasound2-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libssl-dev
-  ```
-- **Windows only:** WebView2 (already on Windows 11) and the MSVC build tools
-
-Then:
+Needs Rust stable, Node.js 20+ and pnpm 10. On Linux also `libasound2-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libssl-dev`.
 
 ```sh
 git clone https://github.com/fabandrade88/joshuaplus.git
-cd joshuaplus/app
-pnpm install
-pnpm tauri dev          # run in development
-pnpm tauri build        # build installers for your platform (target/release/bundle)
+cd joshuaplus/app && pnpm install
+pnpm tauri dev      # run
+pnpm tauri build    # installers in target/release/bundle
+cargo test --workspace && pnpm check && pnpm test   # checks
 ```
 
-Run the checks yourself:
-
-```sh
-cargo test --workspace                                                           # every Rust test
-cargo test --release -p joshua-core --test performance -- --ignored --nocapture  # performance floors
-cd app && pnpm check && pnpm test                                                # UI types + tests
-pnpm preview:ui         # the UI in a browser with a mocked backend (http://localhost:1421)
-```
-
----
+Architecture: a Tauri 2 + Svelte 5 app (`app/`) over four Rust crates: `joshua-core` (decoding, tempo, metronome, mixer, room, recording alignment, export, workspace security), `joshua-engine` (lock-free audio I/O with cpal), `joshua-ai` (HT-Demucs on ONNX Runtime, LALAL.AI client) and `joshua-midi` (MIDI and drum-kit maps).
 
 ## Open source used by Joshua+
-
-Joshua+ exists thanks to these projects.
 
 | Component | Used for | License |
 |---|---|---|
 | [Tauri 2](https://tauri.app) | Desktop shell, IPC, installers | MIT / Apache-2.0 |
 | [Svelte 5](https://svelte.dev) + [Vite](https://vite.dev) | User interface and build | MIT |
-| [Symphonia](https://github.com/pdeljanov/Symphonia) | Decoding MP3, FLAC, OGG, AAC/M4A, WAV, AIFF and reading tags | MPL-2.0 |
-| [rubato](https://github.com/HEnquist/rubato) | High-quality resampling | MIT / Apache-2.0 |
-| [RustFFT](https://github.com/ejmahler/RustFFT) / [RealFFT](https://github.com/HEnquist/realfft) | FFTs for tempo analysis and DSP separation | MIT / Apache-2.0 |
-| [cpal](https://github.com/RustAudio/cpal) | Audio output and inputs (CoreAudio, WASAPI, ALSA/PulseAudio/JACK) | Apache-2.0 |
-| [rtrb](https://github.com/mgeier/rtrb) | Wait-free ring buffer to the audio thread | MIT / Apache-2.0 |
-| [midir](https://github.com/Boddlnagg/midir) | MIDI input (e-drums, controllers) | MIT |
-| [HT-Demucs](https://github.com/facebookresearch/demucs) (Meta AI Research) | Neural stem separation model | MIT |
-| [htdemucs-6s ONNX export](https://huggingface.co/adowu/htdemucs-6s-onnx) | ONNX version of the 6-stem model | MIT |
-| [ONNX Runtime](https://onnxruntime.ai) via [`ort`](https://github.com/pykeio/ort) | Running the model on CPU, DirectML or CUDA | MIT / Apache-2.0 |
-| [hound](https://github.com/ruuda/hound) | Writing WAV stems | Apache-2.0 |
-| [image](https://github.com/image-rs/image) | Decoding and re-encoding cover art safely | MIT / Apache-2.0 |
-| [ureq](https://github.com/algesten/ureq) + [rustls](https://github.com/rustls/rustls) | HTTPS for the model download and the optional cloud | MIT / Apache-2.0 / ISC |
-| [RustCrypto sha2](https://github.com/RustCrypto/hashes) | Verifying downloads | MIT / Apache-2.0 |
-| [serde](https://serde.rs) / serde_json | Project and settings files | MIT / Apache-2.0 |
-| [thiserror](https://github.com/dtolnay/thiserror) | Error types | MIT / Apache-2.0 |
-| [proptest](https://github.com/proptest-rs/proptest), [assert_no_alloc](https://github.com/Windfisch/rust-assert-no-alloc), [Vitest](https://vitest.dev), [tempfile](https://github.com/Stebalien/tempfile) | Testing | MIT / Apache-2.0 / BSD-1-Clause |
+| [Symphonia](https://github.com/pdeljanov/Symphonia) | Audio decoding and tags | MPL-2.0 |
+| [rubato](https://github.com/HEnquist/rubato) | Resampling | MIT / Apache-2.0 |
+| [RustFFT](https://github.com/ejmahler/RustFFT) / [RealFFT](https://github.com/HEnquist/realfft) | Tempo analysis and DSP | MIT / Apache-2.0 |
+| [cpal](https://github.com/RustAudio/cpal) | Audio output and inputs | Apache-2.0 |
+| [rtrb](https://github.com/mgeier/rtrb) | Wait-free ring buffers to the audio thread | MIT / Apache-2.0 |
+| [midir](https://github.com/Boddlnagg/midir) | MIDI input | MIT |
+| [HT-Demucs](https://github.com/facebookresearch/demucs) (Meta AI) and its [6-stem ONNX export](https://huggingface.co/adowu/htdemucs-6s-onnx) | Separation model | MIT |
+| [ONNX Runtime](https://onnxruntime.ai) via [`ort`](https://github.com/pykeio/ort) | Running the model | MIT / Apache-2.0 |
+| [hound](https://github.com/ruuda/hound), [image](https://github.com/image-rs/image) | WAV files, safe cover art | Apache-2.0, MIT / Apache-2.0 |
+| [ureq](https://github.com/algesten/ureq) + [rustls](https://github.com/rustls/rustls), [sha2](https://github.com/RustCrypto/hashes) | HTTPS and verified downloads | MIT / Apache-2.0 / ISC |
+| [serde](https://serde.rs), [thiserror](https://github.com/dtolnay/thiserror) | Files and errors | MIT / Apache-2.0 |
+| [proptest](https://github.com/proptest-rs/proptest), [assert_no_alloc](https://github.com/Windfisch/rust-assert-no-alloc), [Vitest](https://vitest.dev) | Testing | MIT / Apache-2.0 / BSD |
 
-The complete, generated list of all ~600 crates and packages, with versions and licenses, is in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
-
-**LALAL.AI** is a commercial service. Joshua+ links to it only as an optional extra, and you need your own account.
-
----
+Every one of the ~600 dependencies, with version and license: [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md). LALAL.AI is a commercial service used only if you add your own key.
 
 ## Roadmap
 
-- Instrument plugins (EZdrummer, Superior Drummer…) hosted inside Joshua+ ([#1](https://github.com/fabandrade88/joshuaplus/issues/1)).
-- Speed and pitch change.
-- Signed and notarised installers.
+- Instrument plugins (EZdrummer, Superior Drummer…) inside Joshua+ ([#1](https://github.com/fabandrade88/joshuaplus/issues/1))
+- Speed and pitch change
+- Signed and notarised installers, Intel Mac support
 
 ## Contributing
 
-Contributions are very welcome: bug reports, translations, tests, DSP ideas and code.
-
-- **[CONTRIBUTING.md](CONTRIBUTING.md)** covers the branch flow (`feature/*` → `test-branch` → `main`), coding rules and best practices, testing requirements, commit style and the review checklist.
-- **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)**: be kind and respectful.
-- **[SECURITY.md](SECURITY.md)**: report vulnerabilities privately, never in a public issue.
-- Use the **issue templates** for bugs and feature requests. The **pull-request template** has the checklist CI enforces.
-
-The short version, before you push:
-
-```sh
-cargo fmt --all && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace
-cd app && pnpm check && pnpm test
-```
+Bug reports, translations, tests and code are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) (branch flow `feature/*` → `test-branch` → `main`, coding rules, tests, review checklist), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), and report vulnerabilities privately as described in [SECURITY.md](SECURITY.md).
 
 ## License
 
