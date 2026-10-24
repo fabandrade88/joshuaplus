@@ -259,7 +259,7 @@ if (state === "video") {
     app.videoOpen = false;
     const wrap = document.createElement("div");
     wrap.style.cssText = "position:fixed;inset:0;z-index:99;background:#222;display:flex;gap:16px;padding:16px;align-items:flex-start";
-    for (const f of FORMATS.slice(0, 2)) {
+    for (const f of FORMATS) {
       const c = document.createElement("canvas");
       c.width = f.width;
       c.height = f.height;
@@ -273,7 +273,7 @@ if (state === "video") {
       const combo = params.get("combo") ?? "all";
       const on = (p: string) => combo === "all" || combo === p || (combo === "text" && (p === "title" || p === "artist"));
       drawTitle(g, f, on("title") ? "Left For Good" : "", on("artist") ? "Bad Omens" : "", on("cover") ? cover : null);
-      c.style.height = "560px";
+      c.style.height = "460px";
       wrap.append(c);
     }
     document.body.append(wrap);

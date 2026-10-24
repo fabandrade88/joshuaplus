@@ -660,14 +660,13 @@ export function drawTitle(
   cover: HTMLImageElement | null,
 ): void {
   if (!title && !artist && !cover) return;
-  // Vertical platforms (Shorts, Reels, TikTok) cover the bottom ~20% with
-  // their own buttons and captions: lift the overlay into the safe area
-  // and make it a little larger on the tall frame.
+  // Bottom-left corner in every format; a little larger on tall frames,
+  // where the same pixel size reads smaller on a phone.
   const tall = f.height > f.width * 1.2;
   const unit = (Math.min(f.width, f.height) / 1080) * (tall ? 1.3 : 1);
   const pad = 48 * unit;
-  const bottom = tall ? f.height * 0.2 : 0;
-  const shadeTop = f.height * (tall ? 0.55 : 0.7);
+  const bottom = 0;
+  const shadeTop = f.height * (tall ? 0.78 : 0.7);
   const shade = g.createLinearGradient(0, shadeTop, 0, f.height);
   shade.addColorStop(0, "rgba(0,0,0,0)");
   shade.addColorStop(1, "rgba(0,0,0,0.6)");
