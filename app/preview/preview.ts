@@ -48,7 +48,8 @@ const project: SongProject = {
   })),
   metronome: { gainDb: -6, muted: false, countIn: true, countInBars: 1, sound: "woodblock" },
   takes: [
-    { id: "take-1", name: "SPD-SX PRO", file: "takes/take-1.wav", offsetSecs: 12.5, createdUnix: 0, gainDb: -2, pan: 0, muted: false, solo: false },
+    { id: "take-1", name: "SPD-SX PRO", file: "takes/take-1.wav", offsetSecs: 12.5, createdUnix: 0, gainDb: -2, pan: 0, muted: false, solo: false, room: 0.3 },
+    { id: "take-2", name: "Yamaha AG06MK2", file: "takes/take-2.wav", offsetSecs: 12.5, createdUnix: 0, gainDb: 0, pan: 0, muted: false, solo: false, room: 0.55 },
   ],
   masterGainDb: 0,
   metadata: { artist: "The Session Band", album: "Live at Home EP", year: "2026", genre: "Funk", track: "3/5" },

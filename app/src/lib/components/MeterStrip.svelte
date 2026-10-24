@@ -125,10 +125,16 @@
   .caption {
     max-width: 100%;
     font-size: var(--fs-small);
+    line-height: 1.25;
+    text-align: center;
     color: var(--text-dim);
-    white-space: nowrap;
+    /* Up to two lines ("Volume on the interface"), then an ellipsis. */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
     overflow: hidden;
-    text-overflow: ellipsis;
+    overflow-wrap: anywhere;
   }
   .note {
     width: 100%;

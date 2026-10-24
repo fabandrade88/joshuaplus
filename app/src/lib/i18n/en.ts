@@ -48,6 +48,8 @@ export const en = {
   "track.solo": "Solo",
   "track.volume": "Volume",
   "track.pan": "Pan",
+  "track.room": "Room",
+  "track.roomHint": "Room: puts this take in the same space as the band, so a dry recording doesn't sound pasted on top of the mix. Double-click resets to 30%.",
 
   "song.bpm": "BPM",
   "song.bar": "Bar",
@@ -366,7 +368,7 @@ export const en = {
   "export.withClickOn": "The click goes into the file at its mixer volume.",
   "export.saveTo": "Saved to",
   "export.start": "Export",
-  "gear.directMonitorVolume": "Volume on the interface",
+  "gear.directMonitorVolume": "Level on interface",
   "about.title": "About Joshua+",
   "about.beta": "Beta — in active development. Feedback is welcome!",
   "about.createdBy": "Created by",

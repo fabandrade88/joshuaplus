@@ -50,6 +50,8 @@ export const de: Messages = {
   "track.solo": "Solo",
   "track.volume": "Lautstärke",
   "track.pan": "Panorama",
+  "track.room": "Raum",
+  "track.roomHint": "Raum: setzt diesen Take in denselben Raum wie die Band, damit eine trockene Aufnahme nicht auf den Mix geklebt klingt. Doppelklick setzt auf 30 % zurück.",
 
   "song.bpm": "BPM",
   "song.bar": "Takt",
@@ -368,7 +370,7 @@ export const de: Messages = {
   "export.withClickOn": "Der Klick kommt mit seiner Mixer-Lautstärke in die Datei.",
   "export.saveTo": "Gespeichert in",
   "export.start": "Exportieren",
-  "gear.directMonitorVolume": "Lautstärke am Interface",
+  "gear.directMonitorVolume": "Regler am Interface",
   "about.title": "Über Joshua+",
   "about.beta": "Beta – in aktiver Entwicklung. Feedback ist willkommen!",
   "about.createdBy": "Erstellt von",

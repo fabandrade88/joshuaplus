@@ -75,6 +75,37 @@ fn mixer_render_seven_stems() {
 
 #[test]
 #[ignore = "performance: run in release with --ignored"]
+fn mixer_render_with_takes_in_the_room() {
+    let audio = song(60);
+    let stems: Vec<StereoBuffer> = (0..6).map(|_| audio.clone()).collect();
+    let takes: Vec<StereoBuffer> = (0..4).map(|_| audio.clone()).collect();
+    let analysis = tempo::BeatAnalysis {
+        bpm: 120.0,
+        beats: (0..120).map(|k| f64::from(k) * 0.5).collect(),
+        beats_per_bar: 4,
+        downbeat_phase: 0,
+        confidence: 1.0,
+        variable_tempo: false,
+    };
+    let shared = SharedState::default();
+    let mut mixer = Mixer::new();
+    let session = Session::with_takes(RATE, stems, takes, ClickTrack::from_analysis(&analysis, RATE));
+    mixer.swap_session(Some(Box::new(session)));
+    for ch in &shared.channels[6..10] {
+        ch.set_send(0.4);
+    }
+    shared.play();
+    let mut out = vec![0.0f32; 256 * 2];
+    let blocks = 60 * RATE as usize / 256;
+    let start = Instant::now();
+    for _ in 0..blocks {
+        mixer.render(&shared, &mut out, 2);
+    }
+    report("mixer (6 stems + 4 takes in room)", 60.0, start.elapsed().as_secs_f64(), 100.0);
+}
+
+#[test]
+#[ignore = "performance: run in release with --ignored"]
 fn tempo_analysis() {
     let audio = song(60);
     let start = Instant::now();
