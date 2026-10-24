@@ -67,7 +67,14 @@ describe("tauri security configuration", () => {
   it("grants only the minimal permissions", () => {
     const caps = JSON.parse(readFileSync(join(TAURI, "capabilities", "default.json"), "utf8"));
     const ids = caps.permissions.map((p: string | { identifier: string }) => (typeof p === "string" ? p : p.identifier));
-    expect(ids.sort()).toEqual(["core:default", "dialog:allow-open", "opener:allow-open-url"]);
+    expect(ids.sort()).toEqual([
+      "core:default",
+      "dialog:allow-ask",
+      "dialog:allow-confirm",
+      "dialog:allow-message",
+      "dialog:allow-open",
+      "opener:allow-open-url",
+    ]);
     const opener = caps.permissions.find((p: { identifier?: string }) => p.identifier === "opener:allow-open-url");
     expect(opener.allow).toEqual([{ url: "https://www.lalal.ai/*" }, { url: "https://github.com/fabandrade88/joshuaplus*" }]);
     expect(JSON.stringify(caps)).not.toMatch(/fs:|shell:|http:|process:/);
