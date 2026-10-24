@@ -106,6 +106,35 @@ case "$pattern" in
     say "Installed. Start Joshua+ from your applications menu." ;;
   *AppImage*)
     mkdir -p "$HOME/.local/bin"
-    install -m 0755 "$file" "$HOME/.local/bin/joshua-plus"
-    say "Installed to ~/.local/bin/joshua-plus (make sure ~/.local/bin is on your PATH)" ;;
+    bin="$HOME/.local/bin/joshua-plus"
+    install -m 0755 "$file" "$bin"
+    # An AppImage keeps its menu entry and icons inside itself, where the
+    # desktop never looks: register them for this user (same entry the app
+    # writes, so it can keep it up to date if the file moves).
+    data="${XDG_DATA_HOME:-$HOME/.local/share}"
+    (
+      cd "$tmp" && "$bin" --appimage-extract 'usr/share/icons/hicolor/*' >/dev/null 2>&1 || exit 0
+      for size in 32x32 128x128 256x256 512x512; do
+        icon="squashfs-root/usr/share/icons/hicolor/$size/apps/joshua-app.png"
+        [ -f "$icon" ] || continue
+        mkdir -p "$data/icons/hicolor/$size/apps"
+        cp "$icon" "$data/icons/hicolor/$size/apps/joshua-app.png"
+      done
+    )
+    mkdir -p "$data/applications"
+    cat > "$data/applications/joshua-plus.desktop" <<ENTRY
+[Desktop Entry]
+Type=Application
+Name=Joshua+
+Comment=Stem separation and practice mixer for musicians
+Exec="$bin" %U
+Icon=joshua-app
+Terminal=false
+Categories=AudioVideo;Audio;Music;
+StartupWMClass=joshua-app
+StartupNotify=true
+ENTRY
+    command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$data/applications" >/dev/null 2>&1 || true
+    command -v gtk-update-icon-cache >/dev/null 2>&1 && gtk-update-icon-cache -q -t "$data/icons/hicolor" >/dev/null 2>&1 || true
+    say "Installed to ~/.local/bin/joshua-plus and added to your application menu" ;;
 esac

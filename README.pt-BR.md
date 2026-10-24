@@ -49,7 +49,9 @@ Os scripts baixam a versão mais nova, **conferem o SHA-256 com o `SHA256SUMS` d
 
 **Prefere baixar na mão?** Pegue o `.dmg` (macOS), o `-setup.exe` ou `.msi` (Windows), ou o `.deb`, `.rpm` ou `.AppImage` (Linux) em [Releases](https://github.com/fabandrade88/joshuaplus/releases/latest). Os instaladores ainda não são assinados: no macOS, clique com o botão direito no app e escolha **Abrir** na primeira vez; no Windows, escolha **Mais informações → Executar assim mesmo**.
 
-Antes de cada versão ser publicada, todos os instaladores são instalados e abertos em máquinas limpas com Windows, macOS e Linux.
+**Testado em:** Ubuntu 26.04 LTS, Omarchy (Arch Linux, Hyprland), Windows 11 e um MacBook Pro com M4 Pro (macOS 27). Em sistemas baseados no Arch, como o Omarchy, o script instala o AppImage e adiciona o Joshua+ ao menu de aplicativos.
+
+Além disso, antes de cada versão ser publicada, todos os instaladores são instalados e abertos em máquinas limpas com Windows, macOS e Linux.
 
 ## O que você ganha
 

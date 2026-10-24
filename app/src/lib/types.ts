@@ -36,6 +36,13 @@ export interface DevicesChanged {
   inputsChanged: boolean;
 }
 
+/** Linux AppImage application-menu entry. */
+export interface DesktopEntryStatus {
+  available: boolean;
+  installed: boolean;
+  asked: boolean;
+}
+
 export interface ExportFile {
   name: string;
   path: string;

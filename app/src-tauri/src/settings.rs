@@ -74,6 +74,8 @@ pub struct Settings {
     pub record_offset_ms: f32,
     /// Where exports go; `None` = `<workspace>/Exports`.
     pub export_dir: Option<PathBuf>,
+    /// Linux AppImage: menu entry wanted (`None` = not asked yet).
+    pub desktop_entry: Option<bool>,
 }
 
 impl Default for Settings {
@@ -88,6 +90,7 @@ impl Default for Settings {
             drums: DrumSettings::default(),
             record_offset_ms: 0.0,
             export_dir: None,
+            desktop_entry: None,
         }
     }
 }

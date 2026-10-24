@@ -167,6 +167,18 @@
       <span class="note">{info.exportDirCustom ? i18n.t("exportDir.customHint") : i18n.t("exportDir.defaultHint")}</span>
     </div>
 
+    {#if app.desktopEntry?.available}
+      <div class="field">
+        <span class="section-title">{i18n.t("desktopEntry.title")}</span>
+        <div class="row">
+          <span class="note">{app.desktopEntry.installed ? i18n.t("desktopEntry.on") : i18n.t("desktopEntry.off")}</span>
+          <button class="btn" onclick={() => app.setDesktopEntry(!app.desktopEntry?.installed)}>
+            {app.desktopEntry.installed ? i18n.t("desktopEntry.remove") : i18n.t("desktopEntry.add")}
+          </button>
+        </div>
+      </div>
+    {/if}
+
     <footer class="tabular">{i18n.t("settings.version", { v: info.version })} · MIT</footer>
   {/if}
 </dialog>

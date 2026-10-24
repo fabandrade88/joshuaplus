@@ -44,3 +44,29 @@ jobs:
         env:
           JOSHUA_VERSION: ${{ inputs.version }}
         run: ./scripts/install.ps1
+
+  # Arch Linux (what Omarchy is built on): no apt, so the script installs the
+  # AppImage and must register it in the application menu (issue #15).
+  install-arch:
+    name: Install script (Arch Linux, AppImage)
+    runs-on: ubuntu-24.04
+    container: archlinux:latest
+    steps:
+      - name: Tools
+        run: pacman -Syu --noconfirm curl git desktop-file-utils
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+      - name: install.sh
+        env:
+          JOSHUA_VERSION: ${{ inputs.version }}
+        run: sh scripts/install.sh
+      - name: Menu entry and icons
+        run: |
+          entry="$HOME/.local/share/applications/joshua-plus.desktop"
+          cat "$entry"
+          desktop-file-validate "$entry"
+          grep -qx "Exec=\"$HOME/.local/bin/joshua-plus\" %U" "$entry"
+          grep -qx 'StartupWMClass=joshua-app' "$entry"
+          ls -R "$HOME/.local/share/icons/hicolor" | grep joshua-app.png
+          test -x "$HOME/.local/bin/joshua-plus"

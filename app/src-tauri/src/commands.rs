@@ -953,3 +953,40 @@ mod tests {
         assert_eq!(export_kind(Path::new("/x/no-extension")), None);
     }
 }
+
+// ── Linux application menu (AppImage) ───────────────────────────────────────
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DesktopEntryStatus {
+    /// Running as a Linux AppImage, so a menu entry can be added.
+    pub available: bool,
+    pub installed: bool,
+    /// The user already answered the "add to the menu" question.
+    pub asked: bool,
+}
+
+#[tauri::command]
+pub fn desktop_entry_status(state: State<'_, AppState>) -> DesktopEntryStatus {
+    let asked = lock(&state.settings).desktop_entry.is_some();
+    let installed = crate::desktop_entry::Dirs::for_user().is_some_and(|d| crate::desktop_entry::is_installed(&d));
+    DesktopEntryStatus { available: crate::desktop_entry::running_appimage().is_some(), installed, asked }
+}
+
+/// Adds Joshua+ to (or removes it from) the application menu, and remembers
+/// the answer so the question is not asked again.
+#[tauri::command]
+pub fn set_desktop_entry(state: State<'_, AppState>, install: bool) -> ApiResult<DesktopEntryStatus> {
+    let dirs = crate::desktop_entry::Dirs::for_user().ok_or_else(|| ApiError::new("io", "no home folder"))?;
+    if install {
+        let (image, appdir) =
+            crate::desktop_entry::running_appimage().ok_or_else(|| ApiError::invalid("not running as an AppImage"))?;
+        crate::desktop_entry::install(&dirs, &image, appdir.as_deref())
+            .map_err(|e| ApiError::new("io", e.to_string()))?;
+    } else {
+        crate::desktop_entry::remove(&dirs).map_err(|e| ApiError::new("io", e.to_string()))?;
+    }
+    lock(&state.settings).desktop_entry = Some(install);
+    state.save_settings()?;
+    Ok(desktop_entry_status(state))
+}

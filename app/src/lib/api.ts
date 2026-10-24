@@ -5,6 +5,7 @@ import type {
   ApiError,
   DrumHit,
   DrumPad,
+  DesktopEntryStatus,
   DevicesChanged,
   DrumState,
   ExportList,
@@ -86,6 +87,8 @@ export const api = {
   listExports: () => invoke<ExportList>("list_exports"),
   openExport: (path: string) => invoke<void>("open_export", { path }),
   openExportDir: () => invoke<void>("open_export_dir"),
+  desktopEntryStatus: () => invoke<DesktopEntryStatus>("desktop_entry_status"),
+  setDesktopEntry: (install: boolean) => invoke<DesktopEntryStatus>("set_desktop_entry", { install }),
   renderClipAudio: (startSecs: number, durationSecs: number) =>
     invoke<ArrayBuffer>("render_clip_audio", { startSecs, durationSecs }),
   videoSaveBegin: (tag: string, ext: string) => invoke<number>("video_save_begin", { tag, ext }),
