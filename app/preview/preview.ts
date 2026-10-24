@@ -168,6 +168,7 @@ mockIPC(
           exportDir: "/Users/musician/Music/Joshua+/Exports",
           exportDirCustom: false,
           updateCheck: true,
+          autoBalance: false,
           suggestedWorkspace: "/Users/musician/Music/Joshua+",
           musicDir: "/Users/musician/Music",
         };
@@ -201,6 +202,19 @@ mockIPC(
           map: { notes: { "36": "kick", "38": "snare", "40": "snareRim", "37": "snareCrossStick", "42": "hiHatClosed", "46": "hiHatOpen", "44": "hiHatPedal", "48": "tom1", "45": "tom2", "43": "tom3", "41": "tom4", "49": "crash1", "57": "crash2", "51": "ride", "53": "rideBell", "55": "splash", "52": "china" } },
           learning: null,
         };
+      case "reset_mix":
+      case "auto_balance": {
+        const mix = {
+          tracks: project.tracks.map((t) => ({ ...t, gainDb: 0, pan: 0, solo: false, muted: cmd === "auto_balance" && t.stem === "drums" })),
+          takes: (project.takes ?? []).map((t, i) => ({ ...t, gainDb: cmd === "auto_balance" ? [5.5, -2][i % 2] ?? 0 : 0, pan: 0, muted: false, solo: false })),
+          songGainDb: 0,
+          songMuted: false,
+          masterGainDb: cmd === "reset_mix" ? 0 : project.masterGainDb,
+        };
+        if (cmd === "reset_mix") return mix;
+        const result = { mix, takes: mix.takes.map((t, i) => ({ id: t.id, stem: i === 0 ? "drums" : null, gainDb: t.gainDb })) };
+        return new Promise((r) => setTimeout(() => r(result), 1200));
+      }
       case "list_output_devices":
         return [{ id: "coreaudio:speakers", name: "MacBook Pro Speakers", isDefault: true }];
       default:

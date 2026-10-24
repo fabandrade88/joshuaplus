@@ -4,6 +4,7 @@
     play: "M7 4.5v15l12.5-7.5z",
     pause: "M7 4.5h3.5v15H7zM13.5 4.5H17v15h-3.5z",
     toStart: "M6 5v14M19 5.5 9 12l10 6.5z",
+    reset: "M3 12a9 9 0 1 0 3-6.7M3 3v6h6",
     loop: "M17 2l3 3-3 3M4 11V9a4 4 0 0 1 4-4h12M7 22l-3-3 3-3M20 13v2a4 4 0 0 1-4 4H4",
     click: "M9 3h6l3.5 18h-13zM12 15l5-9M7 17h10",
     settings:

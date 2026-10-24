@@ -10,6 +10,7 @@ mod devices;
 mod error;
 mod inbox;
 mod jobs;
+mod mix;
 mod mp4_priming;
 mod player;
 mod recorder;
@@ -113,6 +114,8 @@ pub fn run() {
             commands::stop_recording,
             commands::update_take,
             commands::delete_take,
+            mix::reset_mix,
+            mix::auto_balance,
             commands::set_record_offset,
             commands::export_mix,
             commands::reveal_export,
@@ -124,6 +127,7 @@ pub fn run() {
             commands::check_for_update,
             commands::skip_update,
             commands::set_update_check,
+            commands::set_auto_balance,
             commands::set_export_dir,
             video::render_clip_audio,
             video::video_save_begin,

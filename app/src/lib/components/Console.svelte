@@ -22,6 +22,10 @@
       <div class="group" class:collapsed={app.songCollapsed}>
         <header>
           <span class="group-name">{i18n.t("console.song")}</span>
+          <button class="toggle" title={`${i18n.t("mix.reset")} — ${i18n.t("mix.resetHint")}`} aria-label={i18n.t("mix.reset")} onclick={() => app.resetMix()}>
+            <Icon name="reset" size={13} />
+            {#if !app.songCollapsed}<span class="toggle-text">{i18n.t("mix.reset")}</span>{/if}
+          </button>
           <button
             class="toggle"
             title={app.songCollapsed ? i18n.t("console.expand") : i18n.t("console.collapse")}
@@ -111,6 +115,10 @@
         <div class="group takes">
           <header>
             <span class="group-name">{i18n.t("record.takes")}</span>
+            <button class="toggle" title={i18n.t("mix.balanceHint")} disabled={app.balancing} onclick={() => app.autoBalance()}>
+              <Icon name="spark" size={13} />
+              <span class="toggle-text">{app.balancing ? i18n.t("mix.balancing") : i18n.t("mix.balanceShort")}</span>
+            </button>
           </header>
           <div class="strips">
             {#each takes as take, j (take.id)}

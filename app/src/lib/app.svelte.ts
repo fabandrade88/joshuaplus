@@ -6,6 +6,7 @@ import { api, events, isApiError } from "./api";
 import { hasMatchingAudio } from "./devices";
 import { i18n, matchLocale, type Locale } from "./i18n/index.svelte";
 import { orderSongs } from "./playlist";
+import { stemLabelKey } from "./stems";
 import type {
   AppInfo,
   BeatAnalysis,
@@ -20,6 +21,7 @@ import type {
   FolderColor,
   JobUpdate,
   MetronomePatch,
+  MixView,
   RecordMode,
   SeparatorChoice,
   SongSummary,
@@ -106,6 +108,8 @@ class AppStore {
   recordMode = $state<RecordMode>("audio");
   /** Waiting for the backend to align and save takes. */
   savingTakes = $state(false);
+  /** The automatic balance is analysing the song. */
+  balancing = $state(false);
   /** Export progress 0..1, or null when idle. */
   exportProgress = $state<number | null>(null);
   /** Last exported file (for "show in folder"). */
@@ -704,6 +708,51 @@ class AppStore {
     this.applySongView(result.song);
     if (result.overflowed) this.notify(i18n.t("record.overflow"));
     else this.notify(result.added > 0 ? i18n.t("record.saved", { n: result.added }) : i18n.t("record.nothing"));
+    if (result.added > 0 && this.info?.autoBalance) await this.autoBalance();
+  }
+
+  /** Installs the levels of a whole-mix change. */
+  private applyMix(mix: MixView): void {
+    const p = this.song?.project;
+    if (!p) return;
+    p.tracks = mix.tracks;
+    p.takes = mix.takes;
+    p.songGainDb = mix.songGainDb;
+    p.songMuted = mix.songMuted;
+    p.masterGainDb = mix.masterGainDb;
+  }
+
+  /** Every volume back to the song's original balance (asks first).
+   *  Returns whether anything changed. */
+  async resetMix(): Promise<boolean> {
+    if (!this.song || !window.confirm(i18n.t("mix.resetConfirm"))) return false;
+    const mix = await this.guard(() => api.resetMix());
+    if (!mix) return false;
+    this.applyMix(mix);
+    this.notify(i18n.t("mix.resetDone"));
+    return true;
+  }
+
+  /** Balances the takes against the original instruments. Returns whether
+   *  the mix changed. */
+  async autoBalance(): Promise<boolean> {
+    if (!this.song?.project.takes?.length || this.balancing) return false;
+    this.balancing = true;
+    const result = await this.guard(() => api.autoBalance());
+    this.balancing = false;
+    if (!result) return false;
+    this.applyMix(result.mix);
+    const names = new Map(result.mix.takes.map((t) => [t.id, t.name]));
+    const replaced = result.takes
+      .filter((t) => t.stem)
+      .map((t) => i18n.t("mix.replaces", { take: names.get(t.id) ?? "", stem: i18n.t(stemLabelKey(t.stem!)) }));
+    this.notify(replaced.length > 0 ? i18n.t("mix.balanced", { list: replaced.join(" · ") }) : i18n.t("mix.balancedNone"));
+    return true;
+  }
+
+  async setAutoBalance(enabled: boolean): Promise<void> {
+    if ((await this.guard(() => api.setAutoBalance(enabled))) === undefined) return;
+    if (this.info) this.info.autoBalance = enabled;
   }
 
   async toggleRecording(): Promise<void> {

@@ -80,6 +80,8 @@ pub struct Settings {
     pub update_check: bool,
     /// A release the user chose not to be told about again.
     pub skipped_version: Option<String>,
+    /// Balance the takes against the original instruments after recording.
+    pub auto_balance: bool,
 }
 
 impl Default for Settings {
@@ -97,6 +99,7 @@ impl Default for Settings {
             desktop_entry: None,
             update_check: true,
             skipped_version: None,
+            auto_balance: false,
         }
     }
 }

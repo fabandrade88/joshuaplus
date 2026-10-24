@@ -175,6 +175,14 @@
       </span>
     </label>
 
+    <label class="check">
+      <input type="checkbox" checked={info.autoBalance} onchange={(e) => app.setAutoBalance(e.currentTarget.checked)} />
+      <span>
+        <strong>{i18n.t("mix.autoSetting")}</strong>
+        <span class="note">{i18n.t("mix.autoSettingHint")}</span>
+      </span>
+    </label>
+
     {#if app.desktopEntry?.available}
       <div class="field">
         <span class="section-title">{i18n.t("desktopEntry.title")}</span>

@@ -15,6 +15,7 @@
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 pub mod audio;
+pub mod balance;
 pub mod decode;
 pub mod error;
 pub mod export;
