@@ -287,6 +287,14 @@ pub fn analyze_with(audio: &StereoBuffer, mode: TempoMode) -> BeatAnalysis {
         return BeatAnalysis::empty();
     };
     let fps = onsets.fps;
+    // The strongest pulse can be a dotted or triplet one (common in heavy
+    // grooves): pick the level at which the song repeats bar after bar.
+    let level = metrical_level(audio, 60.0 * fps / period);
+    let period = if (level * period / (60.0 * fps) - 1.0).abs() > 0.01 {
+        period_near(&onsets.full, 60.0 * fps / level).unwrap_or(60.0 * fps / level)
+    } else {
+        period
+    };
     let periods = match mode {
         TempoMode::Auto => local_periods(&onsets.full, fps, period),
         // Tightness of the tracker still keeps beats near the global period.
@@ -335,6 +343,202 @@ pub fn analyze_with(audio: &StereoBuffer, mode: TempoMode) -> BeatAnalysis {
     // hits themselves (a click that is early by 10–25 ms feels rushed).
     let beats: Vec<f64> = beats.into_iter().map(|b| b + onsets.lead_secs).collect();
     BeatAnalysis { bpm, beats, beats_per_bar: 4, downbeat_phase, confidence, variable_tempo }
+}
+
+/// Bars (4/4) after which a song is expected to repeat itself.
+const REPEAT_BARS: [f64; 4] = [1.0, 2.0, 4.0, 8.0];
+/// Pulse levels weighed against the detected one, each with its double and
+/// half. Heavy grooves (3+3+2 riffs, dotted-eighth figures) often make a
+/// dotted quarter the strongest pulse: the tempo is then ¾ of it (or 1½).
+/// The opposite reading (×4⁄3) never won on real songs, and a stream of
+/// identical hits repeats after any 3 beats, so it is not considered.
+const LEVEL_FACTORS: [f64; 2] = [1.0, 0.75];
+/// Another level must repeat this much better to replace the detected one.
+const LEVEL_MARGIN: f64 = 1.15;
+/// Analysis bands of the repetition features.
+const REPEAT_BANDS: usize = 24;
+
+/// The tempo (BPM) of the level at which the song repeats best, starting
+/// from the `detected` strongest pulse. Music repeats every 1, 2, 4 and 8
+/// bars; a dotted or triplet pulse puts its "bars" across those repeats.
+/// Between double and half, the snare decides (it marks beats 2 and 4),
+/// else the octave nearest the detected tempo is kept.
+fn metrical_level(audio: &StereoBuffer, detected: f64) -> f64 {
+    let Some(rep) = Repetition::new(audio) else { return detected };
+
+    let family = |f: f64| -> Vec<f64> {
+        [0.5, 1.0, 2.0].iter().map(|o| detected * f * o).filter(|b| (50.0..=220.0).contains(b)).collect()
+    };
+    let scored: Vec<(f64, Vec<f64>, f64)> = LEVEL_FACTORS
+        .iter()
+        .map(|f| {
+            let members = family(*f);
+            let best = members.iter().map(|b| rep.score(*b)).fold(f64::MIN, f64::max);
+            (*f, members, best)
+        })
+        .collect();
+    let base = scored[0].2;
+    let Some((factor, members, best)) = scored.iter().max_by(|a, b| a.2.total_cmp(&b.2)).cloned() else {
+        return detected;
+    };
+    if factor == 1.0 || best < 0.01 || best < base * LEVEL_MARGIN || members.is_empty() {
+        return detected;
+    }
+    let near = |a: f64, b: f64| (a / b).ln().abs();
+    if let Some(snare) = snare_tempo(audio) {
+        if let Some(m) = members.iter().copied().find(|m| near(*m, snare) < 0.03) {
+            return m;
+        }
+    }
+    members.into_iter().min_by(|a, b| near(*a, detected).total_cmp(&near(*b, detected))).unwrap_or(detected)
+}
+
+/// How much a song sounds like itself some time later (log band energies,
+/// z-normalised per band, ~46 ms frames).
+struct Repetition {
+    frames: Vec<[f32; REPEAT_BANDS]>,
+    fps: f64,
+    cache: std::cell::RefCell<std::collections::HashMap<usize, f64>>,
+}
+
+impl Repetition {
+    fn new(audio: &StereoBuffer) -> Option<Self> {
+        let sr = f64::from(audio.sample_rate());
+        let mono = audio.to_mono();
+        let n = 2048;
+        if mono.len() < n * 64 {
+            return None;
+        }
+        let window = hann(n);
+        let mut stft = Stft::new(n);
+        let mut frame = vec![0.0; n];
+        let mut spec = vec![Complex32::default(); stft.bins()];
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let edges: Vec<usize> = (0..=REPEAT_BANDS)
+            .map(|i| {
+                let f = 40.0 * (8000.0f64 / 40.0).powf(i as f64 / REPEAT_BANDS as f64);
+                ((f * n as f64 / sr).round() as usize).clamp(1, stft.bins() - 1)
+            })
+            .collect();
+        let mut frames = Vec::with_capacity(mono.len() / n + 1);
+        let mut t = 0usize;
+        while t < mono.len() {
+            windowed_frame(&mono, t as isize - (n / 2) as isize, &window, &mut frame);
+            stft.forward(&frame, &mut spec);
+            let mut v = [0.0f32; REPEAT_BANDS];
+            for (b, out) in v.iter_mut().enumerate() {
+                let (lo, hi) = (edges[b], edges[b + 1].max(edges[b] + 1));
+                *out = (1e-6 + spec[lo..hi].iter().map(|c| c.norm_sqr()).sum::<f32>() / (hi - lo) as f32).ln();
+            }
+            frames.push(v);
+            t += n;
+        }
+        for b in 0..REPEAT_BANDS {
+            let m = frames.iter().map(|v| v[b]).sum::<f32>() / frames.len() as f32;
+            let sd = (frames.iter().map(|v| (v[b] - m).powi(2)).sum::<f32>() / frames.len() as f32).sqrt().max(1e-6);
+            for v in &mut frames {
+                v[b] = (v[b] - m) / sd;
+            }
+        }
+        Some(Self { frames, fps: sr / n as f64, cache: std::cell::RefCell::default() })
+    }
+
+    /// Mean correlation of frames `lag` apart.
+    fn at(&self, lag: usize) -> f64 {
+        if let Some(v) = self.cache.borrow().get(&lag) {
+            return *v;
+        }
+        let f = &self.frames;
+        let v = if lag == 0 || lag >= f.len() {
+            0.0
+        } else {
+            let n = f.len() - lag;
+            (0..n).map(|t| f64::from(f[t].iter().zip(&f[t + lag]).map(|(a, b)| a * b).sum::<f32>())).sum::<f64>()
+                / (n * REPEAT_BANDS) as f64
+        };
+        self.cache.borrow_mut().insert(lag, v);
+        v
+    }
+
+    /// How sharply the song repeats every 1, 2, 4 and 8 bars at `bpm`: the
+    /// similarity at each bar lag above the median around it (±15 %).
+    fn score(&self, bpm: f64) -> f64 {
+        let peak = |secs: f64| -> f64 {
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            let l = (secs * self.fps).round() as usize;
+            if l < 3 || l + 2 >= self.frames.len() {
+                return 0.0;
+            }
+            let top = (l - 1..=l + 1).map(|x| self.at(x)).fold(f64::MIN, f64::max);
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            let (lo, hi) = ((l as f64 * 0.85) as usize, (l as f64 * 1.15) as usize);
+            let mut around: Vec<f64> = (lo..=hi).filter(|x| x.abs_diff(l) > 2).map(|x| self.at(x)).collect();
+            if around.is_empty() {
+                return 0.0;
+            }
+            around.sort_by(f64::total_cmp);
+            top - around[around.len() / 2]
+        };
+        let bar = 4.0 * 60.0 / bpm;
+        REPEAT_BARS.iter().map(|k| peak(k * bar)).sum::<f64>() / REPEAT_BARS.len() as f64
+    }
+}
+
+/// Tempo implied by the snare's backbeat (beats 2 and 4: one hit every two
+/// beats), from the strongest repetition of snare-band onsets in 0.5–2 s.
+fn snare_tempo(audio: &StereoBuffer) -> Option<f64> {
+    let sr = f64::from(audio.sample_rate());
+    let mono = audio.to_mono();
+    let (n, hop) = (1024usize, 256usize);
+    let window = hann(n);
+    let mut stft = Stft::new(n);
+    let mut frame = vec![0.0; n];
+    let mut spec = vec![Complex32::default(); stft.bins()];
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    let bin = |hz: f64| ((hz * n as f64 / sr).round() as usize).min(stft.bins() - 1);
+    let (body, snap) = (bin(160.0)..bin(320.0), bin(2000.0)..bin(6000.0));
+    let (mut prev, mut env) = (0.0f32, Vec::with_capacity(mono.len() / hop + 1));
+    let mut t = 0usize;
+    while t < mono.len() {
+        windowed_frame(&mono, t as isize - (n / 2) as isize, &window, &mut frame);
+        stft.forward(&frame, &mut spec);
+        let e = (1.0 + spec[body.clone()].iter().chain(&spec[snap.clone()]).map(|c| c.norm()).sum::<f32>()).ln();
+        env.push((e - prev).max(0.0));
+        prev = e;
+        t += hop;
+    }
+    let fps = sr / hop as f64;
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    let (lo, hi) = ((0.5 * fps) as usize, ((2.0 * fps) as usize).min(env.len().saturating_sub(1)));
+    if hi <= lo {
+        return None;
+    }
+    let ac = |lag: usize| -> f64 {
+        let n = env.len() - lag;
+        (0..n).map(|i| f64::from(env[i] * env[i + lag])).sum::<f64>() / n as f64
+    };
+    let best = (lo..=hi).max_by(|a, b| ac(*a).total_cmp(&ac(*b)))?;
+    (ac(best) > 0.0).then(|| 120.0 * fps / best as f64)
+}
+
+/// The envelope's period (frames) nearest `target` (±4 %), refined to a
+/// fraction of a frame.
+fn period_near(env: &[f32], target: f64) -> Option<f64> {
+    let env = &gaussian_smooth(env, 1.5);
+    let ac = |lag: usize| -> f64 {
+        if lag == 0 || lag >= env.len() {
+            return 0.0;
+        }
+        let n = env.len() - lag;
+        env[..n].iter().zip(&env[lag..]).map(|(a, b)| f64::from(*a) * f64::from(*b)).sum::<f64>() / n as f64
+    };
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    let (lo, hi) = (((target * 0.96).floor() as usize).max(2), (target * 1.04).ceil() as usize);
+    let best = (lo..=hi).max_by(|a, b| ac(*a).total_cmp(&ac(*b)))?;
+    let (a, b, c) = (ac(best - 1), ac(best), ac(best + 1));
+    let denom = a - 2.0 * b + c;
+    let offset = if denom.abs() > 1e-12 { (0.5 * (a - c) / denom).clamp(-0.5, 0.5) } else { 0.0 };
+    (b > 0.0).then_some(best as f64 + offset)
 }
 
 /// Least-squares line `t = t0 + k·period` through `(k, t)` points.
@@ -1268,6 +1472,46 @@ mod tests {
                 assert!(median.abs() < 0.004, "{name} at {rate} Hz: beats {:.1} ms off the hits", median * 1000.0);
             }
         }
+    }
+
+    #[test]
+    fn a_dotted_groove_is_counted_in_its_real_tempo() {
+        // 100 BPM in 4/4: kick and crash on a 3+3+3+3+4 sixteenth-note
+        // figure (its strongest pulse is a dotted eighth, 133 BPM), a light
+        // snare on 2 and 4, and a bass note per bar cycling over four bars —
+        // like a metal riff.
+        let sr = f64::from(SR);
+        let beat = 0.6;
+        let secs = 64.0;
+        let mut x = vec![0.0f32; (secs * sr) as usize];
+        let mut add = |t: f64, f: &dyn Fn(f32, u32) -> f32| {
+            let start = (t * sr) as usize;
+            for j in 0..(0.25 * sr) as usize {
+                if let Some(v) = x.get_mut(start + j) {
+                    *v += f(j as f32 / SR as f32, j as u32);
+                }
+            }
+        };
+        let notes = [41.2f32, 49.0, 36.7, 55.0];
+        for bar in 0..(secs / (4.0 * beat)) as usize - 1 {
+            let t0 = 0.5 + bar as f64 * 4.0 * beat;
+            for e in [0.0, 3.0, 6.0, 9.0, 12.0] {
+                add(t0 + e * beat / 4.0, &|tt, j| {
+                    let n = (j.wrapping_mul(2_654_435_761) >> 16) as f32 / 32_768.0 - 1.0;
+                    0.9 * (std::f32::consts::TAU * 55.0 * tt).sin() * (-tt * 30.0).exp() + 0.5 * n * (-tt * 8.0).exp()
+                });
+            }
+            for b in [1.0, 3.0] {
+                add(t0 + b * beat, &|tt, j| {
+                    let n = (j.wrapping_mul(2_654_435_761) >> 16) as f32 / 32_768.0 - 1.0;
+                    (0.15 * n + 0.1 * (std::f32::consts::TAU * 190.0 * tt).sin()) * (-tt * 25.0).exp()
+                });
+            }
+            let note = notes[bar % 4];
+            add(t0, &move |tt, _| 0.4 * (std::f32::consts::TAU * note * tt).sin() * (-tt * 4.0).exp());
+        }
+        let a = analyze(&StereoBuffer::from_mono(SR, x).unwrap());
+        assert!((a.bpm - 100.0).abs() < 1.0, "counted at {} BPM", a.bpm);
     }
 
     #[test]
