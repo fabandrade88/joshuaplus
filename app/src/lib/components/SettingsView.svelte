@@ -1,5 +1,6 @@
 <script lang="ts">
   import { openUrl } from "@tauri-apps/plugin-opener";
+  import { onMount } from "svelte";
   import { api } from "../api";
   import { app } from "../app.svelte";
   import { i18n, LOCALES, type Locale } from "../i18n/index.svelte";
@@ -8,19 +9,14 @@
 
   const LALAL_KEY_URL = "https://www.lalal.ai/api/";
 
-  let dialog: HTMLDialogElement | undefined = $state();
   let devices = $state<DeviceView[]>([]);
   let cloudKey = $state("");
   let connecting = $state(false);
   let minutes = $state<number | null>(null);
 
-  $effect(() => {
-    if (!dialog) return;
-    if (app.settingsOpen && !dialog.open) {
-      dialog.showModal();
-      void api.listOutputDevices().then((d) => (devices = d));
-      void app.refreshInfo();
-    } else if (!app.settingsOpen && dialog.open) dialog.close();
+  onMount(() => {
+    void api.listOutputDevices().then((d) => (devices = d));
+    void app.refreshInfo();
   });
 
   const engines: SeparatorChoice[] = ["studio", "quick", "cloud"];
@@ -42,12 +38,10 @@
   }
 </script>
 
-<dialog bind:this={dialog} onclose={() => (app.settingsOpen = false)}>
-  <header>
-    <h2>{i18n.t("settings.title")}</h2>
-    <button class="icon-btn" title={i18n.t("settings.close")} onclick={() => (app.settingsOpen = false)}>
-      <Icon name="close" />
-    </button>
+<div class="settings">
+  <header class="head">
+    <h1>{i18n.t("settings.title")}</h1>
+    <p>{i18n.t("settings.intro")}</p>
   </header>
 
   {#if app.info}
@@ -197,7 +191,7 @@
 
     <footer class="tabular">{i18n.t("settings.version", { v: info.version })} · MIT</footer>
   {/if}
-</dialog>
+</div>
 
 <style>
   .choice {
@@ -225,31 +219,23 @@
     flex-wrap: wrap;
     gap: 8px;
   }
-  dialog {
-    width: min(560px, calc(100vw - 32px));
-    max-height: calc(100vh - 48px);
-    padding: 0 24px 20px;
-    border: 1px solid var(--line-strong);
-    border-radius: var(--radius-l);
-    background: var(--bg-panel);
-    color: var(--text);
+  /* A page like Exports or Instruments: one readable column that scrolls. */
+  .settings {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 24px 28px;
   }
-  dialog::backdrop {
-    background: rgb(0 0 0 / 55%);
+  .settings > :global(*) {
+    max-width: 720px;
   }
-  header {
-    position: sticky;
-    top: 0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 18px 0 8px;
-    background: var(--bg-panel);
-    z-index: 1;
-  }
-  h2 {
+  .head h1 {
     margin: 0;
-    font-size: var(--fs-title);
+    font-size: var(--fs-h1);
+    font-weight: 600;
+  }
+  .head p {
+    margin: 4px 0 0;
+    color: var(--text-dim);
   }
   .field {
     display: flex;

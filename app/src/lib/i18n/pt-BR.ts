@@ -69,7 +69,7 @@ export const ptBR: Messages = {
   "settings.defaultDevice": "Padrão do sistema",
   "settings.workspace": "Pasta de trabalho",
   "settings.change": "Alterar…",
-  "settings.close": "Fechar",
+  "settings.intro": "Idioma, motor de separação, saída de áudio, pastas e preferências.",
   "settings.version": "Versão {v}",
 
   "error.no_workspace": "Escolha uma pasta de trabalho primeiro.",

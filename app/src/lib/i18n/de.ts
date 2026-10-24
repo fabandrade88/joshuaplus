@@ -69,7 +69,7 @@ export const de: Messages = {
   "settings.defaultDevice": "Systemstandard",
   "settings.workspace": "Arbeitsordner",
   "settings.change": "Ändern…",
-  "settings.close": "Schließen",
+  "settings.intro": "Sprache, Trennungs-Engine, Audioausgabe, Ordner und Einstellungen.",
   "settings.version": "Version {v}",
 
   "error.no_workspace": "Wähle zuerst einen Arbeitsordner.",

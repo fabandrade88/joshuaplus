@@ -240,7 +240,7 @@ if (state === "exportdialog") {
 }
 if (state === "folder") app.openFolder("igreja");
 if (state === "settings") {
-  app.settingsOpen = true;
+  app.openSettings();
   if (params.get("pending") === "1") app.pendingWorkspace = "/Volumes/SSD Externo/Joshua+";
 }
 if (state === "song" || state === "away" || state === "video") {

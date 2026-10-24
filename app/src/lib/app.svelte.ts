@@ -55,7 +55,7 @@ const METER_DECAY = 0.82;
 /** `all` = every song, `null` = songs without a folder, otherwise a folder id. */
 export type FolderKey = string | null | "all";
 
-export type View = { kind: "home" } | { kind: "folder"; folder: FolderKey } | { kind: "song" } | { kind: "gear" } | { kind: "help" } | { kind: "about" } | { kind: "exports" };
+export type View = { kind: "home" } | { kind: "folder"; folder: FolderKey } | { kind: "song" } | { kind: "gear" } | { kind: "help" } | { kind: "about" } | { kind: "exports" } | { kind: "settings" };
 
 function idleTransport(): TransportTick {
   return {
@@ -92,7 +92,6 @@ class AppStore {
   loop = $state<{ start: number; end: number } | null>(null);
   loopEnabled = $state(false);
   dragging = $state(false);
-  settingsOpen = $state(false);
   modelProgress = $state<number | null>(null);
   // Live inputs and e-drums.
   inputs = $state<InputView[]>([]);
@@ -348,6 +347,10 @@ class AppStore {
     if ((await this.guard(() => api.moveSong(id, folder))) === undefined) return;
     this.songs = this.songs.map((s) => (s.id === id ? { ...s, folder } : s));
     if (this.song?.project.id === id) this.song.project.folder = folder;
+  }
+
+  openSettings(): void {
+    this.view = { kind: "settings" };
   }
 
   // ── Inputs & e-drums ─────────────────────────────────────────────────────

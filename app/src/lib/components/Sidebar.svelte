@@ -125,7 +125,7 @@
       <span>{i18n.t("nav.gear")}</span>
       {#if app.drums?.connected || app.liveInputs.length > 0}<span class="live-dot" aria-hidden="true"></span>{/if}
     </button>
-    <button class="nav-item" onclick={() => (app.settingsOpen = true)}>
+    <button class="nav-item" class:active={app.view.kind === "settings"} onclick={() => app.openSettings()}>
       <Icon name="settings" size={16} />
       <span>{i18n.t("settings.title")}</span>
     </button>

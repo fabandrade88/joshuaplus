@@ -7,7 +7,7 @@
   import GearView from "./lib/components/GearView.svelte";
   import HelpView from "./lib/components/HelpView.svelte";
   import Home from "./lib/components/Home.svelte";
-  import SettingsDialog from "./lib/components/SettingsDialog.svelte";
+  import SettingsView from "./lib/components/SettingsView.svelte";
   import ExportDialog from "./lib/components/ExportDialog.svelte";
   import ExportsView from "./lib/components/ExportsView.svelte";
   import VideoStudio from "./lib/components/VideoStudio.svelte";
@@ -71,6 +71,8 @@
         <ExportsView />
       {:else if app.view.kind === "gear"}
         <GearView />
+      {:else if app.view.kind === "settings"}
+        <SettingsView />
       {:else if app.view.kind === "folder"}
         <FolderView folderKey={app.view.folder} />
       {:else}
@@ -84,7 +86,6 @@
   {/if}
 </div>
 
-<SettingsDialog />
 <ExportDialog />
 {#if app.videoOpen}<VideoStudio />{/if}
 

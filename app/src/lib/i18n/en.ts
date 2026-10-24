@@ -67,7 +67,7 @@ export const en = {
   "settings.defaultDevice": "System default",
   "settings.workspace": "Workspace folder",
   "settings.change": "Change…",
-  "settings.close": "Close",
+  "settings.intro": "Language, separation engine, audio output, folders and preferences.",
   "settings.version": "Version {v}",
 
   "error.no_workspace": "Choose a workspace folder first.",
