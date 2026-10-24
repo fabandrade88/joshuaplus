@@ -412,7 +412,6 @@ export const en = {
   "gear.directMonitorVolume": "Level on interface",
   "about.title": "About Joshua+",
   "about.beta": "Beta — in active development. Feedback is welcome!",
-  "about.createdBy": "Created by",
   "about.repo": "Source code",
   "about.openRepo": "Open on GitHub",
   "about.contributors": "Contributors",

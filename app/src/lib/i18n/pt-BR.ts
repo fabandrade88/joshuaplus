@@ -414,7 +414,6 @@ export const ptBR: Messages = {
   "gear.directMonitorVolume": "Volume na interface",
   "about.title": "Sobre o Joshua+",
   "about.beta": "Beta — em desenvolvimento ativo. Sugestões são bem-vindas!",
-  "about.createdBy": "Criado por",
   "about.repo": "Código-fonte",
   "about.openRepo": "Abrir no GitHub",
   "about.contributors": "Contribuidores",

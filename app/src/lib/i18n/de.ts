@@ -414,7 +414,6 @@ export const de: Messages = {
   "gear.directMonitorVolume": "Regler am Interface",
   "about.title": "Über Joshua+",
   "about.beta": "Beta – in aktiver Entwicklung. Feedback ist willkommen!",
-  "about.createdBy": "Erstellt von",
   "about.repo": "Quellcode",
   "about.openRepo": "Auf GitHub öffnen",
   "about.contributors": "Mitwirkende",
