@@ -280,12 +280,14 @@ mod tests {
 
         controls.set_recording(true);
         let buffer: Vec<f32> = (0..512).flat_map(|i| [i as f32 / 1024.0, -0.5]).collect();
+        // Feed blocks at a realistic pace (512 frames ≈ 10.7 ms at 48 kHz;
+        // here ~5× faster than real time). Pushing as fast as the CPU can
+        // would overflow the ring on slow CI machines — that is the input
+        // outrunning any real device, not something the writer must absorb.
         for k in 0..400 {
             clock.seek(k * 512);
             tap.process(&buffer, 2);
-            if k % 50 == 0 {
-                std::thread::sleep(Duration::from_millis(5));
-            }
+            std::thread::sleep(Duration::from_millis(2));
         }
         controls.set_recording(false);
         stop.store(true, Ordering::Release);
