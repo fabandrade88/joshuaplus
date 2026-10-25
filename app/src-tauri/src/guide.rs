@@ -5,10 +5,14 @@
 //! and time-synced lines), only when the user switches lyrics on: the song's
 //! title, artist, album and length are sent, nothing else. What is found is
 //! kept in the song's directory (`lyrics.json`) and shows offline from then
-//! on; the user can also paste lyrics. Chords never leave the machine: they
-//! are recognised from the stems and kept in `chords.json`.
+//! on; the user can also paste lyrics. With "download lyrics automatically"
+//! on, a background worker looks up every song of the library that has none
+//! yet (one request a second), and tries again later when offline. Chords
+//! never leave the machine: they are recognised from the stems and kept in
+//! `chords.json`.
 
-use std::time::Duration;
+use std::sync::{Condvar, Mutex, OnceLock};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use joshua_core::chords::{ChordChart, detect};
 use joshua_core::decode::decode_file;
@@ -16,18 +20,26 @@ use joshua_core::lyrics::{LyricLine, Lyrics, MAX_LYRICS_BYTES, parse_lrc};
 use joshua_core::project::SongProject;
 use joshua_core::security::{atomic_write, resolve_within};
 use joshua_core::separation::StemKind;
+use joshua_core::workspace::Workspace;
 use serde::Deserialize;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::commands::flush_and_project;
 use crate::error::{ApiError, ApiResult};
-use crate::state::AppState;
+use crate::state::{AppState, lock};
 
 const LYRICS_FILE: &str = "lyrics.json";
 const CHORDS_FILE: &str = "chords.json";
 const LRCLIB: &str = "https://lrclib.net/api";
 /// A recording found online this much longer or shorter is another edit.
 const DURATION_TOLERANCE_SECS: f64 = 4.0;
+/// A song whose lyrics were not found is looked up again after this long.
+const MISS_RETRY_SECS: u64 = 14 * 24 * 3600;
+/// Background pass: pause between songs, and between passes.
+const PREFETCH_GAP: Duration = Duration::from_secs(1);
+const PREFETCH_EVERY: Duration = Duration::from_secs(30 * 60);
+/// After a network failure, try again sooner.
+const PREFETCH_OFFLINE_RETRY: Duration = Duration::from_secs(5 * 60);
 
 /// One LRCLIB record (fields we use).
 #[derive(Debug, Deserialize)]
@@ -50,9 +62,11 @@ fn agent() -> ureq::Agent {
         .into()
 }
 
-/// GET with the query; one retry when the server is busy.
+/// GET with the query; a busy server (it often is, briefly) gets two more
+/// tries, a little further apart each time.
 fn get(agent: &ureq::Agent, path: &str, query: &[(&str, String)]) -> Result<Option<String>, String> {
-    for attempt in 0..2 {
+    let mut backoff = [1500u64, 4000].into_iter();
+    loop {
         let mut req = agent.get(&format!("{LRCLIB}/{path}"));
         for (k, v) in query {
             req = req.query(*k, v);
@@ -65,11 +79,13 @@ fn get(agent: &ureq::Agent, path: &str, query: &[(&str, String)]) -> Result<Opti
                 return Ok(Some(body));
             }
             404 => return Ok(None),
-            503 | 429 if attempt == 0 => std::thread::sleep(Duration::from_millis(1500)),
+            503 | 502 | 429 => match backoff.next() {
+                Some(ms) => std::thread::sleep(Duration::from_millis(ms)),
+                None => return Err("server busy".to_owned()),
+            },
             s => return Err(format!("HTTP {s}")),
         }
     }
-    Err("server busy".to_owned())
 }
 
 /// "Paparazzi - triple j Like A Version" → "Paparazzi"; "Song (Live)" → "Song".
@@ -130,7 +146,114 @@ fn fetch(project: &SongProject) -> Result<Option<Lyrics>, String> {
         plain: r.plain_lyrics.unwrap_or_default(),
         instrumental: r.instrumental,
         offset_secs: 0.0,
+        checked_unix: now(),
     }))
+}
+
+fn now() -> u64 {
+    SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_secs())
+}
+
+/// Looks the song up and stores what was found, or that nothing was.
+fn lookup_and_store(dir: &std::path::Path, project: &SongProject) -> Result<Option<Lyrics>, String> {
+    match fetch(project)? {
+        Some(l) => {
+            let l = sanitise(l).map_err(|e| e.message)?;
+            save_lyrics(dir, &l).map_err(|e| e.message)?;
+            Ok(Some(l))
+        }
+        None => {
+            let miss = Lyrics { source: "lrclib".to_owned(), checked_unix: now(), ..Lyrics::default() };
+            save_lyrics(dir, &miss).map_err(|e| e.message)?;
+            Ok(None)
+        }
+    }
+}
+
+/// The song has no lyrics yet, or the last lookup found none long ago.
+fn needs_lookup(dir: &std::path::Path) -> bool {
+    match read_json::<Lyrics>(dir, LYRICS_FILE) {
+        None => true,
+        Some(l) => l.is_miss() && now().saturating_sub(l.checked_unix) > MISS_RETRY_SECS,
+    }
+}
+
+fn wake_signal() -> &'static (Mutex<bool>, Condvar) {
+    static WAKE: OnceLock<(Mutex<bool>, Condvar)> = OnceLock::new();
+    WAKE.get_or_init(|| (Mutex::new(false), Condvar::new()))
+}
+
+/// Asks the background worker for a pass now (new song, setting switched on).
+pub fn wake() {
+    let (flag, cv) = wake_signal();
+    *flag.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = true;
+    cv.notify_all();
+}
+
+fn wait(timeout: Duration) {
+    let (flag, cv) = wake_signal();
+    let guard = flag.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    let (mut guard, _) =
+        cv.wait_timeout_while(guard, timeout, |woken| !*woken).unwrap_or_else(std::sync::PoisonError::into_inner);
+    *guard = false;
+}
+
+/// One pass over the library. `Err`: the network failed, try again soon.
+fn prefetch_pass(app: &AppHandle, ws: &Workspace) -> Result<(), String> {
+    let songs = ws.list_songs().map_err(|e| e.to_string())?;
+    for song in songs {
+        if !lock(&app.state::<AppState>().settings).lyrics_auto {
+            return Ok(());
+        }
+        let Ok(dir) = ws.song_dir(&song.id) else { continue };
+        if !needs_lookup(&dir) {
+            continue;
+        }
+        let Ok(project) = ws.load_project(&song.id) else { continue };
+        if lookup_and_store(&dir, &project)?.is_some() {
+            log::info!("lyrics found for {}", song.id);
+            let _ = app.emit("lyrics-ready", &song.id);
+        }
+        std::thread::sleep(PREFETCH_GAP);
+    }
+    Ok(())
+}
+
+/// Starts the background lyrics worker (idle while the setting is off).
+pub fn start_prefetch(app: AppHandle) {
+    let spawned = std::thread::Builder::new().name("joshua-lyrics".into()).spawn(move || {
+        // Let the app finish starting first.
+        wait(Duration::from_secs(10));
+        loop {
+            let state = app.state::<AppState>();
+            let enabled = lock(&state.settings).lyrics_auto;
+            let next = match (enabled, state.workspace()) {
+                (true, Ok(ws)) => match prefetch_pass(&app, &ws) {
+                    Ok(()) => PREFETCH_EVERY,
+                    Err(e) => {
+                        log::info!("lyrics prefetch paused: {e}");
+                        PREFETCH_OFFLINE_RETRY
+                    }
+                },
+                _ => PREFETCH_EVERY,
+            };
+            wait(next);
+        }
+    });
+    if let Err(e) = spawned {
+        log::error!("could not start the lyrics worker: {e}");
+    }
+}
+
+/// Download lyrics for the whole library in the background.
+#[tauri::command]
+pub fn set_lyrics_auto(state: State<'_, AppState>, enabled: bool) -> ApiResult<()> {
+    lock(&state.settings).lyrics_auto = enabled;
+    state.save_settings()?;
+    if enabled {
+        wake();
+    }
+    Ok(())
 }
 
 /// Keeps text and line counts sane, whatever the source.
@@ -165,21 +288,14 @@ pub async fn get_lyrics(app: AppHandle, online: bool, refresh: Option<bool>) -> 
         let state = app.state::<AppState>();
         let (ws, project, _) = flush_and_project(&state)?;
         let dir = ws.song_dir(&project.id)?;
-        if !refresh.unwrap_or(false)
-            && let Some(l) = read_json::<Lyrics>(&dir, LYRICS_FILE)
-        {
-            return Ok(Some(l));
+        if !refresh.unwrap_or(false) && !needs_lookup(&dir) {
+            return Ok(read_json::<Lyrics>(&dir, LYRICS_FILE).filter(|l| !l.is_miss()));
         }
         if !online {
             return Ok(None);
         }
-        match fetch(&project) {
-            Ok(Some(l)) => {
-                let l = sanitise(l)?;
-                save_lyrics(&dir, &l)?;
-                Ok(Some(l))
-            }
-            Ok(None) => Ok(None),
+        match lookup_and_store(&dir, &project) {
+            Ok(found) => Ok(found),
             Err(e) => {
                 log::info!("lyrics lookup: {e}");
                 Err(ApiError::new("offline", "could not reach the lyrics service"))
@@ -211,7 +327,14 @@ pub async fn set_lyrics(app: AppHandle, text: String) -> ApiResult<Option<Lyrics
         } else {
             synced.iter().map(|l: &LyricLine| l.text.as_str()).collect::<Vec<_>>().join("\n")
         };
-        let l = sanitise(Lyrics { source: "user".to_owned(), synced, plain, instrumental: false, offset_secs: 0.0 })?;
+        let l = sanitise(Lyrics {
+            source: "user".to_owned(),
+            synced,
+            plain,
+            instrumental: false,
+            offset_secs: 0.0,
+            checked_unix: now(),
+        })?;
         save_lyrics(&dir, &l)?;
         Ok(Some(l))
     })
@@ -226,7 +349,7 @@ pub async fn set_lyrics_offset(app: AppHandle, offset_secs: f64) -> ApiResult<Op
         let state = app.state::<AppState>();
         let (ws, project, _) = flush_and_project(&state)?;
         let dir = ws.song_dir(&project.id)?;
-        let Some(mut l) = read_json::<Lyrics>(&dir, LYRICS_FILE) else { return Ok(None) };
+        let Some(mut l) = read_json::<Lyrics>(&dir, LYRICS_FILE).filter(|l| !l.is_miss()) else { return Ok(None) };
         l.offset_secs = offset_secs;
         let l = sanitise(l)?;
         save_lyrics(&dir, &l)?;

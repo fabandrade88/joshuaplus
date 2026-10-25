@@ -185,6 +185,10 @@ class AppStore {
       events.onJob((u) => this.onJob(u)),
       events.onTransport((t) => this.onTransport(t)),
       events.onLibraryChanged(() => void this.refreshLibrary()),
+      events.onLyricsReady((id) => {
+        // Found in the background while this song's window had none.
+        if (this.lyricsOn && this.song?.project.id === id && this.lyricsStatus !== "ready") void this.loadLyrics();
+      }),
       events.onDevicesChanged((c) => {
         if (c.restored && c.output) this.notify(i18n.t("devices.restored", { name: c.output }));
         else if (c.lostOutput)
@@ -775,7 +779,14 @@ class AppStore {
   toggleLyrics(): void {
     this.lyricsOn = !this.lyricsOn;
     writeFlag("joshua.lyrics", this.lyricsOn);
+    // Using lyrics once means wanting them ready for every song.
+    if (this.lyricsOn && this.info && !this.info.lyricsAuto) void this.setLyricsAuto(true);
     this.syncGuides();
+  }
+
+  async setLyricsAuto(enabled: boolean): Promise<void> {
+    if ((await this.guard(() => api.setLyricsAuto(enabled))) === undefined) return;
+    if (this.info) this.info.lyricsAuto = enabled;
   }
 
   toggleChords(): void {

@@ -55,6 +55,7 @@ pub fn run() {
             state.jobs.start_worker(handle.clone());
             inbox::start(handle.clone());
             backfill::start(handle.clone());
+            guide::start_prefetch(handle.clone());
             watchdog::start(handle.clone());
             ticker::start(handle);
             Ok(())
@@ -135,6 +136,7 @@ pub fn run() {
             commands::skip_update,
             commands::set_update_check,
             commands::set_auto_balance,
+            guide::set_lyrics_auto,
             commands::set_export_dir,
             video::render_clip_audio,
             video::video_save_begin,

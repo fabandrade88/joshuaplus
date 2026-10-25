@@ -170,6 +170,7 @@ mockIPC(
           exportDirCustom: false,
           updateCheck: true,
           autoBalance: false,
+          lyricsAuto: true,
           suggestedWorkspace: "/Users/musician/Music/Joshua+",
           musicDir: "/Users/musician/Music",
         };

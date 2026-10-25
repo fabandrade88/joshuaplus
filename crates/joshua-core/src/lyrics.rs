@@ -33,6 +33,10 @@ pub struct Lyrics {
     /// a slightly different edit than the user's file.
     #[serde(default)]
     pub offset_secs: f64,
+    /// When the lookup was made (Unix seconds); a lookup that found nothing
+    /// is stored too, so it is not repeated every time.
+    #[serde(default)]
+    pub checked_unix: u64,
 }
 
 impl Lyrics {
@@ -40,6 +44,12 @@ impl Lyrics {
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.synced.is_empty() && self.plain.trim().is_empty()
+    }
+
+    /// A stored "looked up, nothing found".
+    #[must_use]
+    pub fn is_miss(&self) -> bool {
+        self.is_empty() && !self.instrumental
     }
 }
 

@@ -29,6 +29,7 @@ export interface AppInfo {
   /** Tell the user about new releases. */
   updateCheck: boolean;
   autoBalance: boolean;
+  lyricsAuto: boolean;
 }
 
 /** A newer published release. */
