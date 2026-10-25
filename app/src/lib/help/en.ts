@@ -60,7 +60,7 @@ export const helpEn: HelpSection[] = [
       { term: "Off", text: "Stops looping." },
       { term: "Auto-scroll", text: "The playing bar stays in view. Scrolling the map yourself pauses auto-scroll for a few seconds." },
       { term: "Chords", text: "Shows the chords in every bar, and the current and next chord in the counter instead of the bar number. They are recognised from the song’s instruments on your computer (major, minor and power chords, spelled for the song’s key), so treat them as a guide: busy or heavily distorted parts can be off." },
-      { term: "Lyrics", text: "Shows the line being sung and the next one, in time with the song. The first time, Joshua+ looks the song up on LRCLIB, an open lyrics database, and keeps the lyrics with the song. If they run early or late, move them with − / +; if nothing is found, paste your own (plain text, or LRC lines with [mm:ss.xx] time stamps)." },
+      { term: "Lyrics", text: "Chords and lyrics open in their own window over the song: drag it by the title bar, resize it from the corner (the text grows with it), double-click the title bar to put it back. Shows the line being sung and the next one, in time with the song. The first time, Joshua+ looks the song up on LRCLIB, an open lyrics database, and keeps the lyrics with the song. If they run early or late, move them with − / +; if nothing is found, paste your own (plain text, or LRC lines with [mm:ss.xx] time stamps)." },
     ],
   },
   {

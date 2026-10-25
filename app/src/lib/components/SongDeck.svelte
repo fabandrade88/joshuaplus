@@ -594,6 +594,11 @@
     line-height: 1.1;
     color: var(--accent);
   }
+  .cols > div:first-child .k {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
   .k em {
     font-style: normal;
     color: var(--text-dim);

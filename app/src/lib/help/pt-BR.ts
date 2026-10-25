@@ -60,7 +60,7 @@ export const helpPtBR: HelpSection[] = [
       { term: "Desl.", text: "Desliga a repetição." },
       { term: "Rolagem automática", text: "O compasso que está tocando fica sempre visível. Se você rolar o mapa, a rolagem automática pausa por alguns segundos." },
       { term: "Acordes", text: "Mostra os acordes em cada compasso, e o acorde atual e o próximo no contador no lugar do número do compasso. Eles são reconhecidos dos instrumentos da música no seu computador (maiores, menores e power chords, escritos no tom da música); use como guia: trechos muito cheios ou distorcidos podem sair errados." },
-      { term: "Letra", text: "Mostra a linha que está sendo cantada e a próxima, no tempo da música. Na primeira vez, o Joshua+ procura a música no LRCLIB, um banco aberto de letras, e guarda a letra com a música. Se ela estiver adiantada ou atrasada, ajuste com − / +; se nada for encontrado, cole a sua (texto simples ou linhas LRC com marcação [mm:ss.xx])." },
+      { term: "Letra", text: "Acordes e letra abrem numa janela própria sobre a música: arraste pela barra de título, redimensione pelo canto (o texto cresce junto) e dê clique duplo na barra para voltar ao lugar. Mostra a linha que está sendo cantada e a próxima, no tempo da música. Na primeira vez, o Joshua+ procura a música no LRCLIB, um banco aberto de letras, e guarda a letra com a música. Se ela estiver adiantada ou atrasada, ajuste com − / +; se nada for encontrado, cole a sua (texto simples ou linhas LRC com marcação [mm:ss.xx])." },
     ],
   },
   {
