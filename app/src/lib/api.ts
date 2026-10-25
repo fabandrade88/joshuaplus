@@ -86,7 +86,8 @@ export const api = {
   updateTake: (id: string, patch: TrackPatch) => invoke<void>("update_take", { id, patch }),
   deleteTake: (id: string) => invoke<SongView>("delete_take", { id }),
   resetMix: () => invoke<MixView>("reset_mix"),
-  autoBalance: () => invoke<BalanceResult>("auto_balance"),
+  /** `takes`: the takes to balance (all when omitted). */
+  autoBalance: (takes?: string[]) => invoke<BalanceResult>("auto_balance", { takes: takes ?? null }),
   setAutoBalance: (enabled: boolean) => invoke<void>("set_auto_balance", { enabled }),
   setRecordOffset: (ms: number) => invoke<void>("set_record_offset", { ms }),
   exportMix: (includeClick: boolean) => invoke<string>("export_mix", { includeClick }),

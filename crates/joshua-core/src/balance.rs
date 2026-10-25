@@ -33,6 +33,8 @@ const MIN_SCORE: f32 = 0.2;
 const OVER_SONG: f32 = 0.08;
 /// …and better than the next stem by this much.
 const OVER_NEXT: f32 = 0.05;
+/// Loudest gain a take may get (the project's channel limit).
+const MAX_TAKE_GAIN_DB: f32 = 12.0;
 /// An unmatched take sits this far under the whole song.
 const UNDER_SONG_DB: f32 = 6.0;
 /// Onset alignment tolerance, in frames (±40 ms).
@@ -285,7 +287,11 @@ pub fn plan(stems: &[Profile], takes: &[Profile]) -> Plan {
                 }
                 None => (loudness(&f.frames, song) - UNDER_SONG_DB, 0.0),
             };
-            TakePlan { stem: f.stem, gain_db: round_half((target - own).clamp(-30.0, 18.0)), pan: round_hundredth(pan) }
+            TakePlan {
+                stem: f.stem,
+                gain_db: round_half((target - own).clamp(-30.0, MAX_TAKE_GAIN_DB)),
+                pan: round_hundredth(pan),
+            }
         })
         .collect();
     let stem_muted = (0..stems.len()).map(|i| found.iter().any(|f| f.stem == Some(i))).collect();
@@ -382,14 +388,14 @@ mod tests {
     fn a_take_is_matched_to_the_instrument_it_plays_and_set_to_its_level() {
         let stems = song();
         let n = timeline_frames(SECS);
-        // A drummer playing the same groove, much quieter, with other noise.
-        let take = Profile::analyse(&centred(drums(99, 0.05)), 0.0, n);
+        // A drummer playing the same groove, quieter, with other noise.
+        let take = Profile::analyse(&centred(drums(99, 0.15)), 0.0, n);
         let p = plan(&stems, &[take]);
         assert_eq!(p.takes[0].stem, Some(0));
         assert_eq!(p.stem_muted, vec![true, false, false]);
         // The original drums average (0.5 + 0.25) / 2 = 0.375 in mono, the
-        // take 0.05: it must come up by 20·log10(7.5) ≈ 17.5 dB.
-        assert!((p.takes[0].gain_db - 17.5).abs() <= 1.5, "{:?}", p.takes[0]);
+        // take 0.15: it must come up by 20·log10(2.5) ≈ 8 dB.
+        assert!((p.takes[0].gain_db - 8.0).abs() <= 1.5, "{:?}", p.takes[0]);
         assert!(p.takes[0].pan < -0.15, "the original drums lean left: {:?}", p.takes[0]);
 
         let bass_take = Profile::analyse(&centred(bass(0.6)), 0.0, n);
@@ -418,9 +424,9 @@ mod tests {
     fn two_takes_of_one_instrument_share_its_level() {
         let stems = song();
         let n = timeline_frames(SECS);
-        let a = Profile::analyse(&centred(drums(5, 0.05)), 0.0, n);
+        let a = Profile::analyse(&centred(drums(5, 0.15)), 0.0, n);
         let one = plan(&stems, std::slice::from_ref(&a)).takes[0].gain_db;
-        let b = Profile::analyse(&centred(drums(6, 0.05)), 0.0, n);
+        let b = Profile::analyse(&centred(drums(6, 0.15)), 0.0, n);
         let two = plan(&stems, &[a, b]);
         assert!(two.takes.iter().all(|t| t.stem == Some(0)));
         assert!((one - two.takes[0].gain_db - 3.0).abs() <= 0.5, "{one} vs {:?}", two.takes);
@@ -450,6 +456,16 @@ mod tests {
         let p = plan(&stems, &[Profile::analyse(&centred(room), 0.0, n)]);
         assert_eq!(p.takes[0].stem, None, "{p:?}");
         assert_eq!(p.stem_muted, vec![false, false, false]);
+    }
+
+    #[test]
+    fn a_very_quiet_take_stays_within_the_channel_limit() {
+        let stems = song();
+        let n = timeline_frames(SECS);
+        let faint = Profile::analyse(&centred(drums(9, 0.01)), 0.0, n);
+        let p = plan(&stems, &[faint]);
+        assert_eq!(p.takes[0].stem, Some(0));
+        assert_eq!(p.takes[0].gain_db, 12.0);
     }
 
     #[test]

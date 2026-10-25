@@ -89,12 +89,14 @@ pub fn reset_mix(state: State<'_, AppState>) -> ApiResult<MixView> {
     })
 }
 
-/// Balances the takes against the original instruments: each take matched
-/// to the stem it plays gets that stem's level and place in the stereo
-/// field, and the stem is muted; the other stems go back to their original
-/// level. Analyses the song's files (a few seconds), off the audio thread.
+/// Balances takes against the original instruments: each take matched to
+/// the stem it plays gets that stem's level (with the gain the user gave the
+/// stem and the song) and place in the stereo field, and that stem is muted.
+/// Nothing else changes: other stems, mutes the user chose and takes left out
+/// keep their settings. `takes`: the takes to balance (after recording, the
+/// new ones), all when `None`. Analyses the song's files (a few seconds).
 #[tauri::command]
-pub async fn auto_balance(app: AppHandle) -> ApiResult<BalanceResult> {
+pub async fn auto_balance(app: AppHandle, takes: Option<Vec<String>>) -> ApiResult<BalanceResult> {
     tauri::async_runtime::spawn_blocking(move || {
         let state = app.state::<AppState>();
         let (ws, project, _) = flush_and_project(&state)?;
@@ -110,8 +112,8 @@ pub async fn auto_balance(app: AppHandle) -> ApiResult<BalanceResult> {
             Ok(Profile::analyse(&buffer, offset, frames))
         };
         let stems = project.tracks.iter().map(|t| profile(&t.file, 0.0)).collect::<ApiResult<Vec<_>>>()?;
-        let takes = project.takes.iter().map(|t| profile(&t.file, t.offset_secs)).collect::<ApiResult<Vec<_>>>()?;
-        let plan = plan(&stems, &takes);
+        let profiles = project.takes.iter().map(|t| profile(&t.file, t.offset_secs)).collect::<ApiResult<Vec<_>>>()?;
+        let plan = plan(&stems, &profiles);
 
         let shared = state.shared().ok();
         with_song(&state, |song| {
@@ -122,26 +124,7 @@ pub async fn auto_balance(app: AppHandle) -> ApiResult<BalanceResult> {
             if !same {
                 return Err(ApiError::invalid("the song changed while it was analysed"));
             }
-            for (t, muted) in p.tracks.iter_mut().zip(&plan.stem_muted) {
-                t.gain_db = 0.0;
-                t.pan = 0.0;
-                t.muted = *muted;
-                t.solo = false;
-            }
-            p.song_gain_db = 0.0;
-            p.song_muted = false;
-            let mut report = Vec::with_capacity(p.takes.len());
-            for (t, tp) in p.takes.iter_mut().zip(&plan.takes) {
-                t.gain_db = tp.gain_db;
-                t.pan = tp.pan;
-                t.muted = false;
-                t.solo = false;
-                report.push(BalancedTake {
-                    id: t.id.clone(),
-                    stem: tp.stem.and_then(|i| project.tracks.get(i)).map(|s| s.stem),
-                    gain_db: tp.gain_db,
-                });
-            }
+            let report = apply_plan(p, &plan, takes.as_deref());
             song.dirty = true;
             if let Some(s) = &shared {
                 apply_mix(s, p);
@@ -151,6 +134,33 @@ pub async fn auto_balance(app: AppHandle) -> ApiResult<BalanceResult> {
     })
     .await
     .map_err(|_| ApiError::new("internal", "balance crashed"))?
+}
+
+/// Applies a balance plan to the chosen takes (all when `only` is `None`).
+/// Only those takes' level and pan change, and the stems they replace are
+/// muted; nothing is ever unmuted or reset.
+fn apply_plan(p: &mut SongProject, plan: &joshua_core::balance::Plan, only: Option<&[String]>) -> Vec<BalancedTake> {
+    let song_gain = p.song_gain_db;
+    let mut report = Vec::new();
+    for (j, tp) in plan.takes.iter().enumerate() {
+        let Some(take) = p.takes.get(j) else { break };
+        if only.is_some_and(|ids| !ids.contains(&take.id)) {
+            continue;
+        }
+        // The take stands in for the stem as the user hears it: through the
+        // stem's own fader and the song's.
+        let stem_gain = tp.stem.and_then(|i| p.tracks.get(i)).map_or(0.0, |s| s.gain_db);
+        let gain = (tp.gain_db + stem_gain + song_gain).clamp(-96.0, 12.0);
+        let id = take.id.clone();
+        let take = &mut p.takes[j];
+        take.gain_db = gain;
+        take.pan = tp.pan;
+        if let Some(stem) = tp.stem.and_then(|i| p.tracks.get_mut(i)) {
+            stem.muted = true;
+        }
+        report.push(BalancedTake { id, stem: tp.stem.and_then(|i| p.tracks.get(i)).map(|s| s.stem), gain_db: gain });
+    }
+    report
 }
 
 #[cfg(test)]
@@ -200,6 +210,43 @@ mod tests {
             }],
             typed_bpm: None,
         }
+    }
+
+    #[test]
+    fn balancing_never_unmutes_or_resets_what_the_user_set() {
+        use joshua_core::balance::{Plan, TakePlan};
+        let mut p = project();
+        let mut second = p.takes[0].clone();
+        second.id = "take-2".into();
+        second.file = "takes/take-2.wav".into();
+        second.muted = true;
+        second.gain_db = -9.0;
+        p.takes.push(second);
+        p.tracks[0].muted = true; // the user muted the vocals
+        p.tracks[1].gain_db = -4.0; // and turned the drums down
+        p.tracks[2].gain_db = -2.0;
+        p.song_gain_db = -1.0;
+        let plan = Plan {
+            stem_muted: vec![false, true, false],
+            takes: vec![
+                TakePlan { stem: Some(1), gain_db: 6.0, pan: -0.2 },
+                TakePlan { stem: Some(2), gain_db: 3.0, pan: 0.0 },
+            ],
+        };
+        // After recording, only the new take is balanced.
+        let report = apply_plan(&mut p, &plan, Some(&["take-1".to_string()]));
+        assert_eq!(report.len(), 1);
+        assert_eq!(p.takes[0].gain_db, 6.0 - 4.0 - 1.0, "stem and song faders count");
+        assert_eq!(p.takes[0].pan, -0.2);
+        assert!(p.tracks[0].muted, "a stem the user muted stays muted");
+        assert!(p.tracks[1].muted, "the replaced drums are muted");
+        assert_eq!(p.tracks[1].gain_db, -4.0, "stem levels are left alone");
+        assert!(!p.tracks[2].muted, "a stem no balanced take replaces is untouched");
+        assert!(p.takes[1].muted && p.takes[1].gain_db == -9.0, "takes left out keep everything");
+        // A huge correction stays within the channel limit.
+        let loud = Plan { stem_muted: vec![false; 3], takes: vec![TakePlan { stem: None, gain_db: 40.0, pan: 0.0 }] };
+        apply_plan(&mut p, &loud, None);
+        assert_eq!(p.takes[0].gain_db, 12.0);
     }
 
     #[test]
