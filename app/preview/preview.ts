@@ -155,7 +155,7 @@ mockIPC(
       }
       case "get_app_info":
         return {
-          version: "0.5.3",
+          version: "0.5.4",
           locale: lang,
           workspace: state === "welcome" ? null : "/Users/musician/Music/Joshua+",
           inbox: "/Users/musician/Music/Joshua+/inbox",
@@ -246,7 +246,9 @@ if (state === "settings") {
 if (state === "song" || state === "away" || state === "video") {
   app.browsing = "banda";
   await app.openSong(project.id);
-  app.songCollapsed = params.get("collapsed") === "1";
+  // The console folds the song's tracks when inputs or takes are present;
+  // the screenshots pick either view.
+  setTimeout(() => (app.songCollapsed = params.get("collapsed") === "1"), 300);
   const bar = (n: number) => 1.2 + (n - 1) * 4 * (60 / BPM);
   app.loop = { start: bar(25), end: bar(29) };
   app.loopEnabled = true;

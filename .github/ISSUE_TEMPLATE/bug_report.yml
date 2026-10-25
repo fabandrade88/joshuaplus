@@ -40,7 +40,7 @@ body:
     attributes:
       label: Joshua+ version
       description: Shown on the About page
-      placeholder: 0.5.3
+      placeholder: 0.5.4
     validations:
       required: true
   - type: dropdown

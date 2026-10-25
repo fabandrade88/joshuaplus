@@ -6,7 +6,7 @@ Joshua+ is in **beta**. Security fixes go into the newest release only.
 
 | Version | Supported |
 |---|---|
-| latest `0.0.x` beta | ✅ |
+| latest `0.5.x` beta | ✅ |
 | anything older | ❌ |
 
 ## Reporting a vulnerability
@@ -33,7 +33,8 @@ Joshua+ is an offline desktop app. The things it treats as **hostile** are:
 | Workspace files (`project.json`, folders, settings) | Strict schema validation, no symlinks, atomic writes (random exclusive temp file, then rename). Settings files have `0600` permissions |
 | File and folder names | Sanitised. Traversal (`..`), absolute paths, separators and Windows reserved names are rejected. Every path is resolved inside the workspace |
 | MIDI bytes | A parser that tolerates any byte stream; tested with 1 M random messages |
-| Network (model download, optional LALAL.AI) | HTTPS only (rustls). The model is pinned to a URL and revision and **verified by SHA-256 and exact size** before it is loaded. Timeouts on every request |
+| Network (model download, update check, optional LALAL.AI) | HTTPS only (rustls). The model is pinned to a URL and revision and **verified by SHA-256 and exact size** before it is loaded. The update check is one `HEAD` request to the GitHub releases page that follows no redirect and reads only the version tag: it never downloads or runs anything. Timeouts on every request |
+| Video clips saved by the studio | The webview only streams encoded bytes: file names come from a fixed format tag and extension (`mp4`/`webm`), files are created exclusively as `.part` in the export folder and renamed when finished, size is capped (8 GB), and positioned writes can rewrite earlier bytes but never leave a hole past the end. The MP4 index fix-up (AAC priming) only reads the file's last box, size-capped, and leaves anything unexpected untouched. Tested |
 | The web UI | Strict CSP (`script-src 'self'`, no remote content), frozen prototypes, a minimal Tauri capability set (no shell, fs or http plugins), and no `innerHTML`/`{@html}`/`eval`. These are enforced by tests |
 | Audio thread | No `unsafe` anywhere in the codebase. The audio callback does not allocate (checked with `assert_no_alloc`) |
 
