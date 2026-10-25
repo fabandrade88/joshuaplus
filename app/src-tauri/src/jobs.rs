@@ -208,6 +208,7 @@ fn run_job(app: &AppHandle, job: &Job) {
             update.song_id = Some(project.id);
             emit(app, &update);
             let _ = app.emit("library-changed", ());
+            crate::guide::wake();
         }
         Err(e) => {
             log::warn!("import failed: {e}");

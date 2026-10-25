@@ -200,6 +200,13 @@
             <span class="note">{i18n.t("mix.autoSettingHint")}</span>
           </span>
         </label>
+        <label class="check">
+          <input type="checkbox" checked={info.lyricsAuto} onchange={(e) => app.setLyricsAuto(e.currentTarget.checked)} />
+          <span>
+            <strong>{i18n.t("guide.autoSetting")}</strong>
+            <span class="note">{i18n.t("guide.autoSettingHint")}</span>
+          </span>
+        </label>
         {#if app.desktopEntry?.available}
           <div class="row desktop">
             <span class="note">

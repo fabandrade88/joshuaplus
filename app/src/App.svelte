@@ -13,6 +13,7 @@
   import VideoStudio from "./lib/components/VideoStudio.svelte";
   import Sidebar from "./lib/components/Sidebar.svelte";
   import BarMap from "./lib/components/BarMap.svelte";
+  import GuideWindow from "./lib/components/GuideWindow.svelte";
   import Console from "./lib/components/Console.svelte";
   import SongDeck from "./lib/components/SongDeck.svelte";
   import Welcome from "./lib/components/Welcome.svelte";
@@ -87,6 +88,7 @@
 </div>
 
 <ExportDialog />
+{#if app.view.kind === "song" && app.song && (app.chordsOn || app.lyricsOn)}<GuideWindow />{/if}
 {#if app.videoOpen}<VideoStudio />{/if}
 
 <style>

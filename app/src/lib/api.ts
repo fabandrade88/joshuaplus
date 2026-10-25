@@ -28,6 +28,8 @@ import type {
   TempoEdit,
   TempoMode,
   BeatAnalysis,
+  ChordChart,
+  Lyrics,
   TrackPatch,
   TransportTick,
 } from "./types";
@@ -89,7 +91,12 @@ export const api = {
   /** `takes`: the takes to balance (all when omitted). */
   autoBalance: (takes?: string[]) => invoke<BalanceResult>("auto_balance", { takes: takes ?? null }),
   setAutoBalance: (enabled: boolean) => invoke<void>("set_auto_balance", { enabled }),
+  setLyricsAuto: (enabled: boolean) => invoke<void>("set_lyrics_auto", { enabled }),
   matchTone: (take: string) => invoke<MixView>("match_tone", { take }),
+  getLyrics: (online: boolean, refresh = false) => invoke<Lyrics | null>("get_lyrics", { online, refresh }),
+  setLyrics: (text: string) => invoke<Lyrics | null>("set_lyrics", { text }),
+  setLyricsOffset: (offsetSecs: number) => invoke<Lyrics | null>("set_lyrics_offset", { offsetSecs }),
+  getChords: () => invoke<ChordChart>("get_chords"),
   setRecordOffset: (ms: number) => invoke<void>("set_record_offset", { ms }),
   exportMix: (includeClick: boolean) => invoke<string>("export_mix", { includeClick }),
   revealExport: (path: string) => invoke<void>("reveal_export", { path }),
@@ -119,6 +126,7 @@ export const events = {
   onTransport: (cb: (t: TransportTick) => void): Promise<UnlistenFn> =>
     listen<TransportTick>("transport", (e) => cb(e.payload)),
   onLibraryChanged: (cb: () => void): Promise<UnlistenFn> => listen("library-changed", () => cb()),
+  onLyricsReady: (cb: (songId: string) => void): Promise<UnlistenFn> => listen<string>("lyrics-ready", (e) => cb(e.payload)),
   onDevicesChanged: (cb: (c: DevicesChanged) => void): Promise<UnlistenFn> =>
     listen<DevicesChanged>("audio-devices-changed", (e) => cb(e.payload)),
   onInputLevels: (cb: (levels: number[]) => void): Promise<UnlistenFn> =>

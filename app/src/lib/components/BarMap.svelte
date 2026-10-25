@@ -4,6 +4,7 @@
   // to jump to it; drag across bars to loop them — loops always snap to bars.
   import { app } from "../app.svelte";
   import { i18n } from "../i18n/index.svelte";
+  import { chordsIn } from "../timeline";
 
   type Cell = { label: string; start: number; end: number; beats: number[]; intro: boolean };
 
@@ -59,6 +60,20 @@
       out.push({ label: String(k + 1), start, end, beats, intro: false });
     });
     return out;
+  });
+
+  /** Chord names per cell, when chords are shown. */
+  const cellChords = $derived.by((): string[][] => {
+    const chart = app.chordsOn ? app.chords : null;
+    return chart ? cells.map((c) => chordsIn(chart.chords, c.start, c.end).slice(0, 3)) : [];
+  });
+
+  // Opening a song (or a new tempo grid) loads what the guides need.
+  $effect(() => {
+    void song?.project.id;
+    void song?.project.analysis.bpm;
+    void song?.project.analysis.beats[0];
+    app.syncGuides();
   });
 
   const peakEnergy = $derived(Math.max(0.05, ...cells.flatMap((c) => c.beats)));
@@ -177,6 +192,21 @@
       </div>
       {#if loopLabel}<span class="status"><Icon name="loop" size={12} /> {loopLabel}</span>{/if}
       <span class="hint" title={i18n.t("barmap.hint")}>{i18n.t("barmap.hint")}</span>
+      {#if app.chordsOn}
+        <span class="key tabular">
+          {#if app.chordsStatus === "loading"}{i18n.t("guide.chordsLoading")}
+          {:else if app.chordsStatus === "failed"}{i18n.t("guide.chordsFailed")}
+          {:else if app.chords}{i18n.t("guide.key", { key: app.chords.key })}{/if}
+        </span>
+      {/if}
+      <div class="seg guides" role="group" aria-label={i18n.t("guide.label")}>
+        <button class:on={app.chordsOn} aria-pressed={app.chordsOn} title={i18n.t("guide.chordsHint")} onclick={() => app.toggleChords()}
+          ><Icon name="chords" size={13} /> {i18n.t("guide.chords")}</button
+        >
+        <button class:on={app.lyricsOn} aria-pressed={app.lyricsOn} title={i18n.t("guide.lyricsHint")} onclick={() => app.toggleLyrics()}
+          ><Icon name="lyrics" size={13} /> {i18n.t("guide.lyrics")}</button
+        >
+      </div>
     </div>
     <div
       bind:this={grid}
@@ -203,7 +233,13 @@
           role="gridcell"
           data-i={i}
         >
-          <span class="label tabular">{cell.label}</span>
+          {#if cellChords[i]?.length}
+            <span class="label tabular with-chord"
+              >{cell.intro ? "" : cell.label}<b class:many={(cellChords[i]?.length ?? 0) > 1}>{cellChords[i]?.join(" ")}</b></span
+            >
+          {:else}
+            <span class="label tabular">{cell.label}</span>
+          {/if}
           <div class="beats">
             {#each cell.beats as e, j (j)}
               <i style={`height:${12 + (e / peakEnergy) * 88}%`} class:first={j === 0 && !cell.intro}></i>
@@ -319,6 +355,37 @@
     line-height: 1.1;
     font-weight: 600;
     color: var(--text-faint);
+  }
+  .label.with-chord {
+    display: flex;
+    align-items: baseline;
+    gap: 5px;
+    min-width: 0;
+  }
+  .label b {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .label b.many {
+    font-size: 11px;
+  }
+  .current .label b {
+    color: var(--accent);
+  }
+  .key {
+    font-size: var(--fs-small);
+    font-weight: 600;
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+  .guides button {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
   }
   .beats {
     flex: 1;

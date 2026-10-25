@@ -16,11 +16,13 @@
 
 pub mod audio;
 pub mod balance;
+pub mod chords;
 pub mod decode;
 pub mod error;
 pub mod export;
 pub mod folders;
 pub mod import;
+pub mod lyrics;
 pub mod master;
 pub mod metadata;
 pub mod metronome;

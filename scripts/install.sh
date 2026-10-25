@@ -3,7 +3,7 @@
 #
 #   curl -fsSL https://raw.githubusercontent.com/fabandrade88/joshuaplus/main/scripts/install.sh | sh
 #
-# Downloads the latest release (or JOSHUA_VERSION=v0.5.4) from GitHub,
+# Downloads the latest release (or JOSHUA_VERSION=v0.5.5) from GitHub,
 # verifies it against the release's SHA256SUMS and installs it:
 #   macOS  → /Applications/Joshua+.app (or ~/Applications without admin rights)
 #   Linux  → .deb via apt when available, otherwise an AppImage in ~/.local/bin

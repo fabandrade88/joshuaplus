@@ -45,7 +45,7 @@ x86_64 with glibc 2.39+ (Ubuntu 24.04+, Debian 13+, Fedora 40+, Arch). Paste in 
 curl -fsSL https://raw.githubusercontent.com/fabandrade88/joshuaplus/main/scripts/install.sh | sh
 ```
 
-The scripts download the newest release, **check its SHA-256 against the release's `SHA256SUMS`** and only then install it: the `.deb` with apt on Debian/Ubuntu, the AppImage in `~/.local/bin` on other Linux, the app in Applications on macOS. They are short; read [`install.sh`](scripts/install.sh) and [`install.ps1`](scripts/install.ps1) first if you like. Set `JOSHUA_VERSION=v0.5.4` to pick a version.
+The scripts download the newest release, **check its SHA-256 against the release's `SHA256SUMS`** and only then install it: the `.deb` with apt on Debian/Ubuntu, the AppImage in `~/.local/bin` on other Linux, the app in Applications on macOS. They are short; read [`install.sh`](scripts/install.sh) and [`install.ps1`](scripts/install.ps1) first if you like. Set `JOSHUA_VERSION=v0.5.5` to pick a version.
 
 **Prefer to download by hand?** Get the `.dmg` (macOS), `-setup.exe` or `.msi` (Windows), or `.deb`, `.rpm` or `.AppImage` (Linux) from [Releases](https://github.com/fabandrade88/joshuaplus/releases/latest). The builds are not code-signed yet: on macOS right-click the app and choose **Open** the first time; on Windows choose **More info → Run anyway**.
 
@@ -60,6 +60,7 @@ Every installer is also installed and started on clean Windows, macOS and Linux 
 | 🎚️ | **Instrument separation** into vocals, drums, bass, guitar, piano and other, on your own computer (HT-Demucs) | Mute the part you play and play it yourself, or solo it to learn it |
 | 🥁 | **A click locked to the song**: tempo and bars detected on the drums (dotted-pulse grooves counted in their real tempo, live bands without a click followed beat by beat), a count-in that ends before the intro and a click that keeps time through it, six click sounds, tap or type the BPM | Practise in time with the real recording, not a grid that drifts away |
 | 🔁 | **Bar map and loops**: click a bar to jump, double-click to loop it, loop 1–8 bars | Drill the hard part until it sits |
+| 🎸 | **Chords and lyrics to play along**: the chords of every bar recognised on your computer (major, minor and power chords, in the song's key), and time-synced **lyrics** from [LRCLIB](https://lrclib.net), the open lyrics database, kept with the song (or paste your own) | Sing or play the song without looking for a chord sheet |
 | 📁 | **Folders as setlists** that remember every song's mix, tempo fixes and loop | Open a song and continue exactly where you left it |
 | 🎤 | **Record every input as its own take**, lined up with the song automatically (latency and clock drift corrected). Recording again replaces the previous take | Hear how you really played, against the band |
 | 🏠 | **Room, Tone and Body** on every take: a shared room, a **tone match** that gives your take the sound of the instrument it replaces (measured on the record), and extra low end for kick and toms | A drum module or DI guitar sounds like part of the record, not pasted on top |
@@ -68,6 +69,8 @@ Every installer is also installed and started on clean Windows, macOS and Linux 
 | 💾 | **Export the mix** as a 24-bit WAV, with or without the click, **mastered for sharing**: streaming loudness (−14 LUFS, like YouTube and Spotify) through a look-ahead peak limiter instead of clipping, so drum hits keep their punch. Everything you export is listed under **Exports** | Send it to your band or teacher, or post it |
 | 🎛️ | **Up to 8 audio inputs** with meters and monitoring, **MIDI and e-drums** (Alesis, Roland, Yamaha, EFNOTE, Simmons, Pearl, GEWA, ATV, Millenium, General MIDI) | Use the gear you already have |
 | 🔌 | **Plug and play**: unplug an interface or a camera and Joshua+ moves to what is connected, and back when it returns | No restart in the middle of practice |
+
+![Chords and lyrics window](docs/screenshots/guides.png)
 
 | Home and folders | Video studio | Exports |
 |---|---|---|

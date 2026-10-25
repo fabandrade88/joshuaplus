@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { barBeatAt, barsOf, rulerStep } from "./timeline";
-import type { BeatAnalysis } from "./types";
+import { barBeatAt, barsOf, chordAt, chordsIn, lineAt, rulerStep, toLrc } from "./timeline";
+import type { BeatAnalysis, ChordSpan } from "./types";
 
 const analysis = (beats: number[], downbeatPhase = 0): BeatAnalysis => ({
   bpm: 120,
@@ -48,5 +48,38 @@ describe("rulerStep", () => {
     expect(rulerStep(10, 1000)).toBe(1);
     expect(rulerStep(100, 1000)).toBe(8);
     expect(rulerStep(0, 1000)).toBe(1);
+  });
+});
+
+const chord = (start: number, end: number, name: string): ChordSpan => ({ start, end, root: 0, quality: "major", name });
+
+describe("play-along guides", () => {
+  const chords = [chord(0, 2, "C"), chord(2, 3.9, "G"), chord(3.9, 4.1, "D"), chord(4.1, 6, "G"), chord(8, 10, "Am")];
+
+  it("finds the chord sounding now", () => {
+    expect(chordAt(chords, 0)).toBe(0);
+    expect(chordAt(chords, 2.5)).toBe(1);
+    expect(chordAt(chords, 7)).toBe(-1);
+    expect(chordAt(chords, 11)).toBe(-1);
+    expect(chordAt([], 1)).toBe(-1);
+  });
+
+  it("lists the chords of a bar without grazing ones", () => {
+    expect(chordsIn(chords, 0, 4)).toEqual(["C", "G"]);
+    expect(chordsIn(chords, 4, 8)).toEqual(["G"]);
+    expect(chordsIn(chords, 6, 8)).toEqual([]);
+  });
+
+  it("follows lyric lines with their offset", () => {
+    const lines = [{ secs: 5, text: "a" }, { secs: 10, text: "b" }];
+    expect(lineAt(lines, 4)).toBe(-1);
+    expect(lineAt(lines, 5)).toBe(0);
+    expect(lineAt(lines, 10.5)).toBe(1);
+    expect(lineAt(lines, 5.5, 1)).toBe(-1);
+    expect(lineAt(lines, 6, 1)).toBe(0);
+  });
+
+  it("writes synced lyrics back as LRC", () => {
+    expect(toLrc([{ secs: 5.5, text: "a" }, { secs: 72.25, text: "b" }])).toBe("[00:05.50] a\n[01:12.25] b");
   });
 });

@@ -82,6 +82,9 @@ pub struct Settings {
     pub skipped_version: Option<String>,
     /// Balance the takes against the original instruments after recording.
     pub auto_balance: bool,
+    /// Look up the lyrics of every song in the background (LRCLIB), so they
+    /// are ready when Lyrics is switched on.
+    pub lyrics_auto: bool,
 }
 
 impl Default for Settings {
@@ -100,6 +103,7 @@ impl Default for Settings {
             update_check: true,
             skipped_version: None,
             auto_balance: false,
+            lyrics_auto: false,
         }
     }
 }

@@ -59,6 +59,8 @@ export const helpDe: HelpSection[] = [
       { term: "Wiederholen 1 · 2 · 4 · 8", text: "Wiederholt so viele Takte ab dem aktuellen Takt." },
       { term: "Aus", text: "Beendet die Wiederholung." },
       { term: "Automatisches Scrollen", text: "Der laufende Takt bleibt sichtbar. Scrollst du selbst, pausiert das automatische Scrollen kurz." },
+      { term: "Akkorde", text: "Zeigt die Akkorde in jedem Takt und im Zähler statt der Taktnummer den aktuellen und den nächsten Akkord. Sie werden auf deinem Computer aus den Instrumenten des Songs erkannt (Dur, Moll und Powerchords, passend zur Tonart geschrieben); nimm sie als Hilfe: sehr dichte oder stark verzerrte Stellen können danebenliegen." },
+      { term: "Songtext", text: "Akkorde und Songtext öffnen sich in einem eigenen Fenster über dem Song: an der Titelleiste ziehen, an der Ecke vergrößern (der Text wächst mit), Doppelklick auf die Titelleiste setzt es zurück. Zeigt die gesungene und die nächste Zeile im Takt des Songs. Beim ersten Mal sucht Joshua+ den Song bei LRCLIB, einer offenen Songtext-Datenbank, und speichert den Text beim Song. Läuft er zu früh oder zu spät, verschiebe ihn mit − / +; wird nichts gefunden, füge deinen eigenen ein (reiner Text oder LRC-Zeilen mit Zeitmarken [mm:ss.xx])." },
     ],
   },
   {
@@ -160,6 +162,7 @@ export const helpDe: HelpSection[] = [
     items: [
       { term: "Alles lokal", text: "Songs bleiben auf deinem Computer. Nichts wird hochgeladen, außer du wählst die Cloud-Engine." },
       { term: "Geprüfte Dateien", text: "Joshua+ prüft vor dem Öffnen, ob eine Datei wirklich Audio ist, und lehnt Verknüpfungen und verdächtige Dateien ab." },
+      { term: "Songtext-Suche", text: "Nur wenn du den Songtext einschaltest: Titel, Interpret, Album und Länge des Songs werden an lrclib.net gesendet. Akkorde verlassen deinen Computer nie." },
     ],
   },
 ];

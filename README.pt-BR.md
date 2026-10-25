@@ -45,7 +45,7 @@ x86_64 com glibc 2.39+ (Ubuntu 24.04+, Debian 13+, Fedora 40+, Arch). Cole num t
 curl -fsSL https://raw.githubusercontent.com/fabandrade88/joshuaplus/main/scripts/install.sh | sh
 ```
 
-Os scripts baixam a versão mais nova, **conferem o SHA-256 com o `SHA256SUMS` da versão** e só então instalam: o `.deb` com apt no Debian/Ubuntu, o AppImage em `~/.local/bin` nos outros Linux, o app em Aplicativos no macOS. São curtos; leia [`install.sh`](scripts/install.sh) e [`install.ps1`](scripts/install.ps1) antes, se quiser. Use `JOSHUA_VERSION=v0.5.4` para escolher uma versão.
+Os scripts baixam a versão mais nova, **conferem o SHA-256 com o `SHA256SUMS` da versão** e só então instalam: o `.deb` com apt no Debian/Ubuntu, o AppImage em `~/.local/bin` nos outros Linux, o app em Aplicativos no macOS. São curtos; leia [`install.sh`](scripts/install.sh) e [`install.ps1`](scripts/install.ps1) antes, se quiser. Use `JOSHUA_VERSION=v0.5.5` para escolher uma versão.
 
 **Prefere baixar na mão?** Pegue o `.dmg` (macOS), o `-setup.exe` ou `.msi` (Windows), ou o `.deb`, `.rpm` ou `.AppImage` (Linux) em [Releases](https://github.com/fabandrade88/joshuaplus/releases/latest). Os instaladores ainda não são assinados: no macOS, clique com o botão direito no app e escolha **Abrir** na primeira vez; no Windows, escolha **Mais informações → Executar assim mesmo**.
 
@@ -60,6 +60,7 @@ Além disso, antes de cada versão ser publicada, todos os instaladores são ins
 | 🎚️ | **Separação de instrumentos** em voz, bateria, baixo, guitarra, piano e outros, no seu computador (HT-Demucs) | Tire o instrumento que você toca e toque no lugar, ou deixe só ele para aprender |
 | 🥁 | **Click preso à música**: andamento e compassos detectados na bateria (grooves de pulso pontuado contados no tempo real, bandas ao vivo sem click acompanhadas batida a batida), contagem que termina antes da intro e click que segue no tempo por ela, seis sons de click, TAP ou digitar o BPM | Pratique no tempo da gravação real, não numa grade que se perde |
 | 🔁 | **Mapa de compassos e loops**: clique num compasso para ir, clique duplo para repetir, repita de 1 a 8 compassos | Repita a parte difícil até sair |
+| 🎸 | **Acordes e letra para tocar junto**: os acordes de cada compasso reconhecidos no seu computador (maiores, menores e power chords, no tom da música) e a **letra** sincronizada do [LRCLIB](https://lrclib.net), o banco aberto de letras, guardada com a música (ou cole a sua) | Cante ou toque a música sem procurar cifra |
 | 📁 | **Pastas como setlists** que lembram a mixagem, as correções de tempo e o loop de cada música | Abra a música e continue de onde parou |
 | 🎤 | **Grave cada entrada no seu próprio take**, alinhado à música automaticamente (latência e diferença de clock corrigidas). Gravar de novo substitui o take anterior | Ouça como você tocou de verdade, junto com a banda |
 | 🏠 | **Sala, Timbre e Corpo** em cada gravação: um ambiente comum, um **timbre igualado** ao do instrumento que a gravação substitui (medido no disco) e mais grave para o bumbo e os tons | Bateria eletrônica ou guitarra em linha direta soam como parte do disco, não colados por cima |
@@ -68,6 +69,8 @@ Além disso, antes de cada versão ser publicada, todos os instaladores são ins
 | 💾 | **Exporte a mixagem** em WAV 24-bit, com ou sem o click, **masterizada para compartilhar**: volume de streaming (−14 LUFS, como YouTube e Spotify) com limitador de picos em vez de corte, para a bateria manter o impacto. Tudo o que você exporta aparece em **Exportações** | Mande para a banda, para o professor, ou poste |
 | 🎛️ | **Até 8 entradas de áudio** com medidores e retorno, **MIDI e baterias eletrônicas** (Alesis, Roland, Yamaha, EFNOTE, Simmons, Pearl, GEWA, ATV, Millenium, General MIDI) | Use o equipamento que você já tem |
 | 🔌 | **Conecte e use**: desconectou uma interface ou câmera, o Joshua+ passa para o que está conectado e volta quando ela retorna | Sem reiniciar no meio do estudo |
+
+![Janela de acordes e letra](docs/screenshots/guides.png)
 
 | Início e pastas | Estúdio de vídeo | Exportações |
 |---|---|---|

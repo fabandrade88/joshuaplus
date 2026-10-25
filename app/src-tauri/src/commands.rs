@@ -57,6 +57,7 @@ pub struct AppInfo {
     pub update_check: bool,
     /// Takes are balanced automatically after recording.
     pub auto_balance: bool,
+    pub lyrics_auto: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -155,6 +156,7 @@ pub fn get_app_info(app: AppHandle, state: State<'_, AppState>) -> AppInfo {
         music_dir: music.map(|m| m.display().to_string()),
         update_check: settings.update_check,
         auto_balance: settings.auto_balance,
+        lyrics_auto: settings.lyrics_auto,
     }
 }
 
@@ -205,6 +207,7 @@ pub async fn set_workspace(app: AppHandle, path: String, move_library: Option<bo
         lock(&state.settings).workspace = Some(ws.root().to_path_buf());
         state.save_settings()?;
         crate::backfill::start(app.clone());
+        crate::guide::wake();
         Ok(root)
     })
     .await
