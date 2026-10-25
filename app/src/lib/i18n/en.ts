@@ -50,6 +50,8 @@ export const en = {
   "track.pan": "Pan",
   "track.room": "Room",
   "track.roomHint": "Room: puts this take in the same space as the band, so a dry recording doesn't sound pasted on top of the mix. Double-click resets to 30%.",
+  "track.tone": "Tone",
+  "track.toneHint": "How much the take sounds like the original instrument: 0% as recorded, 100% with its tone matched (set by Balance with the original).",
 
   "song.bpm": "BPM",
   "song.bar": "Bar",

@@ -124,6 +124,10 @@ export interface TakeSettings {
   solo: boolean;
   /** Room send 0..1: puts the take in the same space as the band. */
   room: number;
+  /** How much of the tone match is heard, 0..1 (0 = as recorded). */
+  tone?: number;
+  /** Tone-match equaliser, dB per octave band (31 Hz…16 kHz); absent if none. */
+  toneEq?: number[];
 }
 
 export interface BeatAnalysis {
@@ -231,6 +235,7 @@ export interface TrackPatch {
   muted?: boolean;
   solo?: boolean;
   room?: number;
+  tone?: number;
 }
 
 export type ClickSound = "classic" | "woodblock" | "beep" | "cowbell" | "sticks" | "drums";

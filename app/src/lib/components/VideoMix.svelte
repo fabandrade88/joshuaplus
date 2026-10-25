@@ -28,7 +28,8 @@
     gainDb: number;
     muted: boolean;
     room?: number;
-    set: (patch: { gainDb?: number; muted?: boolean; room?: number }) => void;
+    tone?: number;
+    set: (patch: { gainDb?: number; muted?: boolean; room?: number; tone?: number }) => void;
   };
 
   const songRows = $derived.by((): Row[] => {
@@ -69,13 +70,14 @@
         gainDb: t.gainDb,
         muted: t.muted,
         room: t.room ?? 0.3,
+        tone: t.toneEq?.some((g) => g !== 0) ? (t.tone ?? 0) : undefined,
         set: (p) => void app.updateTake(t.id, p),
       });
     }
     return out;
   });
 
-  function change(row: Row, patch: { gainDb?: number; muted?: boolean; room?: number }): void {
+  function change(row: Row, patch: { gainDb?: number; muted?: boolean; room?: number; tone?: number }): void {
     row.set(patch);
     studio.mixChanged();
   }
@@ -151,6 +153,22 @@
                 oninput={(e) => change(row, { room: dbFromInput(e) })}
               />
               <span class="tabular">{Math.round(row.room * 100)}%</span>
+            </label>
+          {/if}
+          {#if row.tone !== undefined}
+            <label class="room" title={i18n.t("track.toneHint")}>
+              <span>{i18n.t("track.tone")}</span>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={row.tone}
+                aria-label={`${row.name} · ${i18n.t("track.tone")}`}
+                {disabled}
+                oninput={(e) => change(row, { tone: dbFromInput(e) })}
+              />
+              <span class="tabular">{Math.round(row.tone * 100)}%</span>
             </label>
           {/if}
         </li>

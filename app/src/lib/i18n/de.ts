@@ -52,6 +52,8 @@ export const de: Messages = {
   "track.pan": "Panorama",
   "track.room": "Raum",
   "track.roomHint": "Raum: setzt diesen Take in denselben Raum wie die Band, damit eine trockene Aufnahme nicht auf den Mix geklebt klingt. Doppelklick setzt auf 30 % zurück.",
+  "track.tone": "Klang",
+  "track.toneHint": "Wie sehr die Aufnahme wie das Originalinstrument klingt: 0 % wie aufgenommen, 100 % mit angeglichenem Klang (von An Original angleichen).",
 
   "song.bpm": "BPM",
   "song.bar": "Takt",

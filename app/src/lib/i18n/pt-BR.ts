@@ -52,6 +52,8 @@ export const ptBR: Messages = {
   "track.pan": "Pan",
   "track.room": "Sala",
   "track.roomHint": "Sala: coloca este take no mesmo ambiente da banda, para a gravação seca não soar colada por cima da mixagem. Clique duplo volta para 30%.",
+  "track.tone": "Timbre",
+  "track.toneHint": "Quanto a gravação soa como o instrumento original: 0% como foi gravada, 100% com o timbre igualado (definido por Equilibrar com o original).",
 
   "song.bpm": "BPM",
   "song.bar": "Compasso",

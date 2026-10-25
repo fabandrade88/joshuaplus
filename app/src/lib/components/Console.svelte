@@ -131,6 +131,7 @@
                 solo={take.solo}
                 pan={take.pan}
                 room={take.room ?? 0.3}
+                tone={take.toneEq?.some((g) => g !== 0) ? (take.tone ?? 0) : undefined}
                 silenced={anySolo && !take.solo}
                 level={app.takeMeter(j)}
                 ondelete={() => {
