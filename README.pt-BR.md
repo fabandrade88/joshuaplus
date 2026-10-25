@@ -45,7 +45,7 @@ x86_64 com glibc 2.39+ (Ubuntu 24.04+, Debian 13+, Fedora 40+, Arch). Cole num t
 curl -fsSL https://raw.githubusercontent.com/fabandrade88/joshuaplus/main/scripts/install.sh | sh
 ```
 
-Os scripts baixam a versão mais nova, **conferem o SHA-256 com o `SHA256SUMS` da versão** e só então instalam: o `.deb` com apt no Debian/Ubuntu, o AppImage em `~/.local/bin` nos outros Linux, o app em Aplicativos no macOS. São curtos; leia [`install.sh`](scripts/install.sh) e [`install.ps1`](scripts/install.ps1) antes, se quiser. Use `JOSHUA_VERSION=v0.5.4` para escolher uma versão.
+Os scripts baixam a versão mais nova, **conferem o SHA-256 com o `SHA256SUMS` da versão** e só então instalam: o `.deb` com apt no Debian/Ubuntu, o AppImage em `~/.local/bin` nos outros Linux, o app em Aplicativos no macOS. São curtos; leia [`install.sh`](scripts/install.sh) e [`install.ps1`](scripts/install.ps1) antes, se quiser. Use `JOSHUA_VERSION=v0.5.5` para escolher uma versão.
 
 **Prefere baixar na mão?** Pegue o `.dmg` (macOS), o `-setup.exe` ou `.msi` (Windows), ou o `.deb`, `.rpm` ou `.AppImage` (Linux) em [Releases](https://github.com/fabandrade88/joshuaplus/releases/latest). Os instaladores ainda não são assinados: no macOS, clique com o botão direito no app e escolha **Abrir** na primeira vez; no Windows, escolha **Mais informações → Executar assim mesmo**.
 
@@ -69,6 +69,8 @@ Além disso, antes de cada versão ser publicada, todos os instaladores são ins
 | 💾 | **Exporte a mixagem** em WAV 24-bit, com ou sem o click, **masterizada para compartilhar**: volume de streaming (−14 LUFS, como YouTube e Spotify) com limitador de picos em vez de corte, para a bateria manter o impacto. Tudo o que você exporta aparece em **Exportações** | Mande para a banda, para o professor, ou poste |
 | 🎛️ | **Até 8 entradas de áudio** com medidores e retorno, **MIDI e baterias eletrônicas** (Alesis, Roland, Yamaha, EFNOTE, Simmons, Pearl, GEWA, ATV, Millenium, General MIDI) | Use o equipamento que você já tem |
 | 🔌 | **Conecte e use**: desconectou uma interface ou câmera, o Joshua+ passa para o que está conectado e volta quando ela retorna | Sem reiniciar no meio do estudo |
+
+![Janela de acordes e letra](docs/screenshots/guides.png)
 
 | Início e pastas | Estúdio de vídeo | Exportações |
 |---|---|---|

@@ -45,7 +45,7 @@ x86_64 with glibc 2.39+ (Ubuntu 24.04+, Debian 13+, Fedora 40+, Arch). Paste in 
 curl -fsSL https://raw.githubusercontent.com/fabandrade88/joshuaplus/main/scripts/install.sh | sh
 ```
 
-The scripts download the newest release, **check its SHA-256 against the release's `SHA256SUMS`** and only then install it: the `.deb` with apt on Debian/Ubuntu, the AppImage in `~/.local/bin` on other Linux, the app in Applications on macOS. They are short; read [`install.sh`](scripts/install.sh) and [`install.ps1`](scripts/install.ps1) first if you like. Set `JOSHUA_VERSION=v0.5.4` to pick a version.
+The scripts download the newest release, **check its SHA-256 against the release's `SHA256SUMS`** and only then install it: the `.deb` with apt on Debian/Ubuntu, the AppImage in `~/.local/bin` on other Linux, the app in Applications on macOS. They are short; read [`install.sh`](scripts/install.sh) and [`install.ps1`](scripts/install.ps1) first if you like. Set `JOSHUA_VERSION=v0.5.5` to pick a version.
 
 **Prefer to download by hand?** Get the `.dmg` (macOS), `-setup.exe` or `.msi` (Windows), or `.deb`, `.rpm` or `.AppImage` (Linux) from [Releases](https://github.com/fabandrade88/joshuaplus/releases/latest). The builds are not code-signed yet: on macOS right-click the app and choose **Open** the first time; on Windows choose **More info → Run anyway**.
 
@@ -69,6 +69,8 @@ Every installer is also installed and started on clean Windows, macOS and Linux 
 | 💾 | **Export the mix** as a 24-bit WAV, with or without the click, **mastered for sharing**: streaming loudness (−14 LUFS, like YouTube and Spotify) through a look-ahead peak limiter instead of clipping, so drum hits keep their punch. Everything you export is listed under **Exports** | Send it to your band or teacher, or post it |
 | 🎛️ | **Up to 8 audio inputs** with meters and monitoring, **MIDI and e-drums** (Alesis, Roland, Yamaha, EFNOTE, Simmons, Pearl, GEWA, ATV, Millenium, General MIDI) | Use the gear you already have |
 | 🔌 | **Plug and play**: unplug an interface or a camera and Joshua+ moves to what is connected, and back when it returns | No restart in the middle of practice |
+
+![Chords and lyrics window](docs/screenshots/guides.png)
 
 | Home and folders | Video studio | Exports |
 |---|---|---|
