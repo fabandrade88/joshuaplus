@@ -199,6 +199,8 @@ export const en = {
   "video.discardForThis": "Discard and film this song",
   "video.noCameras": "No camera found",
   "video.findCameras": "Look for cameras again (after plugging one in)",
+  "video.cameraMode": "{w}×{h} · {fps} fps",
+  "video.cameraLowRes": "the camera delivers less than 1080p: the video will be soft. Close other apps using it, or pick another camera.",
   "video.mixWholeSong": "Whole song",
   "video.syncHint": "Press Preview and watch a hit: if the sound comes late, drag left; early, drag right.",
   "video.preview": "Preview",

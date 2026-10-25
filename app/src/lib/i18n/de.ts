@@ -201,6 +201,8 @@ export const de: Messages = {
   "video.discardForThis": "Verwerfen und diesen Song filmen",
   "video.noCameras": "Keine Kamera gefunden",
   "video.findCameras": "Erneut nach Kameras suchen (nach dem Anschließen)",
+  "video.cameraMode": "{w}×{h} · {fps} fps",
+  "video.cameraLowRes": "die Kamera liefert weniger als 1080p: Das Video wird unscharf. Schließe andere Apps, die sie nutzen, oder wähle eine andere Kamera.",
   "video.mixWholeSong": "Ganzer Song",
   "video.syncHint": "Drück Vorschau und achte auf einen Schlag: Kommt der Ton zu spät, zieh nach links; zu früh, nach rechts.",
   "video.preview": "Vorschau",

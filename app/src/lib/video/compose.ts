@@ -24,7 +24,9 @@ import { FORMATS, coverCrop, videoBitrate, type VideoFormat } from "./formats";
 
 /** Output frame rate (constant; the camera's own rate varies). */
 export const COMPOSE_FPS = 30;
-const AUDIO_BITRATE = 256_000;
+/** AAC at the top of its range, at a constant rate: asked for a variable
+ *  one, WebKit's encoder gives about half of it (138 for 256 kbit/s). */
+const AUDIO_BITRATE = 320_000;
 /** H.264 High profile, level 4.0: what YouTube and Instagram recommend,
  *  and enough for 1080p30 in every format. */
 const AVC_CODEC = "avc1.640028";
@@ -55,7 +57,7 @@ export function canComposeOffline(): Promise<boolean> {
       const audio = await canEncodeAudio("aac", {
         numberOfChannels: 2,
         sampleRate: 48_000,
-        quality: new Quality({ bitrate: AUDIO_BITRATE }),
+        quality: new Quality({ bitrate: AUDIO_BITRATE, bitrateMode: "constant" }),
       });
       return video.every(Boolean) && audio;
     } catch {
@@ -192,7 +194,7 @@ async function openOutput(job: ComposeJob, f: VideoFormat, aacDelay: number) {
   // sound that much earlier makes the muxer write an edit list that tells
   // players to skip it, so the sound lands in sync.
   const audio = new AudioBufferSource(
-    { codec: "aac", quality: new Quality({ bitrate: AUDIO_BITRATE }) },
+    { codec: "aac", quality: new Quality({ bitrate: AUDIO_BITRATE, bitrateMode: "constant" }) },
     { startTimestamp: -aacDelay },
   );
   output.addVideoTrack(video, { frameRate: COMPOSE_FPS });

@@ -201,6 +201,8 @@ export const ptBR: Messages = {
   "video.discardForThis": "Descartar e gravar nesta música",
   "video.noCameras": "Nenhuma câmera encontrada",
   "video.findCameras": "Procurar câmeras de novo (depois de conectar uma)",
+  "video.cameraMode": "{w}×{h} · {fps} fps",
+  "video.cameraLowRes": "a câmera está entregando menos que 1080p: o vídeo vai perder nitidez. Feche outros apps que usam a câmera ou escolha outra.",
   "video.mixWholeSong": "Música inteira",
   "video.syncHint": "Aperte Prévia e olhe uma batida: se o som vem atrasado, arraste para a esquerda; adiantado, para a direita.",
   "video.preview": "Prévia",
