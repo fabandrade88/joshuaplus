@@ -16,6 +16,7 @@ use crate::mixer::MAX_TRACKS;
 use crate::security::{Limits, is_safe_relative_name, is_valid_song_id};
 use crate::separation::StemKind;
 use crate::tempo::BeatAnalysis;
+use crate::tone::{MAX_TONE_DB, TONE_BANDS};
 
 pub const SCHEMA_VERSION: u32 = 1;
 pub const PROJECT_FILE: &str = "project.json";
@@ -65,6 +66,25 @@ pub struct TakeSettings {
     /// recording sits in the same space as the band.
     #[serde(default = "default_take_room")]
     pub room: f32,
+    /// How much of the tone match is heard (`0..=1`; 0 = as recorded).
+    #[serde(default)]
+    pub tone: f32,
+    /// Equaliser that gives the take the tone of the instrument it replaces
+    /// (dB per octave band), found by Balance with the original.
+    #[serde(default, skip_serializing_if = "is_flat")]
+    pub tone_eq: [f32; TONE_BANDS],
+}
+
+fn is_flat(eq: &[f32; TONE_BANDS]) -> bool {
+    eq.iter().all(|g| *g == 0.0)
+}
+
+impl TakeSettings {
+    /// The equaliser as heard: the tone match scaled by `tone`.
+    #[must_use]
+    pub fn heard_tone(&self) -> [f32; TONE_BANDS] {
+        self.tone_eq.map(|g| g * self.tone)
+    }
 }
 
 /// Room send of a new take: enough to sit with the band, still clear.
@@ -89,6 +109,8 @@ impl TakeSettings {
             && in_range(self.gain_db, -96.0, 12.0)
             && in_range(self.pan, -1.0, 1.0)
             && in_range(self.room, 0.0, 1.0)
+            && in_range(self.tone, 0.0, 1.0)
+            && self.tone_eq.iter().all(|g| in_range(*g, -MAX_TONE_DB, MAX_TONE_DB))
     }
 }
 
@@ -290,6 +312,8 @@ pub(crate) mod tests {
             muted: false,
             solo: false,
             room: DEFAULT_TAKE_ROOM,
+            tone: 0.0,
+            tone_eq: [0.0; TONE_BANDS],
         }
     }
 

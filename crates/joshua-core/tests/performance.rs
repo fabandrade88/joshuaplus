@@ -93,6 +93,8 @@ fn mixer_render_with_takes_in_the_room() {
     mixer.swap_session(Some(Box::new(session)));
     for ch in &shared.channels[6..10] {
         ch.set_send(0.4);
+        // Every tone band in use: the most the equaliser can cost.
+        ch.set_tone(&[3.0, -2.0, 1.5, -3.0, 2.0, -1.0, 2.5, 4.0, 6.0, 5.0]);
     }
     shared.play();
     let mut out = vec![0.0f32; 256 * 2];
@@ -101,7 +103,7 @@ fn mixer_render_with_takes_in_the_room() {
     for _ in 0..blocks {
         mixer.render(&shared, &mut out, 2);
     }
-    report("mixer (6 stems + 4 takes in room)", 60.0, start.elapsed().as_secs_f64(), 100.0);
+    report("mixer (6 stems + 4 takes in room, tone EQ)", 60.0, start.elapsed().as_secs_f64(), 100.0);
 }
 
 #[test]

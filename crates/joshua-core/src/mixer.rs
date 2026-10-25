@@ -10,6 +10,7 @@ use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU32, AtomicU64, AtomicUsize
 use crate::audio::{StereoBuffer, db_to_gain};
 use crate::metronome::{ClickTrack, CountIn, MAX_COUNT_IN_CLICKS, mix_sound};
 use crate::room::Room;
+use crate::tone::{TONE_BANDS, ToneEq};
 
 /// Maximum number of tracks (stems + recorded takes) in a session.
 pub const MAX_TRACKS: usize = 16;
@@ -63,6 +64,10 @@ pub struct ChannelControl {
     solo: AtomicBool,
     /// Post-fader send into the shared [`Room`] (recorded takes), `0..=1`.
     send: AtomicF32,
+    /// Tone equaliser gains (dB per band, recorded takes) and a counter the
+    /// audio thread watches to rebuild its filters only when they change.
+    tone: [AtomicF32; TONE_BANDS],
+    tone_version: AtomicU32,
     /// Peak level since the UI last read it.
     pub meter: AtomicF32,
 }
@@ -75,6 +80,8 @@ impl Default for ChannelControl {
             mute: AtomicBool::new(false),
             solo: AtomicBool::new(false),
             send: AtomicF32::new(0.0),
+            tone: std::array::from_fn(|_| AtomicF32::new(0.0)),
+            tone_version: AtomicU32::new(0),
             meter: AtomicF32::new(0.0),
         }
     }
@@ -114,6 +121,18 @@ impl ChannelControl {
     #[must_use]
     pub fn send(&self) -> f32 {
         self.send.load()
+    }
+
+    /// Sets the tone equaliser (dB per band; all zero = off).
+    pub fn set_tone(&self, gains_db: &[f32; TONE_BANDS]) {
+        for (cell, g) in self.tone.iter().zip(gains_db) {
+            cell.store(if g.is_finite() { *g } else { 0.0 });
+        }
+        self.tone_version.fetch_add(1, Ordering::Release);
+    }
+
+    fn tone(&self) -> [f32; TONE_BANDS] {
+        std::array::from_fn(|i| self.tone[i].load())
     }
 
     /// Target `(left, right)` gains.
@@ -329,6 +348,9 @@ pub struct Mixer {
     room: Room,
     send_l: Vec<f32>,
     send_r: Vec<f32>,
+    /// Tone equaliser of each track and the control version it was built from.
+    tone: [ToneEq; MAX_TRACKS],
+    tone_seen: [u32; MAX_TRACKS],
 }
 
 impl Default for Mixer {
@@ -340,6 +362,8 @@ impl Default for Mixer {
             room: Room::new(),
             send_l: vec![0.0; BLOCK],
             send_r: vec![0.0; BLOCK],
+            tone: [ToneEq::default(); MAX_TRACKS],
+            tone_seen: [u32::MAX; MAX_TRACKS],
         }
     }
 }
@@ -355,6 +379,9 @@ impl Mixer {
     pub fn swap_session(&mut self, session: Option<Box<Session>>) -> Option<Box<Session>> {
         self.gains = [[0.0; 2]; MAX_TRACKS + 1];
         self.sends = [0.0; MAX_TRACKS];
+        // New tracks, maybe a new rate: rebuild every tone filter.
+        self.tone = [ToneEq::default(); MAX_TRACKS];
+        self.tone_seen = [u32::MAX; MAX_TRACKS];
         if let Some(s) = session.as_deref() {
             if s.sample_rate != self.room.rate() {
                 self.room.tune(s.sample_rate);
@@ -399,11 +426,22 @@ impl Mixer {
         if seek != NO_SEEK {
             pos = seek.clamp(0, session.length);
             self.room.clear();
+            self.tone.iter_mut().for_each(ToneEq::reset);
+        }
+        // Takes whose tone changed get their filters rebuilt (no allocation).
+        for i in session.stems..session.tracks.len().min(MAX_TRACKS) {
+            let ch = &shared.channels[i];
+            let version = ch.tone_version.load(Ordering::Acquire);
+            if version != self.tone_seen[i] {
+                self.tone[i].set(session.sample_rate, &ch.tone());
+                self.tone_seen[i] = version;
+            }
         }
         if !shared.is_playing() {
             shared.position.store(pos, Ordering::Relaxed);
-            // A paused song has no room tail to resume into.
+            // A paused song has no room tail (nor filter memory) to resume into.
             self.room.clear();
+            self.tone.iter_mut().for_each(ToneEq::reset);
             return;
         }
 
@@ -479,7 +517,7 @@ impl Mixer {
                 pos = loop_region.map_or(session.length, |(a, _)| a);
                 continue;
             }
-            render_segment(shared, session, &ramp, &mut sends, pos, done, n, out, channels);
+            render_segment(shared, session, &ramp, &mut sends, &mut self.tone, pos, done, n, out, channels);
             pos += n as i64;
             done += n;
         }
@@ -563,6 +601,7 @@ fn render_segment(
     session: &Session,
     ramp: &Ramp<'_>,
     sends: &mut Sends<'_>,
+    tone: &mut [ToneEq; MAX_TRACKS],
     pos: i64,
     offset: usize,
     n: usize,
@@ -573,10 +612,16 @@ fn render_segment(
     for (i, track) in session.tracks.iter().enumerate() {
         let (left, right) = (track.left(), track.right());
         let to_room = sends.active && i >= session.stems && (sends.start[i] > 0.0 || sends.end[i] > 0.0);
+        let eq = tone.get_mut(i).filter(|e| e.is_active());
+        let mut eq = eq;
         let mut peak = 0.0f32;
         for f in 0..n {
             let idx = start + f;
-            let (Some(l), Some(r)) = (left.get(idx), right.get(idx)) else { break };
+            let (Some(&l), Some(&r)) = (left.get(idx), right.get(idx)) else { break };
+            let (l, r) = match eq.as_deref_mut() {
+                Some(e) => e.process(l, r),
+                None => (l, r),
+            };
             let (gl, gr) = (ramp.at(i, 0, offset + f), ramp.at(i, 1, offset + f));
             let (l, r) = (l * gl, r * gr);
             peak = peak.max(l.abs()).max(r.abs());
@@ -808,6 +853,37 @@ mod tests {
         let tail: f32 = wet[2 * 6_100..].iter().map(|s| s * s).sum();
         assert!(tail > 1e-6, "the take rings in the room");
         assert!(wet.iter().all(|s| s.is_finite() && s.abs() <= 1.0));
+    }
+
+    #[test]
+    fn the_tone_equaliser_shapes_takes_only() {
+        // A 1 kHz tone on a stem and on a take, each heard alone in turn.
+        let tone = || {
+            let v: Vec<f32> =
+                (0..48_000).map(|i| 0.3 * (std::f32::consts::TAU * 1_000.0 * i as f32 / SR as f32).sin()).collect();
+            StereoBuffer::new(SR, v.clone(), v).unwrap()
+        };
+        let mut boost = [0.0f32; crate::tone::TONE_BANDS];
+        boost[5] = 6.0; // the 1 kHz band
+        let run = |mute: usize, eq_on_take: bool| {
+            let shared = SharedState::default();
+            let mut mixer = Mixer::new();
+            mixer.swap_session(Some(Box::new(Session::with_takes(SR, vec![tone()], vec![tone()], no_click()))));
+            shared.channels[mute].set_mute(true);
+            shared.channels[0].set_tone(&boost); // a stem: ignored
+            if eq_on_take {
+                shared.channels[1].set_tone(&boost);
+            }
+            shared.play();
+            let mut out = vec![0.0f32; 24_000 * 2];
+            mixer.render(&shared, &mut out, 2);
+            out[2 * 12_000..].iter().fold(0.0f32, |m, x| m.max(x.abs()))
+        };
+        let db = |a: f32, b: f32| 20.0 * (a / b).log10();
+        let stem_plain = run(1, false);
+        assert!(db(run(1, true), stem_plain).abs() < 0.1, "stems are never equalised");
+        let take_plain = run(0, false);
+        assert!((db(run(0, true), take_plain) - 6.0).abs() < 0.7, "the take's 1 kHz band is lifted");
     }
 
     #[test]

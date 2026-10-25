@@ -100,6 +100,8 @@ pub struct TrackPatch {
     pub solo: Option<bool>,
     /// Room send, recorded takes only (`0..=1`).
     pub room: Option<f32>,
+    /// How much of the tone match is heard, recorded takes only (`0..=1`).
+    pub tone: Option<f32>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -738,8 +740,8 @@ pub fn update_take(state: State<'_, AppState>, id: String, patch: TrackPatch) ->
     if patch.pan.is_some_and(|p| !p.is_finite()) {
         return Err(ApiError::invalid("pan must be finite"));
     }
-    if patch.room.is_some_and(|r| !r.is_finite()) {
-        return Err(ApiError::invalid("room must be finite"));
+    if patch.room.is_some_and(|r| !r.is_finite()) || patch.tone.is_some_and(|t| !t.is_finite()) {
+        return Err(ApiError::invalid("room and tone must be finite"));
     }
     let shared = state.shared().ok();
     with_song(&state, |song| {
@@ -766,6 +768,10 @@ pub fn update_take(state: State<'_, AppState>, id: String, patch: TrackPatch) ->
         if let Some(room) = patch.room.map(|r| r.clamp(0.0, 1.0)) {
             take.room = room;
             ch.inspect(|c| c.set_send(room));
+        }
+        if let Some(tone) = patch.tone.map(|t| t.clamp(0.0, 1.0)) {
+            take.tone = tone;
+            ch.inspect(|c| c.set_tone(&take.heard_tone()));
         }
         song.dirty = true;
         Ok(())

@@ -33,6 +33,7 @@ pub mod security;
 pub mod separation;
 pub mod stft;
 pub mod tempo;
+pub mod tone;
 pub mod wav;
 pub mod workspace;
 

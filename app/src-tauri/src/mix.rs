@@ -6,6 +6,7 @@ use joshua_core::decode::decode_file;
 use joshua_core::project::{DEFAULT_TAKE_ROOM, SongProject, TakeSettings, TrackSettings};
 use joshua_core::security::resolve_within;
 use joshua_core::separation::StemKind;
+use joshua_core::tone::{TONE_BANDS, ToneProfile, match_take};
 use serde::Serialize;
 use tauri::{AppHandle, Manager, State};
 
@@ -70,6 +71,8 @@ fn reset(p: &mut SongProject) {
         t.muted = false;
         t.solo = false;
         t.room = DEFAULT_TAKE_ROOM;
+        // As recorded; the tone match found earlier stays one knob away.
+        t.tone = 0.0;
     }
     p.song_gain_db = 0.0;
     p.song_muted = false;
@@ -111,9 +114,33 @@ pub async fn auto_balance(app: AppHandle, takes: Option<Vec<String>>) -> ApiResu
             let buffer = decode_file(&resolve_within(&song_dir, file)?, &limits)?;
             Ok(Profile::analyse(&buffer, offset, frames))
         };
-        let stems = project.tracks.iter().map(|t| profile(&t.file, 0.0)).collect::<ApiResult<Vec<_>>>()?;
+        let duration = project.duration_secs;
+        let (stems, stem_tones): (Vec<Profile>, Vec<ToneProfile>) = project
+            .tracks
+            .iter()
+            .map(|t| {
+                let buffer = decode_file(&resolve_within(&song_dir, &t.file)?, &limits)?;
+                Ok((Profile::analyse(&buffer, 0.0, frames), ToneProfile::analyse(&buffer, 0.0, duration)))
+            })
+            .collect::<ApiResult<Vec<_>>>()?
+            .into_iter()
+            .unzip();
         let profiles = project.takes.iter().map(|t| profile(&t.file, t.offset_secs)).collect::<ApiResult<Vec<_>>>()?;
         let plan = plan(&stems, &profiles);
+        // Tone match of each balanced take against the stem it replaces.
+        let chosen = |id: &str| takes.as_ref().is_none_or(|ids| ids.iter().any(|t| t == id));
+        let curves = project
+            .takes
+            .iter()
+            .zip(&plan.takes)
+            .map(|(t, tp)| match tp.stem.and_then(|i| stem_tones.get(i)) {
+                Some(stem) if chosen(&t.id) => {
+                    let buffer = decode_file(&resolve_within(&song_dir, &t.file)?, &limits)?;
+                    Ok(Some(match_take(&buffer, t.offset_secs, duration, stem)))
+                }
+                _ => Ok(None),
+            })
+            .collect::<ApiResult<Vec<_>>>()?;
 
         let shared = state.shared().ok();
         with_song(&state, |song| {
@@ -124,7 +151,7 @@ pub async fn auto_balance(app: AppHandle, takes: Option<Vec<String>>) -> ApiResu
             if !same {
                 return Err(ApiError::invalid("the song changed while it was analysed"));
             }
-            let report = apply_plan(p, &plan, takes.as_deref());
+            let report = apply_plan(p, &plan, &curves, takes.as_deref());
             song.dirty = true;
             if let Some(s) = &shared {
                 apply_mix(s, p);
@@ -139,7 +166,12 @@ pub async fn auto_balance(app: AppHandle, takes: Option<Vec<String>>) -> ApiResu
 /// Applies a balance plan to the chosen takes (all when `only` is `None`).
 /// Only those takes' level and pan change, and the stems they replace are
 /// muted; nothing is ever unmuted or reset.
-fn apply_plan(p: &mut SongProject, plan: &joshua_core::balance::Plan, only: Option<&[String]>) -> Vec<BalancedTake> {
+fn apply_plan(
+    p: &mut SongProject,
+    plan: &joshua_core::balance::Plan,
+    curves: &[Option<[f32; TONE_BANDS]>],
+    only: Option<&[String]>,
+) -> Vec<BalancedTake> {
     let song_gain = p.song_gain_db;
     let mut report = Vec::new();
     for (j, tp) in plan.takes.iter().enumerate() {
@@ -155,6 +187,11 @@ fn apply_plan(p: &mut SongProject, plan: &joshua_core::balance::Plan, only: Opti
         let take = &mut p.takes[j];
         take.gain_db = gain;
         take.pan = tp.pan;
+        // Matched: it also takes on the original instrument's tone.
+        if let Some(curve) = curves.get(j).copied().flatten() {
+            take.tone_eq = curve;
+            take.tone = 1.0;
+        }
         if let Some(stem) = tp.stem.and_then(|i| p.tracks.get_mut(i)) {
             stem.muted = true;
         }
@@ -207,6 +244,8 @@ mod tests {
                 muted: false,
                 solo: false,
                 room: DEFAULT_TAKE_ROOM,
+                tone: 0.0,
+                tone_eq: [0.0; joshua_core::tone::TONE_BANDS],
             }],
             typed_bpm: None,
         }
@@ -234,7 +273,10 @@ mod tests {
             ],
         };
         // After recording, only the new take is balanced.
-        let report = apply_plan(&mut p, &plan, Some(&["take-1".to_string()]));
+        let curve = [3.0, 0.0, -2.0, 0.0, 0.0, 0.0, 0.0, 2.0, 4.0, 5.0];
+        let report = apply_plan(&mut p, &plan, &[Some(curve), Some(curve)], Some(&["take-1".to_string()]));
+        assert_eq!((p.takes[0].tone_eq, p.takes[0].tone), (curve, 1.0), "the tone match is switched on");
+        assert_eq!(p.takes[1].tone, 0.0, "not for takes left out");
         assert_eq!(report.len(), 1);
         assert_eq!(p.takes[0].gain_db, 6.0 - 4.0 - 1.0, "stem and song faders count");
         assert_eq!(p.takes[0].pan, -0.2);
@@ -245,7 +287,7 @@ mod tests {
         assert!(p.takes[1].muted && p.takes[1].gain_db == -9.0, "takes left out keep everything");
         // A huge correction stays within the channel limit.
         let loud = Plan { stem_muted: vec![false; 3], takes: vec![TakePlan { stem: None, gain_db: 40.0, pan: 0.0 }] };
-        apply_plan(&mut p, &loud, None);
+        apply_plan(&mut p, &loud, &[None], None);
         assert_eq!(p.takes[0].gain_db, 12.0);
     }
 
@@ -257,12 +299,13 @@ mod tests {
         p.tracks[2].solo = true;
         p.takes[0].gain_db = 6.0;
         p.takes[0].room = 0.9;
+        p.takes[0].tone = 1.0;
         p.song_gain_db = -3.0;
         p.master_gain_db = -6.0;
         p.metronome.gain_db = -20.0;
         reset(&mut p);
         assert!(p.tracks.iter().all(|t| t.gain_db == 0.0 && t.pan == 0.0 && !t.muted && !t.solo));
-        assert!(p.takes.iter().all(|t| t.gain_db == 0.0 && t.room == DEFAULT_TAKE_ROOM));
+        assert!(p.takes.iter().all(|t| t.gain_db == 0.0 && t.room == DEFAULT_TAKE_ROOM && t.tone == 0.0));
         assert_eq!((p.song_gain_db, p.master_gain_db), (0.0, 0.0));
         assert_eq!(p.metronome.gain_db, -20.0);
     }
