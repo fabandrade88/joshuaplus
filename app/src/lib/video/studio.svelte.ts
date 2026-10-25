@@ -84,6 +84,8 @@ class VideoStudio {
   cameraId = $state<string | null>(null);
   stream = $state<MediaStream | null>(null);
   cameraError = $state<string | null>(null);
+  /** What the open camera actually delivers. */
+  cameraMode = $state<{ width: number; height: number; fps: number } | null>(null);
   formats = $state<Record<FormatId, boolean>>({ youtube: true, vertical: true, square: false, portrait: false });
   /** What the export burns into the picture; each part can be turned off. */
   overlay = $state<Overlay>(readOverlay());
@@ -174,7 +176,19 @@ class VideoStudio {
       return;
     }
     this.stream = stream;
-    this.cameraId = stream.getVideoTracks()[0]?.getSettings().deviceId ?? wanted;
+    const track = stream.getVideoTracks()[0];
+    // "ideal" lets some webcams settle for 720p: insist on 1080p when the
+    // camera can do it (if not, it keeps what it had).
+    if (track && (track.getSettings().height ?? 0) < 1080) {
+      await track
+        .applyConstraints({ width: { exact: 1920 }, height: { exact: 1080 }, frameRate: { ideal: FPS } })
+        .catch(() => undefined);
+    }
+    const settings = track?.getSettings();
+    this.cameraMode = settings?.width && settings.height
+      ? { width: settings.width, height: settings.height, fps: Math.round(settings.frameRate ?? 0) }
+      : null;
+    this.cameraId = settings?.deviceId ?? wanted;
     // Labels are only readable once a camera is open.
     await this.refreshCameras();
   }
@@ -218,6 +232,7 @@ class VideoStudio {
   closeCamera(): void {
     this.stream?.getTracks().forEach((t) => t.stop());
     this.stream = null;
+    this.cameraMode = null;
   }
 
   // ── Filming ──────────────────────────────────────────────────────────────

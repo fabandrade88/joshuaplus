@@ -14,6 +14,17 @@
   const takes = $derived(project?.takes ?? []);
   const anySolo = $derived((project?.tracks.some((t) => t.solo) ?? false) || takes.some((t) => t.solo));
   const masterLevel = $derived(Math.max(app.masterMeter[0], app.masterMeter[1]));
+
+  // Inputs and takes need the room: when a song opens with them, or they
+  // appear (first take, an interface plugged in), the song's tracks fold into
+  // one strip so nothing hides off screen. Expanding them is the user's call.
+  const hasExtra = $derived(app.liveInputs.length > 0 || !!app.drums?.connected || takes.length > 0);
+  let seen = "";
+  $effect(() => {
+    const key = `${project?.id ?? ""}:${hasExtra}`;
+    if (key !== seen && hasExtra) app.songCollapsed = true;
+    seen = key;
+  });
 </script>
 
 {#if project}
@@ -131,12 +142,18 @@
                 solo={take.solo}
                 pan={take.pan}
                 room={take.room ?? 0.3}
+                tone={take.toneEq?.some((g) => g !== 0) ? (take.tone ?? 0) : 0}
+                body={take.body ?? 0}
                 silenced={anySolo && !take.solo}
                 level={app.takeMeter(j)}
                 ondelete={() => {
                   if (window.confirm(i18n.t("record.confirmDelete", { name: take.name }))) void app.deleteTake(take.id);
                 }}
-                onchange={(patch) => app.updateTake(take.id, patch)}
+                onchange={(patch) => {
+                  const { tone, ...rest } = patch;
+                  if (tone !== undefined) void app.setTakeTone(take.id, tone);
+                  if (Object.keys(rest).length > 0) void app.updateTake(take.id, rest);
+                }}
               />
             {/each}
           </div>

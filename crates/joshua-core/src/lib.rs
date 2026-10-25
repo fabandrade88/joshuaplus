@@ -21,6 +21,7 @@ pub mod error;
 pub mod export;
 pub mod folders;
 pub mod import;
+pub mod master;
 pub mod metadata;
 pub mod metronome;
 pub mod mixer;
@@ -33,6 +34,7 @@ pub mod security;
 pub mod separation;
 pub mod stft;
 pub mod tempo;
+pub mod tone;
 pub mod wav;
 pub mod workspace;
 

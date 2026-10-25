@@ -705,13 +705,17 @@ class AppStore {
     if (!this.recording || this.savingTakes) return;
     this.transport.recording = false;
     this.savingTakes = true;
+    const before = new Set((this.song?.project.takes ?? []).map((t) => t.id));
     const result = await this.guard(() => api.stopRecording());
     this.savingTakes = false;
     if (!result) return;
     this.applySongView(result.song);
     if (result.overflowed) this.notify(i18n.t("record.overflow"));
     else this.notify(result.added > 0 ? i18n.t("record.saved", { n: result.added }) : i18n.t("record.nothing"));
-    if (result.added > 0 && this.info?.autoBalance) await this.autoBalance();
+    // Only the takes just recorded are balanced: everything else the user
+    // set (levels, mutes, earlier takes) stays as it is.
+    const fresh = (result.song.project.takes ?? []).filter((t) => !before.has(t.id)).map((t) => t.id);
+    if (fresh.length > 0 && this.info?.autoBalance) await this.autoBalance(fresh);
   }
 
   /** Installs the levels of a whole-mix change. */
@@ -738,10 +742,10 @@ class AppStore {
 
   /** Balances the takes against the original instruments. Returns whether
    *  the mix changed. */
-  async autoBalance(): Promise<boolean> {
+  async autoBalance(takes?: string[]): Promise<boolean> {
     if (!this.song?.project.takes?.length || this.balancing) return false;
     this.balancing = true;
-    const result = await this.guard(() => api.autoBalance());
+    const result = await this.guard(() => api.autoBalance(takes));
     this.balancing = false;
     if (!result) return false;
     this.applyMix(result.mix);
@@ -751,6 +755,25 @@ class AppStore {
       .map((t) => i18n.t("mix.replaces", { take: names.get(t.id) ?? "", stem: i18n.t(stemLabelKey(t.stem!)) }));
     this.notify(replaced.length > 0 ? i18n.t("mix.balanced", { list: replaced.join(" · ") }) : i18n.t("mix.balancedNone"));
     return true;
+  }
+
+  /** Takes whose tone match is being computed. */
+  matchingTone = $state<string[]>([]);
+
+  /** Sets a take's tone; one recorded before tone matching gets its match
+   *  computed first (level, pan and mutes are left alone). */
+  async setTakeTone(id: string, tone: number): Promise<void> {
+    const take = this.song?.project.takes?.find((t) => t.id === id);
+    if (!take) return;
+    if (!take.toneEq?.some((g) => g !== 0)) {
+      if (this.matchingTone.includes(id)) return;
+      this.matchingTone = [...this.matchingTone, id];
+      const mix = await this.guard(() => api.matchTone(id));
+      this.matchingTone = this.matchingTone.filter((t) => t !== id);
+      if (!mix) return;
+      this.applyMix(mix);
+    }
+    await this.updateTake(id, { tone });
   }
 
   async setAutoBalance(enabled: boolean): Promise<void> {

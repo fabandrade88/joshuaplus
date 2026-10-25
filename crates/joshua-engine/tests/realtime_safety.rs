@@ -33,7 +33,10 @@ fn session() -> Box<Session> {
             StereoBuffer::new(rate as u32, s.clone(), s).unwrap()
         })
         .collect();
-    Box::new(Session::new(48_000, tracks, ClickTrack::from_analysis(&analysis(), 48_000)))
+    // Five stems and two recorded takes (room send, tone equaliser).
+    let mut stems: Vec<StereoBuffer> = tracks;
+    let takes = stems.split_off(5);
+    Box::new(Session::with_takes(48_000, stems, takes, ClickTrack::from_analysis(&analysis(), 48_000)))
 }
 
 #[test]
@@ -65,6 +68,14 @@ fn audio_callback_never_allocates() {
         }
         if block == 900 {
             shared.set_loop(None);
+        }
+        // The user moves a take's tone knob while it plays: the filters are
+        // rebuilt inside the callback.
+        if block % 300 == 0 {
+            let g = (block / 300) as f32;
+            shared.channels[5].set_send(0.4);
+            shared.channels[5].set_tone(&[g, -g, 2.0, 0.0, -3.0, 1.0, 0.0, 4.0, 6.0, 0.0]);
+            shared.channels[6].set_tone(&[0.0; 10]);
         }
         assert_no_alloc(|| {
             processor.process_f32(&mut out_f32, 2);

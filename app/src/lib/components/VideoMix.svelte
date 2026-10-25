@@ -28,7 +28,9 @@
     gainDb: number;
     muted: boolean;
     room?: number;
-    set: (patch: { gainDb?: number; muted?: boolean; room?: number }) => void;
+    tone?: number;
+    body?: number;
+    set: (patch: { gainDb?: number; muted?: boolean; room?: number; tone?: number; body?: number }) => void;
   };
 
   const songRows = $derived.by((): Row[] => {
@@ -69,13 +71,19 @@
         gainDb: t.gainDb,
         muted: t.muted,
         room: t.room ?? 0.3,
-        set: (p) => void app.updateTake(t.id, p),
+        tone: t.toneEq?.some((g) => g !== 0) ? (t.tone ?? 0) : 0,
+        body: t.body ?? 0,
+        set: (p) => {
+          const { tone, ...rest } = p;
+          if (tone !== undefined) void app.setTakeTone(t.id, tone).then(() => studio.mixChanged());
+          if (Object.keys(rest).length > 0) void app.updateTake(t.id, rest);
+        },
       });
     }
     return out;
   });
 
-  function change(row: Row, patch: { gainDb?: number; muted?: boolean; room?: number }): void {
+  function change(row: Row, patch: { gainDb?: number; muted?: boolean; room?: number; tone?: number; body?: number }): void {
     row.set(patch);
     studio.mixChanged();
   }
@@ -151,6 +159,38 @@
                 oninput={(e) => change(row, { room: dbFromInput(e) })}
               />
               <span class="tabular">{Math.round(row.room * 100)}%</span>
+            </label>
+          {/if}
+          {#if row.tone !== undefined}
+            <label class="room" title={i18n.t("track.toneHint")}>
+              <span>{i18n.t("track.tone")}</span>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={row.tone}
+                aria-label={`${row.name} · ${i18n.t("track.tone")}`}
+                {disabled}
+                oninput={(e) => change(row, { tone: dbFromInput(e) })}
+              />
+              <span class="tabular">{Math.round(row.tone * 100)}%</span>
+            </label>
+          {/if}
+          {#if row.body !== undefined}
+            <label class="room" title={i18n.t("track.bodyHint")}>
+              <span>{i18n.t("track.body")}</span>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={row.body}
+                aria-label={`${row.name} · ${i18n.t("track.body")}`}
+                {disabled}
+                oninput={(e) => change(row, { body: dbFromInput(e) })}
+              />
+              <span class="tabular">{Math.round(row.body * 100)}%</span>
             </label>
           {/if}
         </li>

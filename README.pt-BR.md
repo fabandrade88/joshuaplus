@@ -45,7 +45,7 @@ x86_64 com glibc 2.39+ (Ubuntu 24.04+, Debian 13+, Fedora 40+, Arch). Cole num t
 curl -fsSL https://raw.githubusercontent.com/fabandrade88/joshuaplus/main/scripts/install.sh | sh
 ```
 
-Os scripts baixam a versão mais nova, **conferem o SHA-256 com o `SHA256SUMS` da versão** e só então instalam: o `.deb` com apt no Debian/Ubuntu, o AppImage em `~/.local/bin` nos outros Linux, o app em Aplicativos no macOS. São curtos; leia [`install.sh`](scripts/install.sh) e [`install.ps1`](scripts/install.ps1) antes, se quiser. Use `JOSHUA_VERSION=v0.5.3` para escolher uma versão.
+Os scripts baixam a versão mais nova, **conferem o SHA-256 com o `SHA256SUMS` da versão** e só então instalam: o `.deb` com apt no Debian/Ubuntu, o AppImage em `~/.local/bin` nos outros Linux, o app em Aplicativos no macOS. São curtos; leia [`install.sh`](scripts/install.sh) e [`install.ps1`](scripts/install.ps1) antes, se quiser. Use `JOSHUA_VERSION=v0.5.4` para escolher uma versão.
 
 **Prefere baixar na mão?** Pegue o `.dmg` (macOS), o `-setup.exe` ou `.msi` (Windows), ou o `.deb`, `.rpm` ou `.AppImage` (Linux) em [Releases](https://github.com/fabandrade88/joshuaplus/releases/latest). Os instaladores ainda não são assinados: no macOS, clique com o botão direito no app e escolha **Abrir** na primeira vez; no Windows, escolha **Mais informações → Executar assim mesmo**.
 
@@ -62,10 +62,10 @@ Além disso, antes de cada versão ser publicada, todos os instaladores são ins
 | 🔁 | **Mapa de compassos e loops**: clique num compasso para ir, clique duplo para repetir, repita de 1 a 8 compassos | Repita a parte difícil até sair |
 | 📁 | **Pastas como setlists** que lembram a mixagem, as correções de tempo e o loop de cada música | Abra a música e continue de onde parou |
 | 🎤 | **Grave cada entrada no seu próprio take**, alinhado à música automaticamente (latência e diferença de clock corrigidas). Gravar de novo substitui o take anterior | Ouça como você tocou de verdade, junto com a banda |
-| 🏠 | **Sala**: um ambiente comum para os seus takes | Bateria eletrônica ou guitarra em linha direta soam dentro da mixagem, não colados por cima |
-| ⚖️ | **Equilibrar com o original**: cada gravação é ligada ao instrumento que toca e fica no volume e no lugar do estéreo dele, com o original silenciado; opcional depois de toda gravação. **Restaurar volumes** volta a mixagem inteira | Sua parte soa como se fosse do disco, com um clique |
-| 🎬 | **Estúdio de vídeo**: grave-se com qualquer webcam, ajuste o som antes de exportar e exporte **YouTube 16:9, Shorts/Reels/TikTok 9:16 e Instagram 1:1 / 4:5** de uma vez, com capa, nome e banda opcionais, codificados quadro a quadro (H.264 High, 30 fps estáveis, som em sincronia). Nunca o click | Poste um play-along sem editor de vídeo |
-| 💾 | **Exporte a mixagem** em WAV 24-bit, com ou sem o click. Tudo o que você exporta aparece em **Exportações** | Mande para a banda ou para o professor |
+| 🏠 | **Sala, Timbre e Corpo** em cada gravação: um ambiente comum, um **timbre igualado** ao do instrumento que a gravação substitui (medido no disco) e mais grave para o bumbo e os tons | Bateria eletrônica ou guitarra em linha direta soam como parte do disco, não colados por cima |
+| ⚖️ | **Equilibrar com o original**: cada gravação é ligada ao instrumento que toca, fica no volume dele (considerando o fader dele) e no mesmo lugar do estéreo, com o timbre igualado e o original silenciado. Seus mudos e os outros volumes nunca mudam; opcional depois de toda gravação. **Restaurar volumes** volta a mixagem inteira | Sua parte soa como se fosse do disco, com um clique |
+| 🎬 | **Estúdio de vídeo**: grave-se com qualquer webcam, ajuste o som antes de exportar e exporte **YouTube 16:9, Shorts/Reels/TikTok 9:16 e Instagram 1:1 / 4:5** de uma vez, com capa, nome e banda opcionais, codificados quadro a quadro (H.264 High, 30 fps estáveis, câmera em 1080p com a resolução real mostrada) com som masterizado (AAC 320 kbit/s, em sincronia). Nunca o click | Poste um play-along sem editor de vídeo |
+| 💾 | **Exporte a mixagem** em WAV 24-bit, com ou sem o click, **masterizada para compartilhar**: volume de streaming (−14 LUFS, como YouTube e Spotify) com limitador de picos em vez de corte, para a bateria manter o impacto. Tudo o que você exporta aparece em **Exportações** | Mande para a banda, para o professor, ou poste |
 | 🎛️ | **Até 8 entradas de áudio** com medidores e retorno, **MIDI e baterias eletrônicas** (Alesis, Roland, Yamaha, EFNOTE, Simmons, Pearl, GEWA, ATV, Millenium, General MIDI) | Use o equipamento que você já tem |
 | 🔌 | **Conecte e use**: desconectou uma interface ou câmera, o Joshua+ passa para o que está conectado e volta quando ela retorna | Sem reiniciar no meio do estudo |
 
@@ -95,7 +95,7 @@ A página **Como usar**, dentro do app, explica cada controle no seu idioma.
 
 Nada entra no `main` sem a CI verde em Linux, macOS e Windows ([ci.yml](.github/workflows/ci.yml)): `rustfmt`, `clippy -D warnings`, testes unitários e de propriedades, fuzzing com áudio e imagens maliciosos, suítes de ataque (path traversal, symlinks, bombas de decodificação, enxurradas de MIDI, CSP fixada), teste de tempo real garantindo que o áudio nunca aloca memória, pisos de performance, e `cargo audit` / `pnpm audit`. Código `unsafe` é proibido. Modelo de ameaças: [SECURITY.md](SECURITY.md).
 
-Medido num notebook Apple M (vezes o tempo real): mixer 1426×, mixer com 4 takes na sala 556×, detecção de andamento 3497×, separação rápida 46×, leitura de WAV 6441×, reamostragem 1220×.
+Medido num notebook Apple M (vezes o tempo real, build release): mixer 929×, mixer com 4 gravações na sala e seus equalizadores de timbre 173×, detecção de andamento 1598×, separação rápida 30×, leitura de WAV 4640×, reamostragem 765×.
 
 ## Compilar a partir do código
 

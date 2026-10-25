@@ -114,6 +114,7 @@ pub fn apply_mix(shared: &SharedState, project: &SongProject) {
             ch.set_mute(t.muted);
             ch.set_solo(t.solo);
             ch.set_send(t.room);
+            ch.set_tone(&t.heard_tone());
         }
     }
     let click = &shared.channels[METRONOME];

@@ -250,6 +250,13 @@
                   <Icon name="loop" size={15} />
                 </button>
               </div>
+              {#if studio.cameraMode}
+                {@const cm = studio.cameraMode}
+                <span class="note tabular" class:warn={cm.height < 1080}>
+                  {i18n.t("video.cameraMode", { w: cm.width, h: cm.height, fps: cm.fps })}
+                  {#if cm.height < 1080}— {i18n.t("video.cameraLowRes")}{/if}
+                </span>
+              {/if}
             </div>
             {@render formatPicker()}
             <ul class="facts">
@@ -493,6 +500,9 @@
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+  }
+  .note.warn {
+    color: var(--accent);
   }
   .camera-row {
     display: flex;

@@ -48,7 +48,7 @@ const project: SongProject = {
   })),
   metronome: { gainDb: -6, muted: false, countIn: true, countInBars: 1, sound: "woodblock" },
   takes: [
-    { id: "take-1", name: "SPD-SX PRO", file: "takes/take-1.wav", offsetSecs: 12.5, createdUnix: 0, gainDb: -2, pan: 0, muted: false, solo: false, room: 0.3 },
+    { id: "take-1", name: "SPD-SX PRO", file: "takes/take-1.wav", offsetSecs: 12.5, createdUnix: 0, gainDb: -2, pan: 0, muted: false, solo: false, room: 0.3, tone: 0.8, toneEq: [1.5, 1, 0.5, -1.5, -4.5, -5, -3, 1, 6, 8] },
     { id: "take-2", name: "Yamaha AG06MK2", file: "takes/take-2.wav", offsetSecs: 12.5, createdUnix: 0, gainDb: 0, pan: 0, muted: false, solo: false, room: 0.55 },
   ],
   masterGainDb: 0,
@@ -155,7 +155,7 @@ mockIPC(
       }
       case "get_app_info":
         return {
-          version: "0.5.3",
+          version: "0.5.4",
           locale: lang,
           workspace: state === "welcome" ? null : "/Users/musician/Music/Joshua+",
           inbox: "/Users/musician/Music/Joshua+/inbox",
@@ -246,7 +246,9 @@ if (state === "settings") {
 if (state === "song" || state === "away" || state === "video") {
   app.browsing = "banda";
   await app.openSong(project.id);
-  app.songCollapsed = params.get("collapsed") === "1";
+  // The console folds the song's tracks when inputs or takes are present;
+  // the screenshots pick either view.
+  setTimeout(() => (app.songCollapsed = params.get("collapsed") === "1"), 300);
   const bar = (n: number) => 1.2 + (n - 1) * 4 * (60 / BPM);
   app.loop = { start: bar(25), end: bar(29) };
   app.loopEnabled = true;

@@ -45,7 +45,7 @@ x86_64 with glibc 2.39+ (Ubuntu 24.04+, Debian 13+, Fedora 40+, Arch). Paste in 
 curl -fsSL https://raw.githubusercontent.com/fabandrade88/joshuaplus/main/scripts/install.sh | sh
 ```
 
-The scripts download the newest release, **check its SHA-256 against the release's `SHA256SUMS`** and only then install it: the `.deb` with apt on Debian/Ubuntu, the AppImage in `~/.local/bin` on other Linux, the app in Applications on macOS. They are short; read [`install.sh`](scripts/install.sh) and [`install.ps1`](scripts/install.ps1) first if you like. Set `JOSHUA_VERSION=v0.5.3` to pick a version.
+The scripts download the newest release, **check its SHA-256 against the release's `SHA256SUMS`** and only then install it: the `.deb` with apt on Debian/Ubuntu, the AppImage in `~/.local/bin` on other Linux, the app in Applications on macOS. They are short; read [`install.sh`](scripts/install.sh) and [`install.ps1`](scripts/install.ps1) first if you like. Set `JOSHUA_VERSION=v0.5.4` to pick a version.
 
 **Prefer to download by hand?** Get the `.dmg` (macOS), `-setup.exe` or `.msi` (Windows), or `.deb`, `.rpm` or `.AppImage` (Linux) from [Releases](https://github.com/fabandrade88/joshuaplus/releases/latest). The builds are not code-signed yet: on macOS right-click the app and choose **Open** the first time; on Windows choose **More info → Run anyway**.
 
@@ -62,10 +62,10 @@ Every installer is also installed and started on clean Windows, macOS and Linux 
 | 🔁 | **Bar map and loops**: click a bar to jump, double-click to loop it, loop 1–8 bars | Drill the hard part until it sits |
 | 📁 | **Folders as setlists** that remember every song's mix, tempo fixes and loop | Open a song and continue exactly where you left it |
 | 🎤 | **Record every input as its own take**, lined up with the song automatically (latency and clock drift corrected). Recording again replaces the previous take | Hear how you really played, against the band |
-| 🏠 | **Room**: a shared space for your takes | A dry drum module or DI guitar sits in the mix instead of on top of it |
-| ⚖️ | **Balance with the original**: each take is matched to the instrument it plays and set to its level and place in the stereo field, with the original muted; optional after every recording. **Reset levels** puts the whole mix back | Your part sounds like it belongs on the record, in one click |
-| 🎬 | **Video studio**: film yourself with any webcam, adjust the sound before exporting, and export **YouTube 16:9, Shorts/Reels/TikTok 9:16 and Instagram 1:1 / 4:5** at once with optional cover, title and artist, encoded frame by frame (H.264 High, steady 30 fps, sound in sync). Never the click | Post a play-along without a video editor |
-| 💾 | **Export the mix** as a 24-bit WAV, with or without the click. Everything you export is listed under **Exports** | Send it to your band or teacher |
+| 🏠 | **Room, Tone and Body** on every take: a shared room, a **tone match** that gives your take the sound of the instrument it replaces (measured on the record), and extra low end for kick and toms | A drum module or DI guitar sounds like part of the record, not pasted on top |
+| ⚖️ | **Balance with the original**: each take is matched to the instrument it plays, set to its level (through that instrument's fader) and place in the stereo field, its tone matched and the original muted. Your mutes and other levels are never touched; optional after every recording. **Reset levels** puts the whole mix back | Your part sounds like it belongs on the record, in one click |
+| 🎬 | **Video studio**: film yourself with any webcam, adjust the sound before exporting, and export **YouTube 16:9, Shorts/Reels/TikTok 9:16 and Instagram 1:1 / 4:5** at once with optional cover, title and artist, encoded frame by frame (H.264 High, steady 30 fps, the camera at 1080p with its real resolution shown) with mastered sound (AAC 320 kbit/s, in sync). Never the click | Post a play-along without a video editor |
+| 💾 | **Export the mix** as a 24-bit WAV, with or without the click, **mastered for sharing**: streaming loudness (−14 LUFS, like YouTube and Spotify) through a look-ahead peak limiter instead of clipping, so drum hits keep their punch. Everything you export is listed under **Exports** | Send it to your band or teacher, or post it |
 | 🎛️ | **Up to 8 audio inputs** with meters and monitoring, **MIDI and e-drums** (Alesis, Roland, Yamaha, EFNOTE, Simmons, Pearl, GEWA, ATV, Millenium, General MIDI) | Use the gear you already have |
 | 🔌 | **Plug and play**: unplug an interface or a camera and Joshua+ moves to what is connected, and back when it returns | No restart in the middle of practice |
 
@@ -95,7 +95,7 @@ The built-in **How to use** page explains every control in your language.
 
 Nothing reaches `main` without green CI on Linux, macOS and Windows ([ci.yml](.github/workflows/ci.yml)): `rustfmt`, `clippy -D warnings`, unit and property tests, fuzzing of hostile audio and images, attack suites (path traversal, symlinks, decode bombs, MIDI floods, CSP pinning), a real-time check that the audio callback never allocates, performance floors, and `cargo audit` / `pnpm audit`. `unsafe` code is forbidden. Threat model: [SECURITY.md](SECURITY.md).
 
-Measured on an Apple M-series laptop (multiples of real time): mixer 1426×, mixer with 4 takes in the room 556×, tempo detection 3497×, quick separation 46×, WAV decode 6441×, resampling 1220×.
+Measured on an Apple M-series laptop (multiples of real time, release build): mixer 929×, mixer with 4 takes in the room and their tone equalisers 173×, tempo detection 1598×, quick separation 30×, WAV decode 4640×, resampling 765×.
 
 ## Build from source
 

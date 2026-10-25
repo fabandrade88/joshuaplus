@@ -117,6 +117,7 @@ pub fn run() {
             commands::delete_take,
             mix::reset_mix,
             mix::auto_balance,
+            mix::match_tone,
             commands::set_record_offset,
             commands::export_mix,
             commands::reveal_export,
