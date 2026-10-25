@@ -203,6 +203,32 @@ mockIPC(
           map: { notes: { "36": "kick", "38": "snare", "40": "snareRim", "37": "snareCrossStick", "42": "hiHatClosed", "46": "hiHatOpen", "44": "hiHatPedal", "48": "tom1", "45": "tom2", "43": "tom3", "41": "tom4", "49": "crash1", "57": "crash2", "51": "ride", "53": "rideBell", "55": "splash", "52": "china" } },
           learning: null,
         };
+      case "get_chords": {
+        const spb = 60 / BPM;
+        const names = ["G", "D", "Em", "C", "G", "D", "C", "C", "Em", "D", "C", "G", "Am", "D", "G", "G"];
+        const chords = [];
+        for (let k = 0, t = beats[0] ?? 0; t < DURATION; k++, t += 4 * spb) {
+          const name = names[k % names.length] ?? "G";
+          const root = ["C", "D", "E", "F", "G", "A", "B"].indexOf(name[0] ?? "C");
+          if (k % 8 === 7) {
+            chords.push({ start: t, end: t + 2 * spb, root, quality: "major", name });
+            chords.push({ start: t + 2 * spb, end: t + 4 * spb, root: 2, quality: "major", name: "D" });
+          } else chords.push({ start: t, end: t + 4 * spb, root, quality: name.endsWith("m") ? "minor" : "major", name });
+        }
+        return { version: 1, key: "G", chords, bpm: BPM, firstBeat: beats[0] ?? 0 };
+      }
+      case "get_lyrics": {
+        const words = [
+          "Sunday morning, light comes through the door",
+          "We play it loud like we never did before",
+          "Hold the rhythm, let the chorus ring",
+          "Every voice is ready, everybody sing",
+        ];
+        const synced = Array.from({ length: 40 }, (_, i) => ({ secs: 8 + i * 4.2, text: words[i % words.length] ?? "" }));
+        return { source: "lrclib", synced, plain: words.join("\n"), instrumental: false, offsetSecs: 0 };
+      }
+      case "set_lyrics_offset":
+        return null;
       case "reset_mix":
       case "auto_balance": {
         const mix = {
@@ -249,6 +275,8 @@ if (state === "song" || state === "away" || state === "video") {
   // The console folds the song's tracks when inputs or takes are present;
   // the screenshots pick either view.
   setTimeout(() => (app.songCollapsed = params.get("collapsed") === "1"), 300);
+  if (params.get("guides") === "1" && !app.chordsOn) app.toggleChords();
+  if (params.get("guides") === "1" && !app.lyricsOn) app.toggleLyrics();
   const bar = (n: number) => 1.2 + (n - 1) * 4 * (60 / BPM);
   app.loop = { start: bar(25), end: bar(29) };
   app.loopEnabled = true;

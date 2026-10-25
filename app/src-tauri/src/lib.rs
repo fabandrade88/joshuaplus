@@ -8,6 +8,7 @@ mod commands;
 mod desktop_entry;
 mod devices;
 mod error;
+mod guide;
 mod inbox;
 mod jobs;
 mod mix;
@@ -118,6 +119,10 @@ pub fn run() {
             mix::reset_mix,
             mix::auto_balance,
             mix::match_tone,
+            guide::get_lyrics,
+            guide::set_lyrics,
+            guide::set_lyrics_offset,
+            guide::get_chords,
             commands::set_record_offset,
             commands::export_mix,
             commands::reveal_export,

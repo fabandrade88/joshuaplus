@@ -13,6 +13,7 @@
   import VideoStudio from "./lib/components/VideoStudio.svelte";
   import Sidebar from "./lib/components/Sidebar.svelte";
   import BarMap from "./lib/components/BarMap.svelte";
+  import LyricsPanel from "./lib/components/LyricsPanel.svelte";
   import Console from "./lib/components/Console.svelte";
   import SongDeck from "./lib/components/SongDeck.svelte";
   import Welcome from "./lib/components/Welcome.svelte";
@@ -62,6 +63,7 @@
       {#if app.view.kind === "song" && app.song}
         <SongDeck />
         <BarMap />
+        {#if app.lyricsOn}<LyricsPanel />{/if}
         <Console />
       {:else if app.view.kind === "about"}
         <AboutView />

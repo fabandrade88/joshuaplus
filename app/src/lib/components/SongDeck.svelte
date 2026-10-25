@@ -4,13 +4,21 @@
   import { i18n } from "../i18n/index.svelte";
   import type { MessageKey } from "../i18n/en";
   import { engineOf } from "../stems";
-  import { barBeatAt } from "../timeline";
+  import { barBeatAt, chordAt } from "../timeline";
   import { studio } from "../video/studio.svelte";
   import Icon from "./Icon.svelte";
 
   const project = $derived(app.song?.project);
   const pos = $derived(app.transport.positionSecs);
   const bb = $derived(project ? barBeatAt(project.analysis, pos) : null);
+  /** Chord now and the next one, when chords are shown instead of the bar. */
+  const chordNow = $derived.by(() => {
+    const list = app.chordsOn ? (app.chords?.chords ?? []) : [];
+    if (list.length === 0) return null;
+    const i = chordAt(list, pos);
+    const nextIdx = i >= 0 ? i + 1 : list.findIndex((c) => c.start > pos);
+    return { now: i >= 0 ? (list[i]?.name ?? "–") : "–", next: nextIdx >= 0 ? (list[nextIdx]?.name ?? "") : "" };
+  });
   const playing = $derived(app.transport.playing || app.transport.countingIn);
   const engine = $derived(project ? engineOf(project.separator) : "studio");
   const folder = $derived(app.folderById(project?.folder));
@@ -232,10 +240,17 @@
 
     <div class="counter" class:counting={app.transport.countingIn} class:recording={app.recording}>
       <div class="cols">
-        <div>
-          <span class="k">{i18n.t("song.bar")}</span>
-          <span class="v tabular">{app.transport.countingIn ? "–" : (bb?.bar ?? "–")}</span>
-        </div>
+        {#if chordNow}
+          <div>
+            <span class="k">{i18n.t("guide.chord")}{#if chordNow.next}<em>&nbsp;→ {chordNow.next}</em>{/if}</span>
+            <span class="v chord">{chordNow.now}</span>
+          </div>
+        {:else}
+          <div>
+            <span class="k">{i18n.t("song.bar")}</span>
+            <span class="v tabular">{app.transport.countingIn ? "–" : (bb?.bar ?? "–")}</span>
+          </div>
+        {/if}
         <div>
           <span class="k">{i18n.t("transport.beat")}</span>
           <span class="v tabular">{app.transport.countingIn ? "•" : (bb?.beat ?? "–")}</span>
@@ -578,6 +593,15 @@
     font-weight: 500;
     line-height: 1.1;
     color: var(--accent);
+  }
+  .k em {
+    font-style: normal;
+    color: var(--text-dim);
+  }
+  .v.chord {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .v.small {
     font-size: var(--fs-title);

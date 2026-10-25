@@ -10,7 +10,9 @@ import { stemLabelKey } from "./stems";
 import type {
   AppInfo,
   BeatAnalysis,
+  ChordChart,
   DrumPad,
+  Lyrics,
   DesktopEntryStatus,
   UpdateInfo,
   DrumState,
@@ -755,6 +757,91 @@ class AppStore {
       .map((t) => i18n.t("mix.replaces", { take: names.get(t.id) ?? "", stem: i18n.t(stemLabelKey(t.stem!)) }));
     this.notify(replaced.length > 0 ? i18n.t("mix.balanced", { list: replaced.join(" · ") }) : i18n.t("mix.balancedNone"));
     return true;
+  }
+
+  // ── Play-along guides ────────────────────────────────────────────────────
+  /** Lyrics shown (looked up online the first time, then kept with the song). */
+  lyricsOn = $state(readFlag("joshua.lyrics"));
+  /** Chords shown instead of the bar number, plus the chord lane. */
+  chordsOn = $state(readFlag("joshua.chords"));
+  lyrics = $state<Lyrics | null>(null);
+  lyricsStatus = $state<"idle" | "loading" | "ready" | "none" | "offline">("idle");
+  chords = $state<ChordChart | null>(null);
+  chordsStatus = $state<"idle" | "loading" | "ready" | "failed">("idle");
+  /** Song (and grid) the loaded guides belong to. */
+  private lyricsFor = "";
+  private chordsFor = "";
+
+  toggleLyrics(): void {
+    this.lyricsOn = !this.lyricsOn;
+    writeFlag("joshua.lyrics", this.lyricsOn);
+    this.syncGuides();
+  }
+
+  toggleChords(): void {
+    this.chordsOn = !this.chordsOn;
+    writeFlag("joshua.chords", this.chordsOn);
+    this.syncGuides();
+  }
+
+  /** Loads what the open song needs: called when a song opens, its tempo
+   *  grid changes or a guide is switched on. */
+  syncGuides(): void {
+    const p = this.song?.project;
+    if (!p) return;
+    if (this.lyricsOn && this.lyricsFor !== p.id) void this.loadLyrics();
+    const grid = `${p.id}:${p.analysis.bpm}:${p.analysis.beats[0] ?? 0}`;
+    if (this.chordsOn && this.chordsFor !== grid) void this.loadChords(grid);
+  }
+
+  async loadLyrics(refresh = false): Promise<void> {
+    const id = this.song?.project.id;
+    if (!id) return;
+    this.lyricsFor = id;
+    this.lyrics = null;
+    this.lyricsStatus = "loading";
+    try {
+      const l = await api.getLyrics(true, refresh);
+      if (this.lyricsFor !== id) return;
+      this.lyrics = l;
+      this.lyricsStatus = l ? "ready" : "none";
+    } catch {
+      if (this.lyricsFor === id) this.lyricsStatus = "offline";
+    }
+  }
+
+  /** Pasted lyrics (plain or LRC); empty text forgets them. */
+  async saveLyrics(text: string): Promise<void> {
+    const id = this.song?.project.id;
+    const l = await this.guard(() => api.setLyrics(text));
+    if (l === undefined || this.lyricsFor !== id) return;
+    this.lyrics = l;
+    this.lyricsStatus = l ? "ready" : "none";
+  }
+
+  async nudgeLyrics(deltaSecs: number): Promise<void> {
+    if (!this.lyrics) return;
+    const offset = Math.round((this.lyrics.offsetSecs + deltaSecs) * 10) / 10;
+    this.lyrics = { ...this.lyrics, offsetSecs: offset };
+    const l = await this.guard(() => api.setLyricsOffset(offset));
+    if (l) this.lyrics = l;
+  }
+
+  private async loadChords(grid: string): Promise<void> {
+    if (this.chordsFor.split(":")[0] !== grid.split(":")[0]) this.chords = null; // another song
+    this.chordsFor = grid;
+    this.chordsStatus = "loading";
+    try {
+      const c = await api.getChords();
+      if (this.chordsFor !== grid) return;
+      this.chords = c;
+      this.chordsStatus = "ready";
+    } catch {
+      if (this.chordsFor === grid) {
+        this.chords = null;
+        this.chordsStatus = "failed";
+      }
+    }
   }
 
   /** Takes whose tone match is being computed. */

@@ -132,6 +132,37 @@ export interface TakeSettings {
   body?: number;
 }
 
+export interface LyricLine {
+  secs: number;
+  text: string;
+}
+
+/** Stored next to the song (`lyrics.json`). */
+export interface Lyrics {
+  /** `lrclib` or `user` (pasted). */
+  source: string;
+  synced: LyricLine[];
+  plain: string;
+  instrumental: boolean;
+  offsetSecs: number;
+}
+
+export interface ChordSpan {
+  start: number;
+  end: number;
+  root: number;
+  quality: "major" | "minor" | "power";
+  name: string;
+}
+
+export interface ChordChart {
+  version: number;
+  key: string;
+  chords: ChordSpan[];
+  bpm: number;
+  firstBeat: number;
+}
+
 export interface BeatAnalysis {
   bpm: number;
   beats: number[];
