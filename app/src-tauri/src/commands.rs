@@ -102,6 +102,8 @@ pub struct TrackPatch {
     pub room: Option<f32>,
     /// How much of the tone match is heard, recorded takes only (`0..=1`).
     pub tone: Option<f32>,
+    /// Extra low end, recorded takes only (`0..=1`).
+    pub body: Option<f32>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -740,7 +742,7 @@ pub fn update_take(state: State<'_, AppState>, id: String, patch: TrackPatch) ->
     if patch.pan.is_some_and(|p| !p.is_finite()) {
         return Err(ApiError::invalid("pan must be finite"));
     }
-    if patch.room.is_some_and(|r| !r.is_finite()) || patch.tone.is_some_and(|t| !t.is_finite()) {
+    if [patch.room, patch.tone, patch.body].iter().flatten().any(|v| !v.is_finite()) {
         return Err(ApiError::invalid("room and tone must be finite"));
     }
     let shared = state.shared().ok();
@@ -771,6 +773,11 @@ pub fn update_take(state: State<'_, AppState>, id: String, patch: TrackPatch) ->
         }
         if let Some(tone) = patch.tone.map(|t| t.clamp(0.0, 1.0)) {
             take.tone = tone;
+        }
+        if let Some(body) = patch.body.map(|b| b.clamp(0.0, 1.0)) {
+            take.body = body;
+        }
+        if patch.tone.is_some() || patch.body.is_some() {
             ch.inspect(|c| c.set_tone(&take.heard_tone()));
         }
         song.dirty = true;
@@ -846,7 +853,8 @@ pub async fn export_mix(app: AppHandle, include_click: Option<bool>) -> ApiResul
                 let _ = app.emit("export-progress", p);
             }
         };
-        joshua_core::export::render_mix(
+        // Mastered for sharing: streaming loudness, no clipped hits.
+        let mastered = joshua_core::export::render_mastered(
             Box::new(session),
             &|shared| {
                 apply_mix(shared, &project);
@@ -862,6 +870,7 @@ pub async fn export_mix(app: AppHandle, include_click: Option<bool>) -> ApiResul
             &report,
             &AtomicBool::new(false),
         )?;
+        log::info!("export mastered: {mastered:?}");
         let path = writer.finish()?;
         Ok(path.to_string_lossy().into_owned())
     })

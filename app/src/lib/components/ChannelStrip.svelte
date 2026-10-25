@@ -7,7 +7,7 @@
   import StemIcon from "./StemIcon.svelte";
   import VFader from "./VFader.svelte";
 
-  type Patch = { gainDb?: number; muted?: boolean; solo?: boolean; pan?: number; room?: number; tone?: number };
+  type Patch = { gainDb?: number; muted?: boolean; solo?: boolean; pan?: number; room?: number; tone?: number; body?: number };
 
   let {
     kind,
@@ -19,6 +19,7 @@
     pan = undefined,
     room = undefined,
     tone = undefined,
+    body = undefined,
     level = 0,
     silenced = false,
     wide = false,
@@ -39,6 +40,8 @@
     room?: number | undefined;
     /** Tone match `0..1` (takes with a match); shows a "Tone" knob. */
     tone?: number | undefined;
+    /** Low-end body `0..1` (takes); shows a "Body" knob. */
+    body?: number | undefined;
     level?: number;
     /** Muted by another channel's solo. */
     silenced?: boolean;
@@ -113,6 +116,22 @@
         onchange={(v) => onchange({ tone: Math.round(v * 100) / 100 })}
       />
       <span class="readout">{i18n.t("track.tone")} {Math.round(tone * 100)}%</span>
+    </div>
+  {/if}
+  {#if body !== undefined}
+    <div class="room" title={i18n.t("track.bodyHint")}>
+      <Knob
+        value={body}
+        min={0}
+        max={1}
+        reset={0}
+        size={30}
+        color="var(--stem-drums)"
+        label={`${name} · ${i18n.t("track.body")}`}
+        display={`${Math.round(body * 100)}%`}
+        onchange={(v) => onchange({ body: Math.round(v * 100) / 100 })}
+      />
+      <span class="readout">{i18n.t("track.body")} {Math.round(body * 100)}%</span>
     </div>
   {/if}
   <div class="fader-zone">

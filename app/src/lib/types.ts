@@ -128,6 +128,8 @@ export interface TakeSettings {
   tone?: number;
   /** Tone-match equaliser, dB per octave band (31 Hz…16 kHz); absent if none. */
   toneEq?: number[];
+  /** Extra low end for kick and toms, 0..1. */
+  body?: number;
 }
 
 export interface BeatAnalysis {
@@ -236,6 +238,7 @@ export interface TrackPatch {
   solo?: boolean;
   room?: number;
   tone?: number;
+  body?: number;
 }
 
 export type ClickSound = "classic" | "woodblock" | "beep" | "cowbell" | "sticks" | "drums";

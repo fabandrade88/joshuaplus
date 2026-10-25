@@ -73,17 +73,26 @@ pub struct TakeSettings {
     /// (dB per octave band), found by Balance with the original.
     #[serde(default, skip_serializing_if = "is_flat")]
     pub tone_eq: [f32; TONE_BANDS],
+    /// Extra low end for kick and toms (`0..=1`, up to [`BODY_CURVE`]).
+    #[serde(default)]
+    pub body: f32,
 }
+
+/// Body at full: weight around the kick and tom fundamentals (62–125 Hz),
+/// a touch less boxiness above them (dB per tone band).
+pub const BODY_CURVE: [f32; TONE_BANDS] = [1.5, 5.0, 4.0, 1.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0];
 
 fn is_flat(eq: &[f32; TONE_BANDS]) -> bool {
     eq.iter().all(|g| *g == 0.0)
 }
 
 impl TakeSettings {
-    /// The equaliser as heard: the tone match scaled by `tone`.
+    /// The equaliser as heard: the tone match scaled by `tone`, plus body.
     #[must_use]
     pub fn heard_tone(&self) -> [f32; TONE_BANDS] {
-        self.tone_eq.map(|g| g * self.tone)
+        std::array::from_fn(|b| {
+            (self.tone_eq[b] * self.tone + BODY_CURVE[b] * self.body).clamp(-MAX_TONE_DB, MAX_TONE_DB)
+        })
     }
 }
 
@@ -110,6 +119,7 @@ impl TakeSettings {
             && in_range(self.pan, -1.0, 1.0)
             && in_range(self.room, 0.0, 1.0)
             && in_range(self.tone, 0.0, 1.0)
+            && in_range(self.body, 0.0, 1.0)
             && self.tone_eq.iter().all(|g| in_range(*g, -MAX_TONE_DB, MAX_TONE_DB))
     }
 }
@@ -314,6 +324,7 @@ pub(crate) mod tests {
             room: DEFAULT_TAKE_ROOM,
             tone: 0.0,
             tone_eq: [0.0; TONE_BANDS],
+            body: 0.0,
         }
     }
 

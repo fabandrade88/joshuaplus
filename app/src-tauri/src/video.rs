@@ -65,7 +65,8 @@ impl OpenSave {
 
 /// Renders `duration_secs` of the open song's mix starting at song time
 /// `start_secs` (negative = silence first, e.g. the count-in), without the
-/// click, as a 16-bit stereo WAV the webview can decode.
+/// click, mastered like audio exports (streaming loudness, look-ahead
+/// limiter), as a 16-bit stereo WAV the webview can decode.
 #[tauri::command]
 pub async fn render_clip_audio(app: AppHandle, start_secs: f64, duration_secs: f64) -> ApiResult<Response> {
     if !start_secs.is_finite() || !duration_secs.is_finite() || duration_secs <= 0.0 || duration_secs > MAX_CLIP_SECS {
@@ -95,7 +96,8 @@ pub async fn render_clip_audio(app: AppHandle, start_secs: f64, duration_secs: f
                 w.write_sample(0i16).map_err(|e| ApiError::new("io", e.to_string()))?;
             }
             frames += lead;
-            joshua_core::export::render_mix(
+            // Mastered like audio exports: streaming loudness, no clipped hits.
+            joshua_core::export::render_mastered(
                 Box::new(session),
                 &|shared| {
                     apply_mix(shared, &project);

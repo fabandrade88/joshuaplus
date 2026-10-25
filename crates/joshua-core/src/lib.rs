@@ -21,6 +21,7 @@ pub mod error;
 pub mod export;
 pub mod folders;
 pub mod import;
+pub mod master;
 pub mod metadata;
 pub mod metronome;
 pub mod mixer;

@@ -757,6 +757,25 @@ class AppStore {
     return true;
   }
 
+  /** Takes whose tone match is being computed. */
+  matchingTone = $state<string[]>([]);
+
+  /** Sets a take's tone; one recorded before tone matching gets its match
+   *  computed first (level, pan and mutes are left alone). */
+  async setTakeTone(id: string, tone: number): Promise<void> {
+    const take = this.song?.project.takes?.find((t) => t.id === id);
+    if (!take) return;
+    if (!take.toneEq?.some((g) => g !== 0)) {
+      if (this.matchingTone.includes(id)) return;
+      this.matchingTone = [...this.matchingTone, id];
+      const mix = await this.guard(() => api.matchTone(id));
+      this.matchingTone = this.matchingTone.filter((t) => t !== id);
+      if (!mix) return;
+      this.applyMix(mix);
+    }
+    await this.updateTake(id, { tone });
+  }
+
   async setAutoBalance(enabled: boolean): Promise<void> {
     if ((await this.guard(() => api.setAutoBalance(enabled))) === undefined) return;
     if (this.info) this.info.autoBalance = enabled;

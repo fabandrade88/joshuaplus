@@ -131,13 +131,18 @@
                 solo={take.solo}
                 pan={take.pan}
                 room={take.room ?? 0.3}
-                tone={take.toneEq?.some((g) => g !== 0) ? (take.tone ?? 0) : undefined}
+                tone={take.toneEq?.some((g) => g !== 0) ? (take.tone ?? 0) : 0}
+                body={take.body ?? 0}
                 silenced={anySolo && !take.solo}
                 level={app.takeMeter(j)}
                 ondelete={() => {
                   if (window.confirm(i18n.t("record.confirmDelete", { name: take.name }))) void app.deleteTake(take.id);
                 }}
-                onchange={(patch) => app.updateTake(take.id, patch)}
+                onchange={(patch) => {
+                  const { tone, ...rest } = patch;
+                  if (tone !== undefined) void app.setTakeTone(take.id, tone);
+                  if (Object.keys(rest).length > 0) void app.updateTake(take.id, rest);
+                }}
               />
             {/each}
           </div>

@@ -73,6 +73,7 @@ fn reset(p: &mut SongProject) {
         t.room = DEFAULT_TAKE_ROOM;
         // As recorded; the tone match found earlier stays one knob away.
         t.tone = 0.0;
+        t.body = 0.0;
     }
     p.song_gain_db = 0.0;
     p.song_muted = false;
@@ -115,16 +116,7 @@ pub async fn auto_balance(app: AppHandle, takes: Option<Vec<String>>) -> ApiResu
             Ok(Profile::analyse(&buffer, offset, frames))
         };
         let duration = project.duration_secs;
-        let (stems, stem_tones): (Vec<Profile>, Vec<ToneProfile>) = project
-            .tracks
-            .iter()
-            .map(|t| {
-                let buffer = decode_file(&resolve_within(&song_dir, &t.file)?, &limits)?;
-                Ok((Profile::analyse(&buffer, 0.0, frames), ToneProfile::analyse(&buffer, 0.0, duration)))
-            })
-            .collect::<ApiResult<Vec<_>>>()?
-            .into_iter()
-            .unzip();
+        let (stems, stem_tones) = stem_profiles(&song_dir, &limits, &project)?;
         let profiles = project.takes.iter().map(|t| profile(&t.file, t.offset_secs)).collect::<ApiResult<Vec<_>>>()?;
         let plan = plan(&stems, &profiles);
         // Tone match of each balanced take against the stem it replaces.
@@ -161,6 +153,62 @@ pub async fn auto_balance(app: AppHandle, takes: Option<Vec<String>>) -> ApiResu
     })
     .await
     .map_err(|_| ApiError::new("internal", "balance crashed"))?
+}
+
+/// Balance and tone profiles of every stem (one file decoded at a time).
+fn stem_profiles(
+    song_dir: &std::path::Path,
+    limits: &joshua_core::security::Limits,
+    project: &SongProject,
+) -> ApiResult<(Vec<Profile>, Vec<ToneProfile>)> {
+    let frames = timeline_frames(project.duration_secs);
+    Ok(project
+        .tracks
+        .iter()
+        .map(|t| {
+            let buffer = decode_file(&resolve_within(song_dir, &t.file)?, limits)?;
+            Ok((Profile::analyse(&buffer, 0.0, frames), ToneProfile::analyse(&buffer, 0.0, project.duration_secs)))
+        })
+        .collect::<ApiResult<Vec<_>>>()?
+        .into_iter()
+        .unzip())
+}
+
+/// Finds the tone match of one take (the instrument it plays, as Balance
+/// does) and switches it on, changing nothing else: level, pan and mutes
+/// stay as the user set them. For takes recorded before tone matching.
+#[tauri::command]
+pub async fn match_tone(app: AppHandle, take: String) -> ApiResult<MixView> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<AppState>();
+        let (ws, project, _) = flush_and_project(&state)?;
+        let t = project.takes.iter().find(|t| t.id == take).ok_or_else(|| ApiError::invalid("no such take"))?;
+        let song_dir = ws.song_dir(&project.id)?;
+        let limits = *ws.limits();
+        let (stems, stem_tones) = stem_profiles(&song_dir, &limits, &project)?;
+        let buffer = decode_file(&resolve_within(&song_dir, &t.file)?, &limits)?;
+        let profile = Profile::analyse(&buffer, t.offset_secs, timeline_frames(project.duration_secs));
+        let stem = plan(&stems, &[profile]).takes[0]
+            .stem
+            .ok_or_else(|| ApiError::new("no_match", "the take plays none of the song's instruments clearly"))?;
+        let curve = match_take(&buffer, t.offset_secs, project.duration_secs, &stem_tones[stem]);
+        let shared = state.shared().ok();
+        with_song(&state, |song| {
+            let p = &mut song.project;
+            let stems = p.tracks.len();
+            let j = p.takes.iter().position(|x| x.id == take).filter(|_| p.id == project.id);
+            let j = j.ok_or_else(|| ApiError::invalid("the song changed while it was analysed"))?;
+            p.takes[j].tone_eq = curve;
+            p.takes[j].tone = 1.0;
+            if let Some(ch) = shared.as_ref().and_then(|s| s.channels.get(stems + j)) {
+                ch.set_tone(&p.takes[j].heard_tone());
+            }
+            song.dirty = true;
+            Ok(MixView::of(p))
+        })
+    })
+    .await
+    .map_err(|_| ApiError::new("internal", "tone match crashed"))?
 }
 
 /// Applies a balance plan to the chosen takes (all when `only` is `None`).
@@ -246,6 +294,7 @@ mod tests {
                 room: DEFAULT_TAKE_ROOM,
                 tone: 0.0,
                 tone_eq: [0.0; joshua_core::tone::TONE_BANDS],
+                body: 0.0,
             }],
             typed_bpm: None,
         }

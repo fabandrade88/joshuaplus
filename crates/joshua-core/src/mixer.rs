@@ -156,6 +156,9 @@ pub struct SharedState {
     /// takes have their own channels outside this bus.
     pub song_bus: ChannelControl,
     pub master_gain: AtomicF32,
+    /// Soft safety clipper on the output (on while playing; exports turn it
+    /// off and master the mix instead, see [`crate::export::render_mastered`]).
+    pub safety_clip: AtomicBool,
     pub master_meter: [AtomicF32; 2],
     playing: AtomicBool,
     position: AtomicI64,
@@ -187,6 +190,7 @@ impl Default for SharedState {
             channels: std::array::from_fn(|_| ChannelControl::default()),
             song_bus: ChannelControl::default(),
             master_gain: AtomicF32::new(1.0),
+            safety_clip: AtomicBool::new(true),
             master_meter: [AtomicF32::new(0.0), AtomicF32::new(0.0)],
             playing: AtomicBool::new(false),
             position: AtomicI64::new(0),
@@ -536,10 +540,18 @@ impl Mixer {
 
         // Master gain, soft safety limiter and meters.
         let master = shared.master_gain.load();
+        let clip = shared.safety_clip.load(Ordering::Relaxed);
         let mut peak = [0.0f32; 2];
         for frame in out.chunks_exact_mut(channels) {
             for (c, s) in frame.iter_mut().enumerate() {
-                *s = crate::audio::soft_clip(*s * master);
+                let x = *s * master;
+                *s = if clip {
+                    crate::audio::soft_clip(x)
+                } else if x.is_finite() {
+                    x
+                } else {
+                    0.0
+                };
                 if c < 2 {
                     peak[c] = peak[c].max(s.abs());
                 }

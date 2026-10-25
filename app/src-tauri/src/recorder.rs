@@ -262,6 +262,7 @@ pub fn stop(state: &AppState) -> ApiResult<Stopped> {
                 room: joshua_core::project::DEFAULT_TAKE_ROOM,
                 tone: 0.0,
                 tone_eq: [0.0; joshua_core::tone::TONE_BANDS],
+                body: 0.0,
             }))
         })();
         let _ = std::fs::remove_file(&raw.path);
@@ -309,7 +310,7 @@ fn merge_takes(takes: &mut Vec<TakeSettings>, new: Vec<TakeSettings>) -> Vec<Str
         let old = &takes[first];
         (t.gain_db, t.pan, t.room, t.solo) = (old.gain_db, old.pan, old.room, old.solo);
         // Same input, same instrument: its tone match still applies.
-        (t.tone, t.tone_eq) = (old.tone, old.tone_eq);
+        (t.tone, t.tone_eq, t.body) = (old.tone, old.tone_eq, old.body);
         let name = t.name.clone();
         old_files.push(std::mem::replace(&mut takes[first], t).file);
         let mut j = 0;
@@ -346,6 +347,7 @@ mod tests {
             room: 0.3,
             tone: 0.0,
             tone_eq: [0.0; joshua_core::tone::TONE_BANDS],
+            body: 0.0,
         }
     }
 

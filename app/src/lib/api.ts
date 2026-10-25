@@ -89,6 +89,7 @@ export const api = {
   /** `takes`: the takes to balance (all when omitted). */
   autoBalance: (takes?: string[]) => invoke<BalanceResult>("auto_balance", { takes: takes ?? null }),
   setAutoBalance: (enabled: boolean) => invoke<void>("set_auto_balance", { enabled }),
+  matchTone: (take: string) => invoke<MixView>("match_tone", { take }),
   setRecordOffset: (ms: number) => invoke<void>("set_record_offset", { ms }),
   exportMix: (includeClick: boolean) => invoke<string>("export_mix", { includeClick }),
   revealExport: (path: string) => invoke<void>("reveal_export", { path }),
