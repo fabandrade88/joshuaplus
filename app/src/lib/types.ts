@@ -253,6 +253,8 @@ export interface RecordingResult {
   song: SongView;
   added: number;
   overflowed: boolean;
+  /** An input arrived overdriven: the level (dBFS) its hits were squashed at. */
+  saturatedDb: number | null;
 }
 
 export type RecordMode = "audio" | "video";

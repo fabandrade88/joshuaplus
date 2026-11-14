@@ -204,6 +204,8 @@ export const en = {
   "record.saved": "{n} {n:take|takes} recorded and lined up with the song.",
   "record.nothing": "Nothing was recorded: the song has to play while recording.",
   "record.overflow": "Recording saved, but the disk could not keep up: some audio may be missing.",
+  "record.saturated":
+    "Recording saved, but the sound arrived distorted: its loudest hits were already squashed at {db} dB before reaching Joshua+ (too much gain, or an effect such as an amp simulator, on the interface or module). The hits were rebuilt as well as possible. Turn the gain down there to record clean.",
   "record.takes": "Takes",
   "record.deleteTake": "Delete take",
   "record.confirmDelete": "Delete the take \"{name}\"? This cannot be undone.",

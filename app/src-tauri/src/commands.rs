@@ -712,6 +712,9 @@ pub struct RecordingResult {
     pub added: usize,
     /// Audio was lost because the disk could not keep up.
     pub overflowed: bool,
+    /// An input arrived overdriven: the level (dBFS) its loudest hits were
+    /// squashed at before reaching the computer. Its take was repaired.
+    pub saturated_db: Option<f32>,
 }
 
 /// Starts recording every armed input and plays the song (with count-in).
@@ -732,7 +735,12 @@ pub async fn stop_recording(app: AppHandle) -> ApiResult<RecordingResult> {
         if let Ok(shared) = state.shared() {
             shared.seek(stopped.start_pos);
         }
-        Ok(RecordingResult { song, added: stopped.added, overflowed: stopped.overflowed })
+        Ok(RecordingResult {
+            song,
+            added: stopped.added,
+            overflowed: stopped.overflowed,
+            saturated_db: stopped.saturated_db,
+        })
     })
     .await
     .map_err(|_| ApiError::new("internal", "recorder crashed"))?

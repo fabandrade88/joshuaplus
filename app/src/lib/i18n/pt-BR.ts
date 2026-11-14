@@ -206,6 +206,8 @@ export const ptBR: Messages = {
   "record.saved": "{n} {n:take gravado e alinhado|takes gravados e alinhados} com a música.",
   "record.nothing": "Nada foi gravado: a música precisa tocar durante a gravação.",
   "record.overflow": "Gravação salva, mas o disco não acompanhou: pode faltar um trecho do áudio.",
+  "record.saturated":
+    "Gravação salva, mas o som já chegou distorcido: as batidas mais fortes vieram achatadas em {db} dB antes de chegar ao Joshua+ (ganho alto demais, ou um efeito como simulador de amplificador, na interface ou no módulo). As batidas foram reconstruídas da melhor forma possível. Abaixe o ganho ali para gravar limpo.",
   "record.takes": "Gravações",
   "record.deleteTake": "Apagar gravação",
   "record.confirmDelete": "Apagar a gravação \"{name}\"? Não dá para desfazer.",

@@ -282,10 +282,10 @@ class AppStore {
   }
 
   // ── Notifications ────────────────────────────────────────────────────────
-  notify(message: string): void {
+  notify(message: string, ms = 4500): void {
     this.toast = message;
     clearTimeout(this.toastTimer);
-    this.toastTimer = setTimeout(() => (this.toast = null), 4500);
+    this.toastTimer = setTimeout(() => (this.toast = null), ms);
   }
 
   private async guard<T>(fn: () => Promise<T>): Promise<T | undefined> {
@@ -717,6 +717,8 @@ class AppStore {
     if (!result) return;
     this.applySongView(result.song);
     if (result.overflowed) this.notify(i18n.t("record.overflow"));
+    // Long enough to read: the fix is at the interface, not in the app.
+    else if (typeof result.saturatedDb === "number") this.notify(i18n.t("record.saturated", { db: Math.round(result.saturatedDb) }), 20000);
     else this.notify(result.added > 0 ? i18n.t("record.saved", { n: result.added }) : i18n.t("record.nothing"));
     // Only the takes just recorded are balanced: everything else the user
     // set (levels, mutes, earlier takes) stays as it is.
