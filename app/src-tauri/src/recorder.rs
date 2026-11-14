@@ -188,6 +188,9 @@ pub struct Stopped {
     pub added: usize,
     /// Some input's writer fell behind and audio was lost.
     pub overflowed: bool,
+    /// Some input arrived overdriven: the lowest level (dBFS) its hits were
+    /// squashed at before reaching the computer. Those takes were repaired.
+    pub saturated_db: Option<f32>,
 }
 
 /// Stops capture and playback, aligns every take and saves it to the song.
@@ -226,11 +229,25 @@ pub fn stop(state: &AppState) -> ApiResult<Stopped> {
             }
             Err(_) => continue,
         };
-        let result = (|| -> ApiResult<Option<TakeSettings>> {
+        let result = (|| -> ApiResult<Option<(TakeSettings, Option<f32>)>> {
             if raw.frames < 16 {
                 return Ok(None);
             }
             let audio = decode_file(&raw.path, ws.limits())?;
+            // An interface or module with too much gain squashes the loudest
+            // hits before they get here: rebuild them, and tell the musician.
+            let (audio, saturated_db) = match joshua_core::saturation::repair(&audio) {
+                Some((fixed, found)) => {
+                    log::warn!(
+                        "input {:?} arrived overdriven (squashed at {:.1} dBFS): {} tops rebuilt",
+                        input.name,
+                        found.ceiling_db(),
+                        found.tops
+                    );
+                    (fixed, Some(found.ceiling_db()))
+                }
+                None => (audio, None),
+            };
             let Some(align) = fit_alignment(&raw.markers, f64::from(out_rate) / f64::from(input.rate)) else {
                 return Ok(None); // the song never played
             };
@@ -247,7 +264,7 @@ pub fn stop(state: &AppState) -> ApiResult<Stopped> {
             w.write(audio.left(), audio.right())?;
             w.finish()?;
             next_id += 1;
-            Ok(Some(TakeSettings {
+            let settings = TakeSettings {
                 id,
                 name: take_name(&input.name),
                 file,
@@ -263,11 +280,18 @@ pub fn stop(state: &AppState) -> ApiResult<Stopped> {
                 tone: 0.0,
                 tone_eq: [0.0; joshua_core::tone::TONE_BANDS],
                 body: 0.0,
-            }))
+            };
+            Ok(Some((settings, saturated_db)))
         })();
         let _ = std::fs::remove_file(&raw.path);
         match result {
-            Ok(Some(t)) => new_takes.push(t),
+            Ok(Some((t, saturated_db))) => {
+                new_takes.push(t);
+                outcome.saturated_db = match (outcome.saturated_db, saturated_db) {
+                    (Some(a), Some(b)) => Some(a.min(b)),
+                    (a, b) => a.or(b),
+                };
+            }
             Ok(None) => {}
             Err(e) => log::warn!("could not save take: {e}"),
         }

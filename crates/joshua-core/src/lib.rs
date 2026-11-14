@@ -10,6 +10,7 @@
 //! * [`separation`] – stem separation back-ends (built-in DSP, Demucs).
 //! * [`metronome`] – click track synthesis aligned to detected beats.
 //! * [`mixer`] – real-time safe mixing core used by the audio engine.
+//! * [`saturation`] – takes from an overdriven input get their hits rebuilt.
 //! * [`project`] / [`workspace`] / [`import`] – on-disk song projects.
 #![forbid(unsafe_code)]
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
@@ -32,6 +33,7 @@ pub mod project;
 pub mod recording;
 pub mod resample;
 pub mod room;
+pub mod saturation;
 pub mod security;
 pub mod separation;
 pub mod stft;

@@ -1,4 +1,4 @@
-**Joshua+ 0.5.5 — making music at home.** Split songs into instruments, play along with a click locked to the song, record yourself and share the video.
+**Joshua+ 0.5.6 — making music at home.** Split songs into instruments, play along with a click locked to the song, record yourself and share the video.
 
 ### Install
 
@@ -7,15 +7,15 @@
 
 The scripts verify every download against `SHA256SUMS`. Platforms: macOS on Apple Silicon (13.4+), Windows 10/11 x64, Linux x86_64 (glibc 2.39+). Installation tested on Ubuntu 26.04 LTS, Omarchy (Arch Linux), Windows 11 and a MacBook Pro M4 Pro; every installer below was also installed and started on clean Windows, macOS and Linux machines before this release was published. Builds are not code-signed yet (see the README). Joshua+ 0.5.1 and later tell you about this release by themselves.
 
-### New in 0.5.5
+### New in 0.5.6
 
-- **Chords to play along.** Switch on **Chords** and every bar of the bar map shows its chord, the counter shows the chord now and the next one, and a large window shows the current chord with the next three and a beat countdown. Chords are recognised on your computer from the song's instruments (major, minor and power chords, spelled for the song's key); no internet, nothing uploaded. Treat them as a guide: very dense or distorted parts can be off.
-- **Lyrics to sing along.** Switch on **Lyrics** and the line being sung and the next ones show in time with the song, from [LRCLIB](https://lrclib.net), the open lyrics database. Only the title, artist, album and length are sent. Lyrics are kept with the song and work offline; they can be moved earlier or later, edited, or pasted (plain text or LRC).
-- **Ready before you need them.** "Download lyrics automatically" (Settings; switched on the first time you use Lyrics) fetches the lyrics of your whole library in the background and tries again when you are back online.
-- **A window you can read from the drum stool.** Chords and lyrics open in a floating window: drag it anywhere, resize it and the text grows with it; its place is remembered.
+- **Takes that arrive distorted get their hits back.** An interface or drum module set too hot, or with an effect such as an amp simulator switched on, flattens the loudest hits before they reach the computer: the take sounds distorted and dull, although nothing clips in Joshua+. When a recording stops, Joshua+ now looks for that signature (every loud hit squashed at the same level, well under full scale) and rebuilds the flattened tops from the shape of the wave on either side. It is an estimate, made on your computer by plain signal processing: no model, no internet.
+- **It tells you where to fix it.** The notice after recording says the level the hits were squashed at, so you can turn the gain down (or the effect off) at the interface or module, which is the real cure. It stays for 20 seconds, in English, Português and Deutsch.
+- **Nothing else is touched.** Clean takes are saved exactly as they were recorded; distortion that is there on purpose (a fuzz guitar is squashed all the time, not only on the hits) is left alone; takes already in your library stay as they are.
 
 ### Since 0.0.1-beta
 
+- Chords in every bar and time-synced lyrics to play along, in a floating window you can read from the drum stool (0.5.5).
 - Exports mastered to streaming loudness with a look-ahead limiter, Tone and Body on takes, balancing that never undoes your mix, 320 kbit/s video sound at 1080p (0.5.4).
 - Count-in before the intro and a click through it, tempo in the right pulse, tighter beats, typed BPM kept, Settings as a page (0.5.3).
 - Frame-by-frame video export, social formats cropped not squeezed, Balance with the original and Reset levels, a flat monospace design (0.5.2).

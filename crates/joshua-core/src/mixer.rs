@@ -688,8 +688,8 @@ fn render_count_in(
     let mut last = i64::MIN;
     render_click_chunks(n, out, channels, offset, |l, r, at| {
         let chunk_start = virtual_pos + at as i64;
-        for i in 0..len {
-            let frame = shared.count_in_clicks[i].load(Ordering::Relaxed);
+        for (i, click) in shared.count_in_clicks.iter().enumerate().take(len) {
+            let frame = click.load(Ordering::Relaxed);
             last = last.max(frame);
             mix_sound(voice.get(accents >> i & 1 == 1), frame - chunk_start, l, r, gl, gr);
         }
