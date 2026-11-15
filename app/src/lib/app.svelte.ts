@@ -717,7 +717,7 @@ class AppStore {
     if (!result) return;
     this.applySongView(result.song);
     if (result.overflowed) this.notify(i18n.t("record.overflow"));
-    // Long enough to read: the fix is at the interface, not in the app.
+    // Long enough to read: the fix is at the module or interface, not in the app.
     else if (typeof result.saturatedDb === "number") this.notify(i18n.t("record.saturated", { db: Math.round(result.saturatedDb) }), 20000);
     else this.notify(result.added > 0 ? i18n.t("record.saved", { n: result.added }) : i18n.t("record.nothing"));
     // Only the takes just recorded are balanced: everything else the user

@@ -12,10 +12,12 @@ use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::Duration;
 
+use joshua_core::audio::StereoBuffer;
 use joshua_core::decode::decode_file;
 use joshua_core::mixer::MAX_TRACKS;
 use joshua_core::project::{MAX_TAKES, TakeSettings};
-use joshua_core::recording::{Marker, center_one_sided, fit_alignment, render_take};
+use joshua_core::recording::{AlignedTake, Marker, center_one_sided, fit_alignment, render_take};
+use joshua_core::saturation::{self, Saturation};
 use joshua_core::security::random_suffix;
 use joshua_core::wav::StereoWavWriter;
 use joshua_engine::input::{InputControls, RecordRx};
@@ -189,7 +191,7 @@ pub struct Stopped {
     /// Some input's writer fell behind and audio was lost.
     pub overflowed: bool,
     /// Some input arrived overdriven: the lowest level (dBFS) its hits were
-    /// squashed at before reaching the computer. Those takes were repaired.
+    /// squashed at before reaching the computer. Takes are saved as they arrived.
     pub saturated_db: Option<f32>,
 }
 
@@ -234,34 +236,25 @@ pub fn stop(state: &AppState) -> ApiResult<Stopped> {
                 return Ok(None);
             }
             let audio = decode_file(&raw.path, ws.limits())?;
-            // An interface or module with too much gain squashes the loudest
-            // hits before they get here: rebuild them, and tell the musician.
-            let (audio, saturated_db) = match joshua_core::saturation::repair(&audio) {
-                Some((fixed, found)) => {
-                    log::warn!(
-                        "input {:?} arrived overdriven (squashed at {:.1} dBFS): {} tops rebuilt",
-                        input.name,
-                        found.ceiling_db(),
-                        found.tops
-                    );
-                    (fixed, Some(found.ceiling_db()))
-                }
-                None => (audio, None),
-            };
-            let Some(align) = fit_alignment(&raw.markers, f64::from(out_rate) / f64::from(input.rate)) else {
-                return Ok(None); // the song never played
-            };
             let in_latency = input.controls.latency_us.load(Ordering::Relaxed) as f64 * f64::from(out_rate) / 1e6;
             let latency = out_latency + in_latency + offset_ms * f64::from(out_rate) / 1000.0;
-            let Some(take) = render_take(&audio, align, latency, out_rate, song_len)? else {
+            let Some(done) = finish_take(&audio, &raw.markers, input.rate, out_rate, latency, song_len)? else {
                 return Ok(None);
             };
+            let saturated_db = done.saturated.map(|found| {
+                log::warn!(
+                    "input {:?} arrived overdriven: {} stretches squashed at {:.1} dBFS",
+                    input.name,
+                    found.tops,
+                    found.ceiling_db()
+                );
+                found.ceiling_db()
+            });
+            let take = done.take;
             let id = format!("take-{next_id}");
             let file = format!("takes/{id}.wav");
-            // A mic or guitar on one input of a stereo pair: centre it.
-            let audio = center_one_sided(take.audio);
             let mut w = StereoWavWriter::create(&takes_dir.join(format!("{id}.wav")), out_rate)?;
-            w.write(audio.left(), audio.right())?;
+            w.write(take.audio.left(), take.audio.right())?;
             w.finish()?;
             next_id += 1;
             let settings = TakeSettings {
@@ -311,6 +304,45 @@ pub fn stop(state: &AppState) -> ApiResult<Stopped> {
         }
     }
     Ok(outcome)
+}
+
+/// What becomes of one input's recording.
+#[derive(Debug)]
+struct FinishedTake {
+    /// The recording on the song's clock, as it is saved.
+    take: AlignedTake,
+    /// Set when its loudest hits arrived squashed.
+    saturated: Option<Saturation>,
+}
+
+/// Everything that happens to a recording between the raw capture and the
+/// take on disk: it is moved onto the song's clock (latency and clock drift)
+/// and a source on one side of a stereo pair is centred. Nothing else.
+///
+/// The take is what the musician played, as it arrived: it is never
+/// levelled, repaired or sweetened here. Shaping the sound belongs to the
+/// mix, where the musician chooses it and can take it back. An input that
+/// arrives overdriven is reported, not corrected (0.5.6 corrected it, and
+/// made kicks up to 8 dB louder than they were played).
+///
+/// `None` when the song never played, or nothing of the take falls inside it.
+fn finish_take(
+    audio: &StereoBuffer,
+    markers: &[Marker],
+    in_rate: u32,
+    out_rate: u32,
+    latency: f64,
+    song_len: i64,
+) -> ApiResult<Option<FinishedTake>> {
+    let Some(align) = fit_alignment(markers, f64::from(out_rate) / f64::from(in_rate)) else {
+        return Ok(None);
+    };
+    let Some(take) = render_take(audio, align, latency, out_rate, song_len)? else {
+        return Ok(None);
+    };
+    // A mic or guitar on one input of a stereo pair: centre it.
+    let take = AlignedTake { start: take.start, audio: center_one_sided(take.audio) };
+    Ok(Some(FinishedTake { take, saturated: saturation::detect(audio) }))
 }
 
 /// Name of the take recorded from an input (also how a new take finds the
@@ -389,6 +421,42 @@ mod tests {
         assert_eq!(ids, ["take-3", "take-2", "take-4"], "replaced in place, duplicates gone, new input appended");
         // The new drums take keeps the old mix but is heard.
         assert_eq!((takes[0].gain_db, takes[0].room, takes[0].muted), (-4.0, 0.5, false));
+    }
+
+    #[test]
+    fn a_take_is_saved_as_it_arrived() {
+        // The recording that showed "repairing" was a mistake: the first
+        // swing of every kick arrives flat at 0.33, the rest is round.
+        const RATE: u32 = 48_000;
+        let mut played = vec![0.0f32; 25 * RATE as usize];
+        for hit in 0..30 {
+            let start = RATE as usize / 2 + hit * (RATE as usize * 3 / 4);
+            let (freq, level, decay) = if hit % 2 == 0 { (200.0, 0.9, 350.0) } else { (190.0, 0.25, 30.0) };
+            for k in 0..RATE as usize / 4 {
+                let t = k as f32 / RATE as f32;
+                let v: f32 = level * (-t * decay).exp() * (std::f32::consts::TAU * freq * t).sin();
+                played[start + k] += v.clamp(-0.33, 0.33);
+            }
+        }
+        let recording = StereoBuffer::from_mono(RATE, played.clone()).unwrap();
+        // The input ran in step with the song, from its first frame.
+        let markers: Vec<_> = (1..=(played.len() / 512) as u64)
+            .map(|i| Marker { input_frames: i * 512, song_pos: (i * 512) as i64 })
+            .collect();
+        let done = finish_take(&recording, &markers, RATE, RATE, 0.0, played.len() as i64).unwrap().unwrap();
+
+        // The musician is told the hits arrive flattened, and at what level...
+        let found = done.saturated.expect("flattened hits are reported");
+        assert!((found.ceiling - 0.33).abs() < 0.012, "ceiling {}", found.ceiling);
+        // ...and the take is what arrived: no hit rebuilt, louder or softer.
+        let take = done.take;
+        let start = usize::try_from(take.start).unwrap();
+        assert!(start <= 1 && take.audio.frames() + 2 >= played.len());
+        for (side, saved) in [take.audio.left(), take.audio.right()].into_iter().enumerate() {
+            for (j, (s, p)) in saved.iter().zip(&played[start..]).enumerate() {
+                assert!((s - p).abs() < 1e-4, "side {side}, frame {j}: saved {s}, played {p}");
+            }
+        }
     }
 
     #[test]

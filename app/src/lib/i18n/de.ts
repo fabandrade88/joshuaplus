@@ -207,7 +207,7 @@ export const de: Messages = {
   "record.nothing": "Nichts aufgenommen: Der Song muss während der Aufnahme laufen.",
   "record.overflow": "Aufnahme gespeichert, aber die Festplatte kam nicht hinterher: Es kann Audio fehlen.",
   "record.saturated":
-    "Aufnahme gespeichert, aber der Klang kam verzerrt an: Die lautesten Schläge waren schon bei {db} dB plattgedrückt, bevor sie Joshua+ erreichten (zu viel Gain oder ein Effekt wie ein Amp-Simulator am Interface oder Modul). Die Schläge wurden so gut wie möglich wiederhergestellt. Dort den Gain senken, um sauber aufzunehmen.",
+    "Aufnahme gespeichert, wie sie ankam, aber die lautesten Schläge kommen bei {db} dB abgeflacht an: Etwas vor Joshua+ hat dort keinen Spielraum mehr (die Lautstärke des Moduls oder einer Trommel im Kit, der Gain des Interfaces oder ein Effekt wie Kompressor oder Amp-Simulator). Wenn es verzerrt klingt, dort leiser stellen.",
   "record.takes": "Takes",
   "record.deleteTake": "Take löschen",
   "record.confirmDelete": "Take „{name}“ löschen? Das lässt sich nicht rückgängig machen.",
