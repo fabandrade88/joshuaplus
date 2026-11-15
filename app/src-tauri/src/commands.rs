@@ -713,7 +713,7 @@ pub struct RecordingResult {
     /// Audio was lost because the disk could not keep up.
     pub overflowed: bool,
     /// An input arrived overdriven: the level (dBFS) its loudest hits were
-    /// squashed at before reaching the computer. Its take was repaired.
+    /// squashed at before reaching the computer. Its take is saved as it arrived.
     pub saturated_db: Option<f32>,
 }
 

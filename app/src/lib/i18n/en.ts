@@ -205,7 +205,7 @@ export const en = {
   "record.nothing": "Nothing was recorded: the song has to play while recording.",
   "record.overflow": "Recording saved, but the disk could not keep up: some audio may be missing.",
   "record.saturated":
-    "Recording saved, but the sound arrived distorted: its loudest hits were already squashed at {db} dB before reaching Joshua+ (too much gain, or an effect such as an amp simulator, on the interface or module). The hits were rebuilt as well as possible. Turn the gain down there to record clean.",
+    "Recording saved as it arrived, but its loudest hits come in flattened at {db} dB: something before Joshua+ runs out of room there (the volume of the module or of one drum in the kit, the gain of the interface, or an effect such as a compressor or amp simulator). If it sounds distorted, turn it down there.",
   "record.takes": "Takes",
   "record.deleteTake": "Delete take",
   "record.confirmDelete": "Delete the take \"{name}\"? This cannot be undone.",
