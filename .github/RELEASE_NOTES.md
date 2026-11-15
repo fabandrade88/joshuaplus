@@ -1,4 +1,4 @@
-**Joshua+ 0.5.6 — making music at home.** Split songs into instruments, play along with a click locked to the song, record yourself and share the video.
+**Joshua+ 0.5.7 — making music at home.** Split songs into instruments, play along with a click locked to the song, record yourself and share the video.
 
 ### Install
 
@@ -7,14 +7,15 @@
 
 The scripts verify every download against `SHA256SUMS`. Platforms: macOS on Apple Silicon (13.4+), Windows 10/11 x64, Linux x86_64 (glibc 2.39+). Installation tested on Ubuntu 26.04 LTS, Omarchy (Arch Linux), Windows 11 and a MacBook Pro M4 Pro; every installer below was also installed and started on clean Windows, macOS and Linux machines before this release was published. Builds are not code-signed yet (see the README). Joshua+ 0.5.1 and later tell you about this release by themselves.
 
-### New in 0.5.6
+### New in 0.5.7
 
-- **Takes that arrive distorted get their hits back.** An interface or drum module set too hot, or with an effect such as an amp simulator switched on, flattens the loudest hits before they reach the computer: the take sounds distorted and dull, although nothing clips in Joshua+. When a recording stops, Joshua+ now looks for that signature (every loud hit squashed at the same level, well under full scale) and rebuilds the flattened tops from the shape of the wave on either side. It is an estimate, made on your computer by plain signal processing: no model, no internet.
-- **It tells you where to fix it.** The notice after recording says the level the hits were squashed at, so you can turn the gain down (or the effect off) at the interface or module, which is the real cure. It stays for 20 seconds, in English, Português and Deutsch.
-- **Nothing else is touched.** Clean takes are saved exactly as they were recorded; distortion that is there on purpose (a fuzz guitar is squashed all the time, not only on the hits) is left alone; takes already in your library stay as they are.
+- **A take is saved exactly as it was recorded, again.** 0.5.6 rebuilt hits that arrived flattened. On a real kit the guess was too high: some kicks came out up to 8 dB louder than they were played, others untouched. Joshua+ no longer changes a recording.
+- **It still tells you when hits arrive flattened**, and at what level, so you can turn down the module, one drum of the kit or the gain of the interface where it happens. The notice now says the take was kept as it arrived.
+- **Recorded with 0.5.6?** A take whose recording ended with the "arrived distorted" notice was changed: record it again. Takes without the notice were not touched.
 
 ### Since 0.0.1-beta
 
+- A notice when the loudest hits arrive flattened by too much level before the computer (0.5.6).
 - Chords in every bar and time-synced lyrics to play along, in a floating window you can read from the drum stool (0.5.5).
 - Exports mastered to streaming loudness with a look-ahead limiter, Tone and Body on takes, balancing that never undoes your mix, 320 kbit/s video sound at 1080p (0.5.4).
 - Count-in before the intro and a click through it, tempo in the right pulse, tighter beats, typed BPM kept, Settings as a page (0.5.3).
